@@ -1,0 +1,32 @@
+{
+  // Godot executable used by godot-tools and by launch.json (${config:godotTools.editorPath.godot4})
+  "godotTools.editorPath.godot4": "C:\\Users\\alex\\code\\godot\\godot4.7.2\\Godot_v4.7.2-stable_mono_win64.exe",
+
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  "files.exclude": {
+    "**/.godot": true,
+    "**/.mono": true
+  },
+  "search.exclude": {
+    "**/.godot": true,
+    "**/bin": true,
+    "**/obj": true
+  },
+  "files.watcherExclude": {
+    "**/.godot/**": true,
+    "**/bin/**": true,
+    "**/obj/**": true
+  },
+
+  "[csharp]": {
+    "editor.defaultFormatter": "ms-dotnettools.csharp",
+    "editor.formatOnSave": true
+  },
+  "[gdscript]": {
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4
+  }
+}
