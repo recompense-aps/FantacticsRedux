@@ -1,0 +1,115 @@
+{
+  "draftBudget": 40,
+  "startingCap": 30,
+  "deployColumns": 3,
+  "commandPerTurn": 2,
+  "commandStartTurn": 2,
+  "maxArrivalsPerTurn": 2,
+  "heldBonus": 1,
+  "bracedBonus": 3,
+  "supportCap": 2,
+  "routPercent": 25,
+  "turnLimit": 15,
+  "maxClashStrikes": 20,
+  "terrain": {
+    "Plains": { "moveCost": 1, "defense": 0, "blocksSight": false },
+    "Road": { "moveCost": 1, "defense": 0, "blocksSight": false },
+    "Forest": { "moveCost": 2, "defense": 1, "blocksSight": true },
+    "Hills": { "moveCost": 2, "defense": 1, "blocksSight": false },
+    "Mountains": { "moveCost": 3, "defense": 2, "blocksSight": true },
+    "Bridge": { "moveCost": 1, "defense": 0, "blocksSight": false },
+    "Water": { "moveCost": null, "defense": 0, "blocksSight": false }
+  },
+  "races": {
+    "Elves": { "traits": { "Forestwalk": 1, "CanopySight": 1, "FromTheTrees": 1 } },
+    "Goblins": { "traits": { "MountainBorn": 1, "OutOfTheCaves": 1 } }
+  },
+  "units": {
+    "Archer": {
+      "race": "Elves", "cost": 5, "hp": 7, "attack": 4, "defense": 1, "movement": 4,
+      "minRange": 2, "maxRange": 3, "initiative": 5, "vision": 5, "unique": false,
+      "traits": { "Braced": 1 }, "abilities": []
+    },
+    "Ranger": {
+      "race": "Elves", "cost": 6, "hp": 7, "attack": 3, "defense": 1, "movement": 5,
+      "minRange": 1, "maxRange": 3, "initiative": 6, "vision": 5, "unique": false,
+      "traits": {}, "abilities": ["PinningShot"]
+    },
+    "Herbalist": {
+      "race": "Elves", "cost": 4, "hp": 6, "attack": 1, "defense": 0, "movement": 4,
+      "minRange": 1, "maxRange": 2, "initiative": 4, "vision": 4, "unique": false,
+      "traits": {}, "abilities": ["Mend"]
+    },
+    "Scout": {
+      "race": "Elves", "cost": 2, "hp": 3, "attack": 1, "defense": 0, "movement": 5,
+      "minRange": 1, "maxRange": 1, "initiative": 7, "vision": 7, "unique": false,
+      "traits": { "ForestStride": 1, "Slippery": 1 }, "abilities": []
+    },
+    "Druid": {
+      "race": "Elves", "cost": 6, "hp": 6, "attack": 2, "defense": 0, "movement": 4,
+      "minRange": 1, "maxRange": 2, "initiative": 4, "vision": 4, "unique": true,
+      "traits": {}, "abilities": ["Overgrowth", "Entangle"]
+    },
+    "Grunt": {
+      "race": "Goblins", "cost": 2, "hp": 5, "attack": 3, "defense": 0, "movement": 4,
+      "minRange": 1, "maxRange": 1, "initiative": 3, "vision": 3, "unique": false,
+      "traits": { "Bloodthirst": 1 }, "abilities": []
+    },
+    "Rusher": {
+      "race": "Goblins", "cost": 3, "hp": 4, "attack": 3, "defense": 0, "movement": 6,
+      "minRange": 1, "maxRange": 1, "initiative": 6, "vision": 4, "unique": false,
+      "traits": { "Bloodthirst": 1, "Reckless": 1 }, "abilities": []
+    },
+    "Bruiser": {
+      "race": "Goblins", "cost": 4, "hp": 7, "attack": 5, "defense": 0, "movement": 4,
+      "minRange": 1, "maxRange": 1, "initiative": 3, "vision": 3, "unique": false,
+      "traits": { "Crush": 1 }, "abilities": []
+    },
+    "Tank": {
+      "race": "Goblins", "cost": 4, "hp": 8, "attack": 2, "defense": 2, "movement": 3,
+      "minRange": 1, "maxRange": 1, "initiative": 2, "vision": 3, "unique": false,
+      "traits": { "Bloodthirst": 3, "Retaliate": 1 }, "abilities": []
+    },
+    "Mauler": {
+      "race": "Goblins", "cost": 4, "hp": 6, "attack": 3, "defense": 1, "movement": 4,
+      "minRange": 1, "maxRange": 1, "initiative": 4, "vision": 3, "unique": false,
+      "traits": { "Bloodthirst": 1, "Hamstring": 1 }, "abilities": ["ThrowNet"]
+    },
+    "WarLord": {
+      "race": "Goblins", "cost": 6, "hp": 8, "attack": 4, "defense": 1, "movement": 4,
+      "minRange": 1, "maxRange": 1, "initiative": 4, "vision": 4, "unique": true,
+      "traits": { "Bloodthirst": 1, "WarCry": 2 }, "abilities": []
+    },
+    "Shaman": {
+      "race": "Goblins", "cost": 5, "hp": 5, "attack": 2, "defense": 0, "movement": 4,
+      "minRange": 1, "maxRange": 2, "initiative": 3, "vision": 4, "unique": true,
+      "traits": {}, "abilities": ["CallTheHorde"]
+    }
+  },
+  "abilities": {
+    "PinningShot": {
+      "minRange": 0, "maxRange": 0, "cooldown": 2, "amount": 0, "duration": 1, "limit": 0,
+      "usesAttackRange": true, "needsLineOfSight": true
+    },
+    "Mend": {
+      "minRange": 1, "maxRange": 2, "cooldown": 0, "amount": 3, "duration": 0, "limit": 0,
+      "usesAttackRange": false, "needsLineOfSight": false
+    },
+    "Overgrowth": {
+      "minRange": 1, "maxRange": 3, "cooldown": 3, "amount": 0, "duration": 0, "limit": 0,
+      "usesAttackRange": false, "needsLineOfSight": false
+    },
+    "Entangle": {
+      "minRange": 0, "maxRange": 2, "cooldown": 4, "amount": 0, "duration": 1, "limit": 0,
+      "usesAttackRange": false, "needsLineOfSight": false
+    },
+    "ThrowNet": {
+      "minRange": 2, "maxRange": 3, "cooldown": 3, "amount": 0, "duration": 1, "limit": 0,
+      "usesAttackRange": false, "needsLineOfSight": true
+    },
+    "CallTheHorde": {
+      "minRange": 0, "maxRange": 0, "cooldown": 3, "amount": 2, "duration": 0, "limit": 4,
+      "usesAttackRange": false, "needsLineOfSight": false
+    }
+  }
+}

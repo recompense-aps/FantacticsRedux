@@ -39,10 +39,10 @@ All code lives under `src/` (solution at `src/Fantactics.sln`); the repo root ho
 | `Fantactics.Protocol` | `src/Fantactics.Protocol` | Class library | Core | Transport envelopes (match/seat addressing, lobby messages) around Core's commands and events, shared by client and server |
 | `Fantactics.Server` | `src/Fantactics.Server` | ASP.NET Core app | Core, Protocol | Hosts matches (SignalR hub at `/game`), lobbies, LAN discovery responder |
 | `Fantactics.Client` | `src/Fantactics.Client` | Godot .NET project (`project.godot` lives here) | Core, Protocol | Rendering, input, audio, UI; implements `IGameConnection` (local + remote) |
-| `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | Computer players (`IPlayerAgent`, bots) and `MatchRunner`; used by Client, Server, and Sim. *Planned*, see [Simulation §3](Simulation.md#3-projects) |
+| `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | Computer players (`IPlayerAgent`, bots) and `MatchRunner`; used by Client, Server, and Sim. See [Simulation §3](Simulation.md#3-projects) |
 | `Fantactics.Sim` | `src/Fantactics.Sim` | Console app | Core, Ai, Protocol | `fantactics-sim`: file-backed match CLI for LLM play, tournaments; built on CommandLineUtils (§2.3). *Planned* |
 | `Fantactics.Core.Tests` | `src/tests/Fantactics.Core.Tests` | xUnit | Core | Rules tests |
-| `Fantactics.Ai.Tests` | `src/tests/Fantactics.Ai.Tests` | xUnit | Core, Ai | Fuzzing, determinism, replay, and bot tests. *Planned* |
+| `Fantactics.Ai.Tests` | `src/tests/Fantactics.Ai.Tests` | xUnit | Core, Ai | Fuzzing, determinism, replay, and bot tests |
 
 Dependency rule: nothing references `Fantactics.Client`, `Fantactics.Server`, or `Fantactics.Sim`, and `Fantactics.Core` references nothing.
 

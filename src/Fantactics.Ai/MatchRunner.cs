@@ -1,0 +1,69 @@
+using System.Collections.Immutable;
+using Fantactics.Core;
+using Fantactics.Core.Commands;
+using Fantactics.Core.Engine;
+using Fantactics.Core.Events;
+using Fantactics.Core.Records;
+using Fantactics.Core.Rules;
+using Fantactics.Core.State;
+
+namespace Fantactics.Ai;
+
+/// <summary>
+/// Plays a whole match in memory by asking each seat's agent for its pending decision until the match ends
+/// (Simulation §4). It is just another driver of <see cref="GameEngine"/>.
+/// </summary>
+public static class MatchRunner
+{
+    /// <summary>Safety limit on commands per match, so a rules bug can't loop forever.</summary>
+    public const int DefaultMaxCommands = 20_000;
+
+    /// <summary>Plays a match from <paramref name="setup"/>.</summary>
+    /// <param name="rules">Rules config.</param>
+    /// <param name="setup">Map, races, and seed.</param>
+    /// <param name="agents">An agent per seat.</param>
+    /// <param name="observer">Called after every accepted command, e.g. to check invariants.</param>
+    /// <param name="maxCommands">Commands allowed before giving up.</param>
+    /// <exception cref="InvalidOperationException">An agent submitted an illegal command, or the limit was hit.</exception>
+    public static MatchResult Run(
+        RulesConfig rules,
+        MatchSetup setup,
+        IReadOnlyDictionary<Seat, IPlayerAgent> agents,
+        Action<GameState, ImmutableArray<GameEvent>>? observer = null,
+        int maxCommands = DefaultMaxCommands)
+    {
+        GameState state = setup.CreateInitialState(rules);
+        List<RecordedCommand> log = [];
+        while (GameEngine.PendingDecisions(state) is [Decision decision, ..])
+        {
+            if (log.Count >= maxCommands)
+            {
+                throw new InvalidOperationException($"Match exceeded {maxCommands} commands.");
+            }
+
+            LegalActions legal = LegalActions.For(state, decision.Seat)
+                ?? throw new InvalidOperationException($"No legal actions for pending {decision}.");
+            ICommand command = agents[decision.Seat].Decide(PlayerView.Project(state, decision.Seat), decision, legal);
+            (state, ImmutableArray<GameEvent> events) = GameEngine.Apply(state, decision.Seat, command) switch
+            {
+                Accepted accepted => (accepted.State, accepted.Events),
+                Rejected rejected => throw new InvalidOperationException(
+                    $"{decision.Seat} submitted an illegal command {command}: {rejected.Violation.Message}"),
+                _ => throw new InvalidOperationException("Unknown apply result."),
+            };
+
+            log.Add(new RecordedCommand(log.Count + 1, decision.Seat, command, StateHash.Compute(state), null));
+            observer?.Invoke(state, events);
+        }
+
+        MatchOutcome outcome = state.Outcome
+            ?? throw new InvalidOperationException("No decisions pending but the match isn't over.");
+        MatchRecord record = new(
+            MatchRecord.CurrentFormatVersion,
+            GameEngine.RulesVersion,
+            rules.Hash,
+            setup,
+            [.. log]);
+        return new MatchResult(outcome, state.Turn, state, record);
+    }
+}

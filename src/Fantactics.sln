@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fantactics.Core.Tests", "te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fantactics.Client", "Fantactics.Client\Fantactics.Client.csproj", "{3359E28E-9C2E-4460-BB6F-B1DD05FED067}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fantactics.Ai", "Fantactics.Ai\Fantactics.Ai.csproj", "{40670E8F-BBE3-49F8-8C71-4631760C8DCA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fantactics.Ai.Tests", "tests\Fantactics.Ai.Tests\Fantactics.Ai.Tests.csproj", "{A0C26ECC-FD6F-44AF-8441-29CAD67FBF24}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,8 +48,17 @@ Global
 		{3359E28E-9C2E-4460-BB6F-B1DD05FED067}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3359E28E-9C2E-4460-BB6F-B1DD05FED067}.Release|Any CPU.ActiveCfg = Debug|Any CPU
 		{3359E28E-9C2E-4460-BB6F-B1DD05FED067}.Release|Any CPU.Build.0 = Debug|Any CPU
+		{40670E8F-BBE3-49F8-8C71-4631760C8DCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40670E8F-BBE3-49F8-8C71-4631760C8DCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40670E8F-BBE3-49F8-8C71-4631760C8DCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40670E8F-BBE3-49F8-8C71-4631760C8DCA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0C26ECC-FD6F-44AF-8441-29CAD67FBF24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0C26ECC-FD6F-44AF-8441-29CAD67FBF24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0C26ECC-FD6F-44AF-8441-29CAD67FBF24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0C26ECC-FD6F-44AF-8441-29CAD67FBF24}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{8C70C077-ED24-4F98-AA7B-91B713DFFF2E} = {00319B01-EA54-4647-B2DC-A31EAFD08203}
+		{A0C26ECC-FD6F-44AF-8441-29CAD67FBF24} = {00319B01-EA54-4647-B2DC-A31EAFD08203}
 	EndGlobalSection
 EndGlobal

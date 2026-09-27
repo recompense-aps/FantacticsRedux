@@ -1,9 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Rules\Data\*.json" LogicalName="Fantactics.Core.Rules.Data.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Maps\Data\*.txt" LogicalName="Fantactics.Core.Maps.Data.%(Filename)%(Extension)" />
+  </ItemGroup>
 
 </Project>

@@ -11,7 +11,11 @@ All code lives under `src/`; the repo root holds only docs and config.
 - `src/Fantactics.Protocol`: wire DTOs shared by client and server.
 - `src/Fantactics.Server`: ASP.NET Core + SignalR server.
 - `src/Fantactics.Client`: Godot project (`project.godot` lives here).
-- `src/tests/Fantactics.Core.Tests`: xUnit tests for Core.
+- `src/Fantactics.Ai`: computer players (`IPlayerAgent`, bots) and `MatchRunner` for in-memory matches. References Core only.
+- `src/tests/Fantactics.Core.Tests`: xUnit rules tests for Core (built with `ScenarioBuilder`).
+- `src/tests/Fantactics.Ai.Tests`: fuzz, determinism, replay, and legal-actions agreement tests.
+
+Core's rules data (unit stats, tunable numbers) is `src/Fantactics.Core/Rules/Data/mvp-rules.json`; maps are ASCII files in `src/Fantactics.Core/Maps/Data/`. Both are embedded resources. When a rule's behavior changes, bump `GameEngine.RulesVersion`.
 
 ## Godot
 
