@@ -27,28 +27,39 @@ flowchart LR
   Conn -. local mode .-> Core1[Fantactics.Core<br/>in-process]
 ```
 
+Headless simulation, computer players, and LLM players drive the same Core engine in memory, with no Godot and no server. See [Simulation](Simulation.md).
+
 ### 2.1 Solution Layout (decided 2026-09-26)
 
 All code lives under `src/` (solution at `src/Fantactics.sln`); the repo root holds only docs and config. All projects target `net8.0`.
 
 | Project | Path | Type | Depends on | Purpose |
 |---|---|---|---|---|
-| `Fantactics.Core` | `src/Fantactics.Core` | Class library | — | Game state, rules, map, units, commands, events, seeded RNG. **No Godot or network references.** |
-| `Fantactics.Protocol` | `src/Fantactics.Protocol` | Class library | Core | Wire DTOs and serialization contracts shared by client and server |
+| `Fantactics.Core` | `src/Fantactics.Core` | Class library | — | Game state, rules, map, units, serializable commands and events, rules config loading, seeded RNG. **No Godot or network references.** |
+| `Fantactics.Protocol` | `src/Fantactics.Protocol` | Class library | Core | Transport envelopes (match/seat addressing, lobby messages) around Core's commands and events, shared by client and server |
 | `Fantactics.Server` | `src/Fantactics.Server` | ASP.NET Core app | Core, Protocol | Hosts matches (SignalR hub at `/game`), lobbies, LAN discovery responder |
 | `Fantactics.Client` | `src/Fantactics.Client` | Godot .NET project (`project.godot` lives here) | Core, Protocol | Rendering, input, audio, UI; implements `IGameConnection` (local + remote) |
+| `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | Computer players (`IPlayerAgent`, bots) and `MatchRunner`; used by Client, Server, and Sim. *Planned*, see [Simulation §3](Simulation.md#3-projects) |
+| `Fantactics.Sim` | `src/Fantactics.Sim` | Console app | Core, Ai, Protocol | `fantactics-sim`: file-backed match CLI for LLM play, tournaments. *Planned* |
 | `Fantactics.Core.Tests` | `src/tests/Fantactics.Core.Tests` | xUnit | Core | Rules tests |
+| `Fantactics.Ai.Tests` | `src/tests/Fantactics.Ai.Tests` | xUnit | Core, Ai | Fuzzing, determinism, replay, and bot tests. *Planned* |
 
-Dependency rule: nothing references `Fantactics.Client` or `Fantactics.Server`, and `Fantactics.Core` references nothing.
+Dependency rule: nothing references `Fantactics.Client`, `Fantactics.Server`, or `Fantactics.Sim`, and `Fantactics.Core` references nothing.
 
 ### 2.2 Command / Event Model
 
-- Clients send **commands** (intent): `MoveUnit`, `Attack`, `UseAbility`, `EndTurn`.
-- The server validates each command against the current state and, if it's legal, applies it and produces **events** (facts): `UnitMoved`, `UnitDamaged`, `TileChanged`, `TurnEnded`.
+- Clients send **commands** (intent), each answering one pending decision:
+  - Before the match: `SubmitDraft`, then `PlaceStartingArmy` (both simultaneous and hidden).
+  - Each turn: `SubmitMoveOrders` (paths, holds, and reserve deploys; one per player, held hidden until both are in), then `Attack`, `UseAbility`, `Wait`, or `Delay` for the unit whose initiative slot is up (see GameDesign §4.1–4.4).
+- The server validates each command against the current state and, if it's legal, applies it and produces **events** (facts).
+- **Events are fine-grained** (decided 2026-09-27): one per tick or strike, e.g. `UnitStepped(tick, from, to)`, `ClashMarked`, `ClashStrike`, `UnitDamaged`, `UnitHealed`, `StatusApplied`, `UnitDied`, `UnitArrived`, `TileChanged`, `TurnEnded`. The client can animate from them, and replays and logs never need a rewrite for more detail.
+- **Commands and events are defined in Core** as records, serializable with polymorphic System.Text.Json (part of the standard library, so Core still doesn't reference networking). Protocol only wraps them for transport, and match records store them directly. There's no mapping layer. (Decided 2026-09-27.)
+- Movement resolution is a pure Core function of the state and both players' move orders.
 - Events are **filtered per player** before sending (a unit moving in the fog of war is not revealed).
 - Randomness is rolled **on the server only**, with a seeded RNG.
 - Game state is **immutable** (records + immutable collections); applying a command returns a new state. This makes replays, undo, and AI lookahead cheap to reason about. (Decided 2026-09-26.)
 - Benefits: replays = initial state + seed + command log; reconnect = resend the player's filtered view of the state; hotseat and AI use the same path.
+- The RNG state lives inside `GameState`, so applying a command is a pure function. Core also exposes `PendingDecisions`, `LegalActions`, `Preview`, `PlayerView.Project`, and `StateHash`, the seams every driver (server, client, bots, simulation) relies on. See [Simulation §2](Simulation.md#2-engine-seams-core-must-expose).
 
 ## 3. Networking
 
@@ -97,6 +108,6 @@ Dependency rule: nothing references `Fantactics.Client` or `Fantactics.Server`, 
 1. **Online hosting model:** a dedicated hosted server, player-hosted, or both? Who pays for and runs a hosted server?
 2. **Platforms:** anything beyond desktop? Mobile/web change the transport and runtime constraints.
 3. **Asynchronous play** (take your turn hours later, like play-by-mail)? If yes, SignalR + a database becomes much more attractive.
-4. **AI opponent:** in scope? It would run against `Fantactics.Core` in-process.
+4. **AI opponent:** in scope? *Partly answered:* bots live in `Fantactics.Ai`, see only a player view, and run in-process against `Fantactics.Core` ([Simulation §4](Simulation.md#4-computer-players-fantacticsai)). Whether a shipped single-player AI opponent is in scope is still open.
 5. **Spectators/replays:** needed for MVP?
-6. **Modding/data-driven units:** define units in JSON/Godot resources, or in C# code?
+6. ~~**Modding/data-driven units:** define units in JSON/Godot resources, or in C# code?~~ Decided 2026-09-27: unit stats and tunable rule numbers live in a JSON **`RulesConfig`** loaded by Core; traits and abilities are C# keyed by ID. Tournaments can A/B test config variants, and match records store the config hash ([Simulation §2](Simulation.md#2-engine-seams-core-must-expose)).
