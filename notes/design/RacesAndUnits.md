@@ -94,12 +94,12 @@ Elves also get the general ranged rules from GameDesign §4.3: half Attack at po
 
 **Herbalist.** Weak in a fight, and the only elf healing.
 
-- **Mend** (ability, range 1–2): heal an ally for 3 HP and remove Slowed and Rooted from it. This is the answer to the Goblin Mauler.
+- **Mend** (ability, range 1–2): heal another friendly unit (not the Herbalist itself) for 3 HP and remove Slowed and Rooted from it. This is the answer to the Goblin Mauler.
 
 **Scout.** Ridiculously frail; it exists to move.
 
 - **Forest Stride:** moving from one forest tile to an *orthogonally adjacent* forest tile costs 0 Movement. A Scout can cross any connected forest in one turn.
-- **Slippery:** when the Scout would clash, it can retreat to the tile it came from instead of fighting. The enemy takes the contested tile without a fight.
+- **Slippery:** when the Scout would clash, it always retreats: it stays on the tile it came from instead of fighting. The enemy takes the contested tile without a fight. (Automatic, so resolution never pauses for a decision.)
 - Vision matters once fog of war arrives. In the MVP, the Scout's job is blocking paths, spending enemy attacks, and baiting clashes.
 
 **Druid** (mage). Reshapes the map in the elves' favor.
@@ -121,7 +121,7 @@ Elves also get the general ranged rules from GameDesign §4.3: half Attack at po
 
 | Trait | Effect | MVP |
 |---|---|---|
-| **Bloodthirst N** | After this unit's attack deals damage (including in clashes), it heals N HP, up to its max HP. Most goblins have Bloodthirst 1; the number varies by unit. | ✅ |
+| **Bloodthirst N** | After this unit's attack deals damage (not in clashes, which are pure fighting), it heals N HP, up to its max HP. Most goblins have Bloodthirst 1; the number varies by unit. | ✅ |
 | **Mountain-born** | Mountains cost 2 Movement for goblins (instead of 3). | ✅ |
 | **Horde** | Goblins are cheap: about two goblins per elf in points. There's no rule for this; it's reflected in costs. | ✅ |
 | **Out of the Caves** | Deploying a reserve of Cost 3 or more costs 1 less Command. Reserves may also arrive on mountain tiles in or next to the deploy zone (GameDesign §4.4). | ✅ |
@@ -157,7 +157,7 @@ Mountains give +2 Defense and block line of sight (GameDesign §4.3, §5). Gobli
 
 **Mauler** (name not settled; alternatives: *Hobbler*, *Netter*, *Snarer*). Stops elves from kiting.
 
-- **Hamstring:** its attacks also apply **Slowed** for 1 turn.
+- **Hamstring:** its attacks (not clash strikes) also apply **Slowed** for 1 turn.
 - **Throw Net** (ability, Cooldown 3, range 2–3): deals no damage and **Roots** the target for 1 turn. Needs line of sight.
 
 **War Lord.** Makes the swarm sturdier.
@@ -243,7 +243,7 @@ Quick math with the damage formula, `damage = max(1, Attack + Support − (Defen
 ## 7. Open Questions
 
 1. **Elf HP.** GameDesign §4.3 proposes elves at 6–10 HP. The Scout at 3 is a deliberate exception. Is 7 enough for Archers to survive one goblin wave?
-2. **Bloodthirst in clashes.** It heals during a clash, which makes goblins very strong at clashes on top of Reckless and Support. Too much?
+2. ~~**Bloodthirst in clashes.**~~ Decided 2026-09-27: clashes are pure fighting, so Bloodthirst doesn't heal in them (GameDesign §4.3).
 3. **Horde Support.** Should goblins get a higher Support cap (+3) as a race trait, or is Support + Bloodthirst enough?
 4. **Pinning Shot vs Throw Net.** Both sides have a Root on a cooldown. Is that too symmetrical? An alternative is to make Throw Net an area Slow instead.
 5. **Summon limits.** Is the 4-Grunt cap and Cooldown 3 enough to stop the Shaman from turning into an endless stall?

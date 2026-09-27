@@ -17,31 +17,14 @@ internal static class ClashResolver
         HashSet<int> winners = [];
         foreach (PendingClash clash in clashes)
         {
-            Unit a = state.Units[clash.UnitA];
-            Unit b = state.Units[clash.UnitB];
-            (Unit first, Unit second) = StrikesFirst(state, a, b) ? (a, b) : (b, a);
-            Point firstTile = first.Position;
-            Point secondTile = second.Position;
-
-            int? winner = null;
-            int attacker = first.Id;
-            int defender = second.Id;
-            for (int strike = 0; strike < state.Rules.MaxClashStrikes; strike++)
-            {
-                state = CombatRules.Strike(state, attacker, defender, AttackKind.Clash, events);
-                if (!state.Units.ContainsKey(defender))
-                {
-                    winner = attacker;
-                    break;
-                }
-
-                (attacker, defender) = (defender, attacker);
-            }
+            Point tileA = state.Units[clash.UnitA].Position;
+            Point tileB = state.Units[clash.UnitB].Position;
+            (state, int? winner) = Fight(state, clash.UnitA, clash.UnitB, events);
 
             if (winner is int winnerId)
             {
-                Point from = winnerId == first.Id ? firstTile : secondTile;
-                Point to = clash.Tile ?? (winnerId == first.Id ? secondTile : firstTile);
+                Point from = winnerId == clash.UnitA ? tileA : tileB;
+                Point to = clash.Tile ?? (winnerId == clash.UnitA ? tileB : tileA);
                 // The winner stays put if something ended up on the tile after all.
                 if (state.UnitAt(to) is null)
                 {
@@ -51,11 +34,36 @@ internal static class ClashResolver
 
                 winners.Add(winnerId);
             }
-
-            events.Add(new ClashResolved(clash.UnitA, clash.UnitB, winner));
         }
 
         return (state, winners);
+    }
+
+    /// <summary>
+    /// Two units trade clash strikes, higher initiative first, until one dies. Clashes are pure fighting: only
+    /// damage modifiers and clash-specific traits apply, never on-hit effects (see <see cref="CombatRules.Strike"/>).
+    /// </summary>
+    /// <returns>The new state and the survivor, or <c>null</c> if the strike cap was reached with both alive.</returns>
+    public static (GameState State, int? Winner) Fight(GameState state, int unitA, int unitB, List<GameEvent> events)
+    {
+        (int attacker, int defender) = StrikesFirst(state, state.Units[unitA], state.Units[unitB])
+            ? (unitA, unitB)
+            : (unitB, unitA);
+        int? winner = null;
+        for (int strike = 0; strike < state.Rules.MaxClashStrikes; strike++)
+        {
+            state = CombatRules.Strike(state, attacker, defender, AttackKind.Clash, events);
+            if (!state.Units.ContainsKey(defender))
+            {
+                winner = attacker;
+                break;
+            }
+
+            (attacker, defender) = (defender, attacker);
+        }
+
+        events.Add(new ClashResolved(unitA, unitB, winner));
+        return (state, winner);
     }
 
     /// <summary>Higher initiative strikes first; ties go to the seat with tie priority.</summary>

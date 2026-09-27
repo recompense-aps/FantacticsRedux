@@ -53,7 +53,10 @@ Each turn has three phases:
 - **Orders are paths.** A move order is the exact tile path. The UI and tools fill in the cheapest path by default (with deterministic tie-breaks), and the player can add waypoints to pick a route.
 - **One tile per tick.** All moving units advance one tile per tick, whatever the terrain costs. Cost only limits how far a unit gets, so a unit crossing costly terrain finishes its move in fewer ticks.
 - **Zone of control:** after each tick, every moving unit that is now adjacent to an enemy (using the new positions) stops. It only triggers on *becoming* adjacent: a unit that starts the phase next to an enemy can move away freely, and the minimum move (§5) works for it too.
+- **Paths may enter a tile an enemy stands on now**, betting it moves away. If the enemy stays, the step is blocked and the unit stops. If the enemy moves into this unit's tile at the same time, it's a swap clash (below).
 - **Friendly units pass through each other** but can't end on the same tile. A unit that has to stop on a friendly-occupied tile (zone of control stops it there, or the friendly unit held on its destination) backs up to the last tile of its path it can legally end on. Orders whose destination is a friendly tile with a Hold order are rejected at submit.
+  - The unit that reached the tile first keeps it; between units that arrived on the same tick, the higher base Initiative keeps it.
+  - **Cascade:** if the tile a unit backs up to is held by a friend who also moved this turn, that friend backs up too, recursively. A unit that held all turn is never displaced. (Decided 2026-09-27.)
 - **Friendly collisions:** if two friendly units would *end* the same tick on the same tile, the one with higher base Initiative (then lower unit ID) takes it, and the other stops short. Friendly units may swap tiles.
 - **Clash:** when enemy units enter the same tile on the same tick, they stop on their previous tiles and are marked to clash.
   - **Swaps count too:** two enemy units that try to swap tiles in the same tick clash. The winner takes the tile the loser stood on. Units never pass through enemies.
@@ -71,7 +74,7 @@ Each turn has three phases:
 
 - Each unit has a base **Initiative** stat.
 - **Held (+1):** a unit with a Hold order that didn't move gets a small bonus. Any movement, even a 1-tile step, counts as moving. Rooted units don't get it (RacesAndUnits §2.2).
-- **Braced (+3)** (unit trait, only some units): a held unit that an enemy moved into range of (adjacent for melee, attack range for ranged) gets a larger bonus instead. A braced Archer (5 → 8) acts before a Rusher (6). Bracing units are the counter to blind charges, and they give a race a defensive identity without making every unit reward sitting still.
+- **Braced (+3)** (unit trait, only some units): a held unit that an enemy moved into range of (an enemy that moved this turn and ended 1 tile to max range away, so adjacent counts even for an Archer) gets a larger bonus instead. A braced Archer (5 → 8) acts before a Rusher (6). Bracing units are the counter to blind charges, and they give a race a defensive identity without making every unit reward sitting still.
 - **Ties between players** go to the player with tie priority, which alternates each turn. **Who has it on turn 1 is set by the game mode.** In Deathmatch it's the player with the lower value **on the field** (the Cost of their placed starting army, reserves not counted); if the values are equal, a coin flip seeded by the match seed decides. Starting lighter to keep a bigger reserve buys the first tie.
 - **Ties between one player's own units** go by unit ID, lowest first.
 - After movement and clashes resolve, the full action order is shown before anyone acts.
@@ -181,7 +184,7 @@ damage = max(1, Attack + Support − (Defense + terrain Defense))
 - Units trade basic attacks using the damage formula, but **alternate** instead of striking at the same time. The unit with the higher effective initiative strikes first, and ties use that turn's tie priority. Exactly one unit survives, so the contested tile is never left empty.
 - Terrain Defense comes from each unit's *own* tile (where it stopped). Support counts as normal, so a clash next to friendly units favors you.
 - Ranged units (max range above 1) clash at half Attack, rounded down, **including units with min range 2** such as Archers. A clash is a brawl, not a basic attack.
-- On-hit traits apply (a goblin heals as it fights). Retaliate does not, because both sides are already striking back.
+- **Clashes are pure fighting** (decided 2026-09-27). Damage modifiers apply: terrain Defense, Support, and Crush. Clash-specific traits apply (Reckless, Slippery). On-hit effects don't: no Bloodthirst healing, no Hamstring, and no Retaliate. This also guarantees every clash ends, since damage is at least 1 and nobody heals. The engine still stops a clash after `maxClashStrikes` strikes as a safety guard.
 
 **Status effects:** slows, roots, and similar effects applied in the action phase last a set number of turns and are shown on the unit. They mostly matter in the *next* movement phase, which is what makes them readable (§4.1 Consequences).
 
@@ -222,6 +225,7 @@ damage = max(1, Attack + Support − (Defense + terrain Defense))
 - Arriving units are placed before moves advance, so zone of control and clashes apply to them normally.
 - **Home arrivals act.** A unit that arrives inside its own deploy zone acts normally on its arrival turn. A unit that arrives anywhere else through a race arrival rule (an elf forest, a goblin mountain outside the zone, later a dwarf tunnel) follows the **Summoned** rule and can't act that turn (RacesAndUnits §2.1). This stops spawn camping from being free kills: enemies waiting near your edge can be hit by whatever arrives. Forward arrivals remain ambushes that need a turn to pay off.
 - At most **2 arrivals per turn**.
+- **Arrival clash:** if both players deploy onto the same tile (possible where deploy rules overlap), the two arrivals clash right away, before anyone moves. Both fight as if standing on that tile (its terrain Defense and adjacent Support count), and both players pay the Command. The survivor keeps the tile and, like any clash winner, gets no action that turn. (Decided 2026-09-27.)
 - Reserves can't be sold, swapped, or refunded mid-match.
 
 At +2 Command per turn from turn 2, a 10-point reserve is fully deployed around turn 6, so the early fight is the starting army and reinforcements shape the midgame.
@@ -449,4 +453,5 @@ Answer inline or move decisions into the [Decision Log](#decision-log).
 | 2026-09-27 | Economy details: Command income starts on turn 2; the Goblin discount applies only to Cost 3+; the opponent's reserve composition is hidden, its value is visible | See §4.4 |
 | 2026-09-27 | First MVP map drafted: Riverford, 20×14, point-symmetric, two bridges and a central ford | See §5.1 |
 | 2026-09-27 | Command-line tools use McMaster.Extensions.CommandLineUtils (attribute API) | Only command-line projects reference it; see TechnicalDesign §2.3 |
+| 2026-09-27 | Engine edge cases confirmed: clashes are pure fighting (no on-hit effects); paths may enter an enemy's current tile; friendly back-up cascades; Slippery always retreats; Braced range is 1 to max range; Mend targets allies only; same-tile arrivals clash | Found while building the engine and fuzzing it; see §4.1, §4.3, §4.4 and RacesAndUnits §3.2, §4.1 |
 | 2026-09-27 | Headless simulation and LLM play: matches run in memory on a deterministic Core engine; bots in `Fantactics.Ai`; LLMs play through a file-backed `fantactics-sim` CLI | Bots only see a player view; match records are JSON (seed + command log + state hashes); the CLI prints TOON for LLM seats to save tokens; see [Simulation](Simulation.md) |

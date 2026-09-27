@@ -204,14 +204,15 @@ public class MovementTests
     }
 
     [Fact]
-    public void AClashNeitherSideCanWinEndsAtTheStrikeCapWithBothAlive()
+    public void ClashesIgnoreOnHitEffectsSoTwoTanksFightToTheDeath()
     {
-        // Goblins vs Goblins: each Tank deals 1 and heals 3 (Bloodthirst), so neither can die.
+        // Each Tank deals 1 per strike. With Bloodthirst 3 they'd heal forever; clashes are pure fighting.
         GameState state = new ScenarioBuilder()
             .WithMap(OpenField)
             .WithRaces("Goblins", "Goblins")
             .AddUnit(Seat.P1, "Tank", 0, 2, out int tankA)
             .AddUnit(Seat.P2, "Tank", 4, 2, out int tankB)
+            .WithTiePriority(Seat.P1)
             .Build();
 
         (GameState after, ImmutableArray<GameEvent> events) = Moves(
@@ -220,10 +221,60 @@ public class MovementTests
             Orders(Move(tankB, (3, 2), (2, 2))));
 
         ClashResolved resolved = Assert.Single(events.OfType<ClashResolved>());
-        Assert.Null(resolved.WinnerId);
-        Assert.Equal(new Point(1, 2), after.Units[tankA].Position);
-        Assert.Equal(new Point(3, 2), after.Units[tankB].Position);
-        Assert.Null(after.UnitAt(new Point(2, 2)));
+        Assert.Equal(tankA, resolved.WinnerId);
+        Assert.DoesNotContain(events, e => e is UnitHealed or StatusApplied);
+        Assert.Equal(new Point(2, 2), after.Units[tankA].Position);
+        Assert.Equal(1, after.Units[tankA].Hp);
+    }
+
+    [Fact]
+    public void MaulersDontHamstringInClashes()
+    {
+        GameState state = new ScenarioBuilder()
+            .WithMap(OpenField)
+            .AddUnit(Seat.P1, "Druid", 0, 2, out int druid)
+            .AddUnit(Seat.P2, "Mauler", 4, 2, out int mauler)
+            .Build();
+
+        (_, ImmutableArray<GameEvent> events) = Moves(
+            state,
+            Orders(Move(druid, (1, 2), (2, 2))),
+            Orders(Move(mauler, (3, 2), (2, 2))));
+
+        Assert.Contains(events, e => e is UnitAttacked { Kind: AttackKind.Clash } a && a.AttackerId == mauler);
+        Assert.DoesNotContain(events, e => e is StatusApplied);
+    }
+
+    [Fact]
+    public void ArrivalsOnTheSameTileClashAndTheWinnerStays()
+    {
+        // On a 5-wide map the 3-column deploy zones overlap at x=2, so both sides may arrive on (2,0).
+        GameState state = new ScenarioBuilder()
+            .WithMap(".....", ".....", ".....", ".....", ".....")
+            .WithTurn(2)
+            .WithTiePriority(Seat.P2)
+            .WithCommand(Seat.P1, 6)
+            .WithCommand(Seat.P2, 6)
+            .AddUnit(Seat.P1, "Archer", 0, 4)
+            .AddReserve(Seat.P1, "Ranger", out int ranger)
+            .AddUnit(Seat.P2, "Tank", 4, 4)
+            .AddReserve(Seat.P2, "Rusher", out int rusher)
+            .WithBallast()
+            .Build();
+
+        (GameState after, ImmutableArray<GameEvent> events) = Moves(
+            state,
+            new SubmitMoveOrders([], [new DeployOrder(ranger, new Point(2, 0))]),
+            new SubmitMoveOrders([], [new DeployOrder(rusher, new Point(2, 0))]));
+
+        // Tied initiative 6, P2 has priority: Rusher 3+1 Reckless−1 = 3, Ranger floor(3/2) = 1, and so on.
+        Assert.Contains(events, e => e is ClashMarked { Tick: 0 });
+        Assert.False(after.Units.ContainsKey(ranger));
+        Assert.Equal(new Point(2, 0), after.Units[rusher].Position);
+        Assert.Equal(2, after.Units[rusher].Hp);
+        Assert.Contains(rusher, after.TurnState.ClashWinners);
+        Assert.Equal(0, after.Players[Seat.P1].Command);
+        Assert.Equal(4, after.Players[Seat.P2].Command);
     }
 
     [Fact]

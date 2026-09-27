@@ -10,7 +10,7 @@
   "supportCap": 2,
   "routPercent": 25,
   "turnLimit": 15,
-  "maxClashStrikes": 20,
+  "maxClashStrikes": 100,
   "terrain": {
     "Plains": { "moveCost": 1, "defense": 0, "blocksSight": false },
     "Road": { "moveCost": 1, "defense": 0, "blocksSight": false },

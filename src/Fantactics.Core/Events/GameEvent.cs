@@ -12,7 +12,6 @@ namespace Fantactics.Core.Events;
 [JsonDerivedType(typeof(TurnStarted), nameof(TurnStarted))]
 [JsonDerivedType(typeof(CommandGained), nameof(CommandGained))]
 [JsonDerivedType(typeof(UnitArrived), nameof(UnitArrived))]
-[JsonDerivedType(typeof(ArrivalCancelled), nameof(ArrivalCancelled))]
 [JsonDerivedType(typeof(UnitStepped), nameof(UnitStepped))]
 [JsonDerivedType(typeof(UnitStopped), nameof(UnitStopped))]
 [JsonDerivedType(typeof(ClashMarked), nameof(ClashMarked))]

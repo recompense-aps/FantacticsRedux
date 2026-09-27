@@ -80,7 +80,10 @@ public static class CombatRules
         return UnitRules.Trait(state, unit, TraitIds.Bloodthirst) + (inWarCry ? 1 : 0);
     }
 
-    /// <summary>One strike: damage, death, and on-hit traits (Hamstring on the target, Bloodthirst on the attacker).</summary>
+    /// <summary>
+    /// One strike: damage, death, and on-hit traits (Hamstring on the target, Bloodthirst on the attacker).
+    /// Clash strikes skip on-hit traits: clashes are pure fighting (GameDesign §4.3).
+    /// </summary>
     internal static GameState Strike(GameState state, int attackerId, int targetId, AttackKind kind, List<GameEvent> events)
     {
         Unit attacker = state.Units[attackerId];
@@ -89,18 +92,16 @@ public static class CombatRules
         int hp = target.Hp - damage;
         events.Add(new UnitAttacked(attackerId, targetId, kind, damage, Math.Max(0, hp)));
 
-        if (hp <= 0)
+        state = hp <= 0 ? Kill(state, target, attacker, events) : state.WithUnit(target with { Hp = hp });
+        if (kind == AttackKind.Clash)
         {
-            state = Kill(state, target, attacker, events);
+            return state;
         }
-        else
+
+        int hamstring = UnitRules.Trait(state, attacker, TraitIds.Hamstring);
+        if (hamstring > 0 && state.Units.ContainsKey(targetId))
         {
-            state = state.WithUnit(target with { Hp = hp });
-            int hamstring = UnitRules.Trait(state, attacker, TraitIds.Hamstring);
-            if (hamstring > 0)
-            {
-                state = ApplyStatus(state, targetId, StatusKind.Slowed, hamstring, events);
-            }
+            state = ApplyStatus(state, targetId, StatusKind.Slowed, hamstring, events);
         }
 
         int bloodthirst = EffectiveBloodthirst(state, attacker);
