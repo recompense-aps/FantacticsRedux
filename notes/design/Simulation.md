@@ -61,7 +61,7 @@ New projects, added to [TechnicalDesign §2.1](TechnicalDesign.md#21-solution-la
 | Project | Path | Type | Depends on | Purpose |
 |---|---|---|---|---|
 | `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | `IPlayerAgent`, built-in bots, `MatchRunner`. Also referenced by Client (vs-AI) and Server (bot seats). |
-| `Fantactics.Sim` | `src/Fantactics.Sim` | Console app (`fantactics-sim`) | Core, Ai, Protocol, `Toon.Format` (NuGet) | File-backed match CLI for LLM and human play; text, JSON, and TOON output; tournament runner |
+| `Fantactics.Sim` | `src/Fantactics.Sim` | Console app (`fantactics-sim`) | Core, Ai, Protocol; NuGet: `McMaster.Extensions.CommandLineUtils` ([TechnicalDesign §2.3](TechnicalDesign.md#23-command-line-tools-decided-2026-09-27)), `Toon.Format` | File-backed match CLI for LLM and human play; text, JSON, and TOON output; tournament runner |
 | `Fantactics.Ai.Tests` | `src/tests/Fantactics.Ai.Tests` | xUnit | Core, Ai | Fuzzing, determinism, replay, and bot tests |
 
 The dependency rule still holds: Core references nothing, and nothing references Client, Server, or Sim.

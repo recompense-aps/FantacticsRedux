@@ -448,4 +448,5 @@ Answer inline or move decisions into the [Decision Log](#decision-log).
 | 2026-09-27 | Combat details: Support applies to all attacks; point blank = floor(Attack/2) + Support; ranged units (min range 2 included) clash at half Attack; Retaliate triggers on any attack from distance 1 | See §4.3 |
 | 2026-09-27 | Economy details: Command income starts on turn 2; the Goblin discount applies only to Cost 3+; the opponent's reserve composition is hidden, its value is visible | See §4.4 |
 | 2026-09-27 | First MVP map drafted: Riverford, 20×14, point-symmetric, two bridges and a central ford | See §5.1 |
+| 2026-09-27 | Command-line tools use McMaster.Extensions.CommandLineUtils (attribute API) | Only command-line projects reference it; see TechnicalDesign §2.3 |
 | 2026-09-27 | Headless simulation and LLM play: matches run in memory on a deterministic Core engine; bots in `Fantactics.Ai`; LLMs play through a file-backed `fantactics-sim` CLI | Bots only see a player view; match records are JSON (seed + command log + state hashes); the CLI prints TOON for LLM seats to save tokens; see [Simulation](Simulation.md) |

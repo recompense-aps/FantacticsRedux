@@ -40,7 +40,7 @@ All code lives under `src/` (solution at `src/Fantactics.sln`); the repo root ho
 | `Fantactics.Server` | `src/Fantactics.Server` | ASP.NET Core app | Core, Protocol | Hosts matches (SignalR hub at `/game`), lobbies, LAN discovery responder |
 | `Fantactics.Client` | `src/Fantactics.Client` | Godot .NET project (`project.godot` lives here) | Core, Protocol | Rendering, input, audio, UI; implements `IGameConnection` (local + remote) |
 | `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | Computer players (`IPlayerAgent`, bots) and `MatchRunner`; used by Client, Server, and Sim. *Planned*, see [Simulation §3](Simulation.md#3-projects) |
-| `Fantactics.Sim` | `src/Fantactics.Sim` | Console app | Core, Ai, Protocol | `fantactics-sim`: file-backed match CLI for LLM play, tournaments. *Planned* |
+| `Fantactics.Sim` | `src/Fantactics.Sim` | Console app | Core, Ai, Protocol | `fantactics-sim`: file-backed match CLI for LLM play, tournaments; built on CommandLineUtils (§2.3). *Planned* |
 | `Fantactics.Core.Tests` | `src/tests/Fantactics.Core.Tests` | xUnit | Core | Rules tests |
 | `Fantactics.Ai.Tests` | `src/tests/Fantactics.Ai.Tests` | xUnit | Core, Ai | Fuzzing, determinism, replay, and bot tests. *Planned* |
 
@@ -60,6 +60,16 @@ Dependency rule: nothing references `Fantactics.Client`, `Fantactics.Server`, or
 - Game state is **immutable** (records + immutable collections); applying a command returns a new state. This makes replays, undo, and AI lookahead cheap to reason about. (Decided 2026-09-26.)
 - Benefits: replays = initial state + seed + command log; reconnect = resend the player's filtered view of the state; hotseat and AI use the same path.
 - The RNG state lives inside `GameState`, so applying a command is a pure function. Core also exposes `PendingDecisions`, `LegalActions`, `Preview`, `PlayerView.Project`, and `StateHash`, the seams every driver (server, client, bots, simulation) relies on. See [Simulation §2](Simulation.md#2-engine-seams-core-must-expose).
+
+### 2.3 Command-Line Tools (decided 2026-09-27)
+
+All command-line tools (first `fantactics-sim`, [Simulation §6](Simulation.md#6-llm-play-via-fantactics-sim)) parse arguments with **[McMaster.Extensions.CommandLineUtils](https://github.com/natemcmaster/CommandLineUtils)** (NuGet `McMaster.Extensions.CommandLineUtils`).
+
+- **Attribute API.** Each subcommand is its own class with `[Command]` and `[Option]`/`[Argument]` attributes, registered on the root command with `[Subcommand]`. That keeps one type per file, and the help text is generated from the attributes.
+- **Exit codes come from `OnExecute`,** which returns an `int`, so each tool's exit-code contract (e.g. Simulation §6.1: 0 ok, 1 error, 2 rule violation, 3 not your decision) lives in the command classes. Parse and validation errors exit with 1.
+- **Services through constructor injection.** Use the library's `IServiceProvider` support (`app.Conventions.UseConstructorInjection(services)`), with primary constructors per the C# conventions.
+- **Only command-line projects reference it.** Core, Ai, and Protocol stay free of it.
+- **Maintenance note:** the library has been in maintenance mode since 2022 (critical fixes only) and targets .NET 8. It's small and stable enough for internal tools. If it stops working on a future .NET version, `System.CommandLine` is the fallback, and only the command classes would change.
 
 ## 3. Networking
 
