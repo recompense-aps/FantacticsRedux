@@ -5,7 +5,7 @@
       "label": "build",
       "type": "process",
       "command": "dotnet",
-      "args": ["build", "--nologo", "-v", "q"],
+      "args": ["build", "src/Fantactics.sln", "--nologo", "-v", "q"],
       "options": { "cwd": "${workspaceFolder}" },
       "group": { "kind": "build", "isDefault": true },
       "problemMatcher": "$msCompile",

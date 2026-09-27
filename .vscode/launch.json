@@ -7,19 +7,8 @@
       "request": "launch",
       "preLaunchTask": "build",
       "program": "${config:godotTools.editorPath.godot4}",
-      "args": ["--path", "${workspaceFolder}"],
-      "cwd": "${workspaceFolder}",
-      "console": "internalConsole",
-      "stopAtEntry": false
-    },
-    {
-      "name": "Play Current Scene",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${config:godotTools.editorPath.godot4}",
-      "args": ["--path", "${workspaceFolder}", "${relativeFileDirname}/${fileBasenameNoExtension}.tscn"],
-      "cwd": "${workspaceFolder}",
+      "args": ["--path", "${workspaceFolder}/src/Fantactics.Client"],
+      "cwd": "${workspaceFolder}/src/Fantactics.Client",
       "console": "internalConsole",
       "stopAtEntry": false
     },
@@ -29,8 +18,19 @@
       "request": "launch",
       "preLaunchTask": "build",
       "program": "${config:godotTools.editorPath.godot4}",
-      "args": ["--path", "${workspaceFolder}", "--editor"],
-      "cwd": "${workspaceFolder}",
+      "args": ["--path", "${workspaceFolder}/src/Fantactics.Client", "--editor"],
+      "cwd": "${workspaceFolder}/src/Fantactics.Client",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Server",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/Fantactics.Server/bin/Debug/net8.0/Fantactics.Server.dll",
+      "cwd": "${workspaceFolder}/src/Fantactics.Server",
+      "env": { "ASPNETCORE_ENVIRONMENT": "Development" },
       "console": "internalConsole",
       "stopAtEntry": false
     },
@@ -39,6 +39,12 @@
       "type": "coreclr",
       "request": "attach",
       "processId": "${command:pickProcess}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Server + Play",
+      "configurations": ["Server", "Play"]
     }
   ]
 }

@@ -1,0 +1,12 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>Fantactics.Client</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fantactics.Core\Fantactics.Core.csproj" />
+    <ProjectReference Include="..\Fantactics.Protocol\Fantactics.Protocol.csproj" />
+  </ItemGroup>
+</Project>

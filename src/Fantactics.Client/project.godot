@@ -21,7 +21,8 @@ window/stretch/aspect="expand"
 
 [dotnet]
 
-project/assembly_name="Fantactics"
+project/assembly_name="Fantactics.Client"
+project/solution_directory="../"
 
 [physics]
 
