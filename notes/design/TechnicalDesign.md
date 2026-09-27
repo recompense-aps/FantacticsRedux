@@ -40,9 +40,10 @@ All code lives under `src/` (solution at `src/Fantactics.sln`); the repo root ho
 | `Fantactics.Server` | `src/Fantactics.Server` | ASP.NET Core app | Core, Protocol | Hosts matches (SignalR hub at `/game`), lobbies, LAN discovery responder |
 | `Fantactics.Client` | `src/Fantactics.Client` | Godot .NET project (`project.godot` lives here) | Core, Protocol | Rendering, input, audio, UI; implements `IGameConnection` (local + remote) |
 | `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | Computer players (`IPlayerAgent`, bots) and `MatchRunner`; used by Client, Server, and Sim. See [Simulation §3](Simulation.md#3-projects) |
-| `Fantactics.Sim` | `src/Fantactics.Sim` | Console app | Core, Ai, Protocol | `fantactics-sim`: file-backed match CLI for LLM play, tournaments; built on CommandLineUtils (§2.3). *Planned* |
+| `Fantactics.Sim` | `src/Fantactics.Sim` | Console app | Core, Ai, Protocol | `fantactics-sim`: file-backed match CLI for LLM play, tournaments; built on CommandLineUtils (§2.3). See [Simulation §6](Simulation.md#6-llm-play-via-fantactics-sim) |
 | `Fantactics.Core.Tests` | `src/tests/Fantactics.Core.Tests` | xUnit | Core | Rules tests |
 | `Fantactics.Ai.Tests` | `src/tests/Fantactics.Ai.Tests` | xUnit | Core, Ai | Fuzzing, determinism, replay, and bot tests |
+| `Fantactics.Sim.Tests` | `src/tests/Fantactics.Sim.Tests` | xUnit | Sim, Core | CLI grammar and in-process CLI tests |
 
 Dependency rule: nothing references `Fantactics.Client`, `Fantactics.Server`, or `Fantactics.Sim`, and `Fantactics.Core` references nothing.
 
@@ -69,6 +70,8 @@ All command-line tools (first `fantactics-sim`, [Simulation §6](Simulation.md#6
 - **Exit codes come from `OnExecute`,** which returns an `int`, so each tool's exit-code contract (e.g. Simulation §6.1: 0 ok, 1 error, 2 rule violation, 3 not your decision) lives in the command classes. Parse and validation errors exit with 1.
 - **Services through constructor injection.** Use the library's `IServiceProvider` support (`app.Conventions.UseConstructorInjection(services)`), with primary constructors per the C# conventions.
 - **Only command-line projects reference it.** Core, Ai, and Protocol stay free of it.
+- **Version:** pinned to 4.1.1. Version 5.x ships a source generator that needs a newer C# compiler than the .NET 8.0.100 SDK provides.
+- **Tests run the CLI in-process** through `CliHost.Run(args, console)` with a capturing `IConsole`; `Program.cs` only calls it.
 - **Maintenance note:** the library has been in maintenance mode since 2022 (critical fixes only) and targets .NET 8. It's small and stable enough for internal tools. If it stops working on a future .NET version, `System.CommandLine` is the fallback, and only the command classes would change.
 
 ## 3. Networking

@@ -12,8 +12,10 @@ All code lives under `src/`; the repo root holds only docs and config.
 - `src/Fantactics.Server`: ASP.NET Core + SignalR server.
 - `src/Fantactics.Client`: Godot project (`project.godot` lives here).
 - `src/Fantactics.Ai`: computer players (`IPlayerAgent`, bots) and `MatchRunner` for in-memory matches. References Core only.
+- `src/Fantactics.Sim`: the `fantactics-sim` CLI (file-backed matches for LLM/human seats, bot tournaments). See `notes/design/Simulation.md` §6.
 - `src/tests/Fantactics.Core.Tests`: xUnit rules tests for Core (built with `ScenarioBuilder`).
 - `src/tests/Fantactics.Ai.Tests`: fuzz, determinism, replay, and legal-actions agreement tests.
+- `src/tests/Fantactics.Sim.Tests`: CLI grammar tests and in-process CLI tests.
 
 Core's rules data (unit stats, tunable numbers) is `src/Fantactics.Core/Rules/Data/mvp-rules.json`; maps are ASCII files in `src/Fantactics.Core/Maps/Data/`. Both are embedded resources. When a rule's behavior changes, bump `GameEngine.RulesVersion`.
 
@@ -27,6 +29,7 @@ Core's rules data (unit stats, tunable numbers) is `src/Fantactics.Core/Rules/Da
 - Build everything: `dotnet build src/Fantactics.sln`
 - Test: `dotnet test src/Fantactics.sln`
 - Run server: `dotnet run --project src/Fantactics.Server`
+- Simulation CLI: `dotnet run --project src/Fantactics.Sim -- <command>` (e.g. `new --out playtests/m.json`, `run --games 500 --parallel`). To play a seat as an LLM, use the `play-fantactics` skill.
 - Re-import Godot assets headlessly: `<console binary> --headless --path src/Fantactics.Client --import`
 - Run the game: `<console binary> --path src/Fantactics.Client`
 

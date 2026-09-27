@@ -61,7 +61,8 @@ New projects, added to [TechnicalDesign §2.1](TechnicalDesign.md#21-solution-la
 | Project | Path | Type | Depends on | Purpose |
 |---|---|---|---|---|
 | `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | `IPlayerAgent`, built-in bots, `MatchRunner`. Also referenced by Client (vs-AI) and Server (bot seats). |
-| `Fantactics.Sim` | `src/Fantactics.Sim` | Console app (`fantactics-sim`) | Core, Ai, Protocol; NuGet: `McMaster.Extensions.CommandLineUtils` ([TechnicalDesign §2.3](TechnicalDesign.md#23-command-line-tools-decided-2026-09-27)), `Toon.Format` | File-backed match CLI for LLM and human play; text, JSON, and TOON output; tournament runner |
+| `Fantactics.Sim` | `src/Fantactics.Sim` | Console app (`fantactics-sim`) | Core, Ai, Protocol; NuGet: `McMaster.Extensions.CommandLineUtils` ([TechnicalDesign §2.3](TechnicalDesign.md#23-command-line-tools-decided-2026-09-27)), `Toon.DotNet`, `Microsoft.Extensions.DependencyInjection` | File-backed match CLI for LLM and human play; text, JSON, and TOON output; tournament runner |
+| `Fantactics.Sim.Tests` | `src/tests/Fantactics.Sim.Tests` | xUnit | Sim, Core | Order grammar, unit handles, and in-process CLI tests, including a full match played the way an LLM seat would |
 | `Fantactics.Ai.Tests` | `src/tests/Fantactics.Ai.Tests` | xUnit | Core, Ai | Fuzzing, determinism, replay, and bot tests |
 
 The dependency rule still holds: Core references nothing, and nothing references Client, Server, or Sim.
@@ -114,31 +115,32 @@ A `MatchRecord` is a JSON file:
 
 | Command | Purpose |
 |---|---|
-| `new --scenario <name\|file> --p1 llm\|bot:<name> --p2 … --seed N --out match.json` | Create a match |
+| `new --out match.json [--map riverford] [--p1 llm] [--p2 bot:random] [--p1-race Elves] [--p2-race Goblins] [--seed N] [--force]` | Create a match. Seats are `llm`, `human`, or `bot:<name>`. Scenario files beyond built-in maps come later. |
 | `status match.json` | Phase, turn, and which seats owe a decision. Contains no hidden information. |
-| `view match.json --as P1` | That seat's `PlayerView`: header, map, unit table, pending decision, events since the seat last acted |
-| `legal match.json --as P1 [--unit <id>]` | Enumerated options with pick IDs, attack previews (damage, kills), reachable tiles with costs |
-| `act match.json --as P1 (--pick <id> \| --orders "<grammar>" \| --json '<command>') [--note "…"]` | Submit a decision. Prints the visible resulting events (including bot moves that followed), then **the seat's next pending decision with its legal options**, so a playing seat needs one call per decision. On failure it prints the `RuleViolation` instead. |
-| `log match.json --as P1` | That seat's filtered event history |
-| `replay match.json` | Full-information replay. Only allowed after `MatchOver`. |
-| `run --p1 bot:greedy --p2 bot:random --games 500 --seed 1 [--parallel] [--csv out.csv]` | Tournament (§7) |
+| `view match.json --as P1` | That seat's `PlayerView`: header, map, unit table, reserve, pending decision, events since the seat last acted |
+| `legal match.json --as P1 [--unit <id>]` | Numbered action options with attack previews (damage, kills), reachable tiles with costs, deploy tiles, draft or placement options, and a usage line |
+| `act match.json --as P1 (--pick N \| --orders "<grammar>" \| --draft "<grammar>" \| --json '<command>') [--note "…"]` | Submit a decision. Prints the visible resulting events (including bot moves that followed), then **the seat's next view and options**, so a playing seat needs one call per decision. The map is included when the next decision is movement or placement. On failure it prints the `RuleViolation` instead. |
+| `log match.json --as P1 [--last N]` | That seat's event history |
+| `replay match.json [--as P1]` | Full history including every `--note`. Only allowed after the match ends. |
+| `run [--p1 bot:random] [--p2 bot:random] [--games 100] [--seed 1] [--map …] [--parallel] [--csv out.csv]` | Tournament (§7): win counts, end reasons, average turns, and damage/kills/deaths per unit type |
 
-- **Exit codes:** 0 = ok, 1 = error, 2 = rule violation, 3 = not your decision.
-- **Output format:** `view`, `legal`, `log`, `replay`, and `act` take `--format toon|json|text` (§6.2).
+- **Exit codes:** 0 = ok, 1 = error, 2 = rule violation or bad order syntax, 3 = not your decision (or replay while running).
+- **Output format:** every command takes `--format text|toon|json` (§6.2). The default is `text`; the play skill always passes `toon`.
 - **Bot seats auto-advance.** After any `act`, the CLI runs bot decisions in-process until a non-bot seat owes a decision or the match ends. An LLM playing a bot then needs one `act` per LLM decision.
 - **Hidden information is on the honor system.** The file contains everything, including the opponent's pending hidden orders. LLM seats use only `status`, `view`, `legal`, `act`, and `log`, and never read the file. That's fine for playtesting; real enforcement is the server's job.
 
 **Input forms:**
 
-- `--pick <id>` for single-choice decisions, such as a unit's action.
-- `--orders` for move orders, in a compact grammar with one clause per unit:
+- `--pick N` for a unit's action: the number of an option from `legal`.
+- `--orders` for move and placement orders, in a compact grammar with one clause per unit:
   - `A>5,3`: move unit A to (5,3). Move orders are paths in Core (GameDesign §4.1), so the CLI expands this to the cheapest path, breaking ties deterministically. Waypoints pick a route: `A>3,1>5,3`.
   - `B=hold`: hold.
-  - `r1@1,7`: deploy reserve r1 on (1,7).
-  - Example: `--orders "A>5,3 B=hold r1@1,7"`. Units without a clause default to Hold.
-- `--json '<command>'`: the canonical serialized Core command, the same one the network client sends inside its Protocol envelope. The draft uses this form until it earns a grammar of its own.
+  - `D@1,7`: deploy reserve unit D on (1,7), or, during placement, place unit D there.
+  - Example: `--orders "A>5,3 B=hold D@1,7"`. Units without a clause hold.
+- `--draft "Archer Archer Ranger | Scout"`: starting unit types, then `|` and reserve types.
+- `--json '<command>'`: the canonical serialized Core command, the same one the network client sends inside its Protocol envelope. `"$type"` must be the first property (a System.Text.Json requirement on .NET 8).
 
-**Unit handles.** The CLI gives each unit a short handle when it enters the map: uppercase letters `A`–`Z` for your units and lowercase for the enemy's, from your seat's point of view. Reserves are `r1`, `r2`, …. Handles are stable for the whole match. The engine's own IDs stay internal.
+**Unit handles.** Every unit gets a short handle from each seat's point of view: uppercase letters (`A`–`Z`, then `AA`, …) for your units in id order, including reserve and unplaced units, and lowercase for enemy units in the order they first appeared on the field. Enemy handles are therefore never assigned to hidden units. Handles never change during a match; the engine's own ids stay internal.
 
 ### 6.2 Output Formats
 
@@ -189,10 +191,10 @@ units[4]{id,side,type,x,y,tile,hp,maxHp,atk,def,mov,rng,init,status}:
   a,enemy,Tank,6,4,hills,7,8,2,2,3,1,2,
 ```
 
-(Illustrative. Exact quoting follows the TOON v3 spec as `Toon.Format` emits it.)
+(Illustrative. Exact quoting follows the TOON spec as `Toon.DotNet` emits it.)
 
 - **One model, three encoders.** The CLI builds output DTOs and serializes them with System.Text.Json to a `JsonNode`. It then prints that node as JSON, hands it to the TOON encoder, or renders text from the same DTOs. There's no separate TOON model to keep in sync.
-- **Library:** [`Toon.Format`](https://github.com/toon-format/toon-dotnet) (the toon-format organization's .NET port). It targets net8.0, conforms to TOON spec v3.0, and encodes and decodes through `JsonNode`. It's referenced **only by `Fantactics.Sim`**; Core, Ai, and Protocol stay free of it. Cysharp's faster `ToonEncoder` needs .NET 10, so it's out while we're on .NET 8.
+- **Library:** [`Toon.DotNet`](https://github.com/CharlesHunt/ToonDotNet) 4.1.1 (decided 2026-09-27). It targets net8.0 and TOON spec 4.1.1, and `Toon.FromJson` converts our JSON output directly. It's referenced **only by `Fantactics.Sim`**; Core, Ai, and Protocol stay free of it. The toon-format organization's `Toon.Format` package, the original choice, turned out not to be published on NuGet, and Cysharp's faster `ToonEncoder` needs .NET 10.
 - **DTOs are shaped for TOON.** TOON only wins on *uniform* arrays of primitives, so view DTOs are flat:
   - `units[n]{id,side,type,x,y,tile,hp,maxHp,atk,def,mov,rng,init,status}`, with status effects joined into one short string
   - `options[n]{pick,action,target,dmg,kills}` for unit actions
@@ -200,6 +202,7 @@ units[4]{id,side,type,x,y,tile,hp,maxHp,atk,def,mov,rng,init,status}:
   - `rows[n]`: the map as row strings, in the same format as scenario files
   - `events[n]{seq,turn,type,actor,target,detail}`: events are heterogeneous, so `log` projects them onto one flat shape instead of encoding them polymorphically
 - **Input doesn't need TOON.** `--pick` and the `--orders` grammar are already fewer tokens than any structured payload. TOON input isn't planned; revisit it only if LLMs struggle with the grammar.
+- **First measurement (2026-09-27):** a turn-1 movement view is 3,091 characters as JSON, 1,678 as TOON (−46%), and 1,986 as text. Token counts still need the Anthropic token-counting endpoint.
 - **Verify before making it the default (Phase 2 exit criterion):**
   - Compare token counts for the same mid-game view in `json`, `toon`, and `text`, using the Anthropic token-counting endpoint.
   - Run a few LLM-vs-`RandomAgent` games per format and compare the rule-violation rate (`act` exit code 2).
@@ -207,7 +210,7 @@ units[4]{id,side,type,x,y,tile,hp,maxHp,atk,def,mov,rng,init,status}:
 
 ### 6.3 LLM Player Playbook
 
-A Claude Code skill, `.claude/skills/play-fantactics/SKILL.md`, checked in when Phase 2 lands. It contains:
+A Claude Code skill, [`.claude/skills/play-fantactics/SKILL.md`](../../.claude/skills/play-fantactics/SKILL.md). It contains:
 
 - **The brief:** pointers to the rules (GameDesign §4–5, RacesAndUnits) and the CLI usage above.
 - **The loop:** `view` once to get oriented, then `act` repeatedly (each `act` prints the next decision and its options), with a short `--note` on intent. `status` if unsure whose turn it is.
@@ -259,4 +262,5 @@ Invariants checked in layer 3:
 1. Should the orders grammar double as the client's debug console input?
 2. What tournament scale do we need (games per minute), and will Core need profiling for it?
 3. How should LLM playtest findings feed into balance work? A structured `RULES?` report format?
-4. The draft uses `--json` for now. Does it deserve its own grammar (e.g. `"Archer*2 Ranger"`)?
+4. ~~The draft uses `--json` for now. Does it deserve its own grammar?~~ It has one: `--draft "Archer Archer Ranger | Scout"`.
+5. Enemy unit ids in `PlayerView` are engine ids, which are assigned in draft order, so the first enemy id reveals how many units the other player drafted. The CLI hides this behind handles; the server will need the same before fog of war.

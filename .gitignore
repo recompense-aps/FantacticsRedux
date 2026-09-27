@@ -31,3 +31,7 @@ Thumbs.db
 desktop.ini
 ehthumbs.db
 .DS_Store
+
+# --- Simulation ---
+# LLM playtest match files (promote interesting ones to src/tests/.../Replays)
+/playtests/
