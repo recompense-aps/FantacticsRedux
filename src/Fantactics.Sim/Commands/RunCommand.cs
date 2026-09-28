@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text.Json;
+using Fantactics.Ai.Profiles;
 using Fantactics.Core.Maps;
 using Fantactics.Core.Rules;
 using Fantactics.Sim.Matches;
@@ -44,8 +46,12 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : S
     public ulong Seed { get; set; } = 1;
 
     /// <summary>Play on all cores.</summary>
-    [Option("--parallel", Description = "Play matches in parallel.")]
+    [Option("--parallel", Description = "Play matches on every core (same as --threads 0).")]
     public bool Parallel { get; set; }
+
+    /// <summary>Matches played at once.</summary>
+    [Option("--threads", Description = "Matches played at once; 0 uses every core (default 1). Results don't change.")]
+    public int? Threads { get; set; }
 
     /// <summary>A rules config file to play instead of the built-in rules.</summary>
     [Option("--rules", Description = "Rules config JSON to play instead of the built-in rules (for A/B tests).")]
@@ -55,6 +61,18 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : S
     [Option("--csv", Description = "Also write one CSV line per match to this file.")]
     public string? Csv { get; set; }
 
+    /// <summary>Directory for detailed results.</summary>
+    [Option("--out", Description = "Also write games.csv, units.csv, and bots.csv to this directory.")]
+    public string? Out { get; set; }
+
+    /// <summary>A profile file for P1.</summary>
+    [Option("--p1-profile", Description = "Play P1 with a bot profile JSON file instead of --p1.")]
+    public string? P1Profile { get; set; }
+
+    /// <summary>A profile file for P2.</summary>
+    [Option("--p2-profile", Description = "Play P2 with a bot profile JSON file instead of --p2.")]
+    public string? P2Profile { get; set; }
+
     /// <inheritdoc />
     protected override int Execute()
     {
@@ -62,24 +80,91 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : S
         SeatKind p2 = SeatKind.Parse(P2);
         if (p1.BotName is not string p1Bot || p2.BotName is not string p2Bot)
         {
-            throw new SimException("Tournaments need two bots, e.g. --p1 bot:random --p2 bot:random.");
+            throw new SimException("Tournaments need two bots, e.g. --p1 bot:captain --p2 bot:random.");
         }
 
-        if (!MapLibrary.Names.Contains(Map) || Games < 1)
+        if (!MapLibrary.Names.Contains(Map) || Games < 1 || Threads < 0)
         {
-            throw new SimException($"Need a built-in map ({string.Join(", ", MapLibrary.Names)}) and --games >= 1.");
+            throw new SimException(
+                $"Need a built-in map ({string.Join(", ", MapLibrary.Names)}), --games >= 1, and --threads >= 0.");
         }
 
-        (TournamentSummary summary, ImmutableArray<GameResult> games) = runner.Run(
-            new TournamentOptions(Map, P1Race, P2Race, p1Bot, p2Bot, Games, Seed, Parallel),
-            LoadVariant());
+        int threads = Threads ?? (Parallel ? 0 : 1);
+        BotProfile? p1Profile = LoadProfile(P1Profile);
+        BotProfile? p2Profile = LoadProfile(P2Profile);
+        TournamentOptions options = new(
+            Map,
+            P1Race,
+            P2Race,
+            p1Profile is null ? p1Bot : $"{p1Profile.Name}(file)",
+            p2Profile is null ? p2Bot : $"{p2Profile.Name}(file)",
+            Games,
+            Seed,
+            threads,
+            p1Profile,
+            p2Profile);
+        (TournamentSummary summary, ImmutableArray<GameResult> games) = runner.Run(options, LoadVariant());
         if (Csv is string csv)
         {
             File.WriteAllLines(csv, [GameResult.CsvHeader, .. games.Select(game => game.ToCsv())]);
         }
 
+        if (Out is string directory)
+        {
+            WriteDetails(directory, summary, games);
+        }
+
         Output.Write(summary, Format);
         return ExitCodes.Ok;
+    }
+
+    /// <summary>Writes the bulk data the summary leaves out, for follow-up analysis.</summary>
+    private static void WriteDetails(string directory, TournamentSummary summary, ImmutableArray<GameResult> games)
+    {
+        Directory.CreateDirectory(directory);
+        File.WriteAllLines(
+            Path.Combine(directory, "games.csv"),
+            [GameResult.CsvHeader, .. games.Select(game => game.ToCsv())]);
+        File.WriteAllLines(
+            Path.Combine(directory, "units.csv"),
+            [
+                "seat,type,fielded,damage,kills,deaths",
+                .. summary.UnitStats.Select(u => $"{u.Seat},{u.Type},{u.Fielded},{u.Damage},{u.Kills},{u.Deaths}"),
+            ]);
+        File.WriteAllLines(
+            Path.Combine(directory, "bots.csv"),
+            [
+                "seat,bot,first_contact,no_contact,first_arrival,objective,damage,damage_taken,destroyed",
+                .. summary.Fingerprints.Select(f => string.Join(
+                    ',',
+                    [
+                        f.Seat,
+                        f.Bot,
+                        .. new[]
+                            {
+                                f.FirstContact, f.NoContact, f.FirstArrival, f.Objective, f.Damage, f.DamageTaken,
+                                f.Destroyed,
+                            }
+                            .Select(value => value.ToString(CultureInfo.InvariantCulture)),
+                    ])),
+            ]);
+    }
+
+    private static BotProfile? LoadProfile(string? path)
+    {
+        if (path is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return BotLibrary.FromJson(File.ReadAllText(path));
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or JsonException)
+        {
+            throw new SimException($"Can't load bot profile from '{path}': {ex.Message}");
+        }
     }
 
     private RulesConfig? LoadVariant()

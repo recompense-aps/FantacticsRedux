@@ -164,9 +164,20 @@ public static class TextRenderer
         text.AppendLine(
             $"{summary.Games} games · P1 {summary.P1} ({summary.P1Wins} wins) vs P2 {summary.P2} ({summary.P2Wins} wins)"
             + $" · {summary.Draws} draws · avg {summary.AverageTurns:F1} turns · rules {summary.Rules}");
+        text.AppendLine(
+            $"P1 score {summary.P1Score:F3} (95% CI {summary.P1ScoreLow:F3}–{summary.P1ScoreHigh:F3})"
+            + (summary.Significant ? " · significant" : " · not significant"));
         text.Append(Table(
             ["End", "Count"],
             summary.EndReasons.Select(e => new[] { e.Reason, $"{e.Count}" })));
+        text.AppendLine();
+        text.Append(Table(
+            ["Seat", "Bot", "Contact", "Never", "Arrival", "Objective", "Damage", "Taken", "Destroyed"],
+            summary.Fingerprints.Select(f => new[]
+            {
+                f.Seat, f.Bot, $"{f.FirstContact:F1}", $"{f.NoContact}", $"{f.FirstArrival:F1}", $"{f.Objective:F1}",
+                $"{f.Damage:F1}", $"{f.DamageTaken:F1}", $"{f.Destroyed:F1}",
+            })));
         text.AppendLine();
         text.Append(Table(
             ["Seat", "Type", "Fielded", "Damage", "Kills", "Deaths"],

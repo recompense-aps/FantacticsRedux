@@ -1,0 +1,28 @@
+{
+  "name": "bumble",
+  "description": "Very stupid: marches everything at the nearest enemy and hits whatever is in range.",
+  "difficulty": "novice",
+  "skill": {
+    "visionRange": null,
+    "ignoreThreats": true,
+    "temperature": 3.0,
+    "blunderChance": 0.3
+  },
+  "style": {
+    "material": 1.0,
+    "score": 0.0,
+    "objectives": 0.0,
+    "exposure": 0.0,
+    "opportunity": 0.0,
+    "terrain": 0.0,
+    "advance": 3.0,
+    "cohesion": 0.0,
+    "disable": 0.0,
+    "hold": 0.0,
+    "reserveEagerness": 1.0,
+    "bloodlust": 10.0,
+    "stances": { "allIn": 0 },
+    "formation": "Block",
+    "draftTemperature": 50.0
+  }
+}

@@ -383,7 +383,7 @@ A strong contrast to prove out the core systems: **few, fragile, ranged units th
 **Candidate MVP units** (from [UnitIdeas](../og/UnitIdeas.md)):
 
 - **Elves:** Archer, Ranger, Herbalist, Scout, plus a movement-limiting specialist
-- **Goblins:** Rusher, Bruiser, Tank, Mauler, War Lord
+- **Goblins:** Rusher, Wolf Rider, Bruiser, Tank, Mauler, War Lord
 
 **What this matchup tests:** terrain move costs and defense, ranged vs melee and counterattacks, healing, movement-control effects, and (if forest invisibility makes the cut) the first bit of hidden information.
 
@@ -458,3 +458,4 @@ Answer inline or move decisions into the [Decision Log](#decision-log).
 | 2026-09-27 | Engagement fixes after self-play showed defense dominating: Braced triggers only on enemies that end adjacent and moves from Archers to Tanks; Support counts for melee strikes only; Deathmatch scores objective points for holding more objective tiles, and the turn limit compares destroyed value plus objective points | All three are rules-config switches (`bracedTrigger`, `supportMeleeOnly`, `objectivePointsPerTurn`) so tournaments can compare variants; see §4.1, §4.3, §4.5, Simulation §10 |
 | 2026-09-27 | Engine edge cases confirmed: clashes are pure fighting (no on-hit effects); paths may enter an enemy's current tile; friendly back-up cascades; Slippery always retreats; Braced range is 1 to max range; Mend targets allies only; same-tile arrivals clash | Found while building the engine and fuzzing it; see §4.1, §4.3, §4.4 and RacesAndUnits §3.2, §4.1 |
 | 2026-09-27 | Headless simulation and LLM play: matches run in memory on a deterministic Core engine; bots in `Fantactics.Ai`; LLMs play through a file-backed `fantactics-sim` CLI | Bots only see a player view; match records are JSON (seed + command log + state hashes); the CLI prints TOON for LLM seats to save tokens; see [Simulation](Simulation.md) |
+| 2026-09-28 | Goblins get the Wolf Rider (Cost 4, HP 7, Atk 4, Mv 7, Init 6, Bloodthirst 1, Reckless) | Bot tournaments showed Elves winning 78% of Captain mirrors. Goblin buffs beat an Archer nerf, and closing the gap beat shooting back or armoring up; the Wolf Rider brought Elves to 48% (Simulation §10). Rules 0.4.0 |

@@ -29,12 +29,13 @@ public class DeterminismTests
     {
         MatchResult result = Play(11);
 
-        MatchRecord parsed = MatchRecord.FromJson(result.Record.ToJson());
+        MatchRecord record = result.Record ?? throw new InvalidOperationException("The runner kept no record.");
+        MatchRecord parsed = MatchRecord.FromJson(record.ToJson());
         ReplayResult replay = MatchReplay.Run(RulesConfig.Default, parsed);
 
         Assert.Null(replay.DriftAtSeq);
         Assert.Equal(StateHash.Compute(result.FinalState), StateHash.Compute(replay.State));
-        Assert.Equal(result.Record.Commands.Length, parsed.Commands.Length);
+        Assert.Equal(record.Commands.Length, parsed.Commands.Length);
     }
 
     private static MatchResult Play(int seed) =>

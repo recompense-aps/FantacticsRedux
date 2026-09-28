@@ -79,8 +79,15 @@ The dependency rule still holds: Core references nothing, and nothing references
 |---|---|---|
 | `ScriptedAgent` | 1 | Plays a fixed queue of commands. For tests. |
 | `RandomAgent` | 1 | Picks a uniformly random legal option with a seeded RNG. For fuzzing. |
-| `GreedyAgent` | 3 | One-ply heuristics: best preview damage and kills, move toward targets and defensive terrain, deploy when affordable. Scores through a shared `Evaluator`. |
-| `SearchAgent` | Later | MCTS or expectimax over the action phase. Samples opponent move orders for the simultaneous phase, and later determinizes hidden information. |
+| `TacticalAgent` | 3 | The configurable bot (bot plan Phases 1–2 are done). A **profile** mixes a **difficulty** (search budget and mistakes) with a **style** (evaluation weights such as aggression vs caution). Bots are named `profile[@difficulty]`, e.g. `bot:captain@easy`. Actions are one-ply: it scores every legal action by applying it. For movement it builds one set of orders per **stance** (balanced, all-in, hold line, objective push, fall back, bait), resolves each against an opponent who holds, and keeps the best. Personalities: **Captain** (balanced, objective-minded), **Warden** (defensive), **Berserker** (aggressive), **Trickster** (baits and flanks, unpredictable), and **Bumble** (very stupid). Later phases add action-queue search, sampled opponent orders, Merlin, and weight tuning. |
+
+How `TacticalAgent` works:
+
+- **Belief state.** A bot never gets the real `GameState`. It rebuilds one from its `PlayerView` (`Ai/Belief/BeliefState`), fills the opponent's hidden reserve with a guess that matches the visible reserve value (`ReserveGuesser`), and then drives the real engine for lookahead. No rules are copied into Ai.
+- **Evaluator** (`Ai/Evaluation`). Features cover material (scaled by HP), score race, objectives, exposure to next-turn threats (`ThreatMap`), strike opportunities, terrain, advance, cohesion, disabled enemies, and holding. The same per-unit terms score whole states and candidate move tiles. `Features` holds the raw vector for tuning.
+- **Profiles** (`Ai/Profiles/Data/*.json`, embedded). A profile sets `difficulty` (a `difficulty-*.json` preset: novice, easy, normal, hard, expert, master), optional `skill` overrides, and `style` weights. Mistakes come from `MistakeModel`: softmax temperature, blunder chance, and blind spots such as limited vision or ignoring threats. They never produce an illegal move.
+- **Style knobs** beyond the evaluator weights: `retreatThreshold` (wounded units pull back), `focusFire` and `bloodlust` (attack preferences), `priorities` (enemy types worth more), `stances` (which stances to consider, with a bonus for each), `stanceTemperature` (unpredictable plans), `formation` (Block, Line, or Flanks placement), `draftBias` and `draftTemperature` (draft preferences), and `reserveEagerness` (below 0.5 the bot drafts a bigger reserve and banks Command for its biggest unit).
+- **Determinism.** Budgets count engine simulations, not wall-clock time (`ThinkBudget.MaxMilliseconds` is only for interactive play), so a seed always gives the same match.
 
 ## 5. Match Records and Replay
 
@@ -122,7 +129,7 @@ A `MatchRecord` is a JSON file:
 | `act match.json --as P1 (--pick N \| --orders "<grammar>" \| --draft "<grammar>" \| --json '<command>') [--note "…"]` | Submit a decision. Prints the visible resulting events (including bot moves that followed), then **the seat's next view and options**, so a playing seat needs one call per decision. The map is included when the next decision is movement or placement. On failure it prints the `RuleViolation` instead. |
 | `log match.json --as P1 [--last N]` | That seat's event history |
 | `replay match.json [--as P1]` | Full history including every `--note`. Only allowed after the match ends. |
-| `run [--p1 bot:random] [--p2 bot:random] [--games 100] [--seed 1] [--map …] [--rules variant.json] [--parallel] [--csv out.csv]` | Tournament (§7): win counts, end reasons, average turns, and damage/kills/deaths per unit type. `--rules` plays a rules-config variant instead of the built-in rules; `src/Fantactics.Sim/Variants/pre-engagement.json` is the rule set before the 2026-09-27 engagement fixes. The summary shows a short hash of the rules played. |
+| `run [--p1 bot:random] [--p2 bot:random] [--games 100] [--seed 1] [--map …] [--rules variant.json] [--threads N | --parallel] [--csv out.csv] [--out dir] [--p1-profile file.json] [--p2-profile file.json]` | Tournament (§7): win counts, P1's score rate with a 95% Wilson interval and a significance flag, end reasons, a **style fingerprint** per side (mean first-contact turn, games with no contact, first reserve arrival, objective points, damage dealt and taken, value destroyed), and damage/kills/deaths per unit type. The summary's size doesn't grow with `--games`. Per-game rows go to `--csv`; `--out` writes `games.csv`, `units.csv`, and `bots.csv`. `--p1-profile`/`--p2-profile` play a profile JSON file (same shape as `src/Fantactics.Ai/Profiles/Data/*.json`) instead of a built-in bot.| --parallel] [--csv out.csv]` | Tournament (§7): win counts, P1's score rate with a 95% Wilson interval and a significance flag, end reasons, average turns, and damage/kills/deaths per unit type. The summary's size doesn't grow with `--games`; per-game rows go to `--csv`. `--threads 0` (or `--parallel`) plays games on every core, and results are identical for any thread count. `--rules` plays a rules-config variant instead of the built-in rules; `src/Fantactics.Sim/Variants/pre-engagement.json` is the rule set before the 2026-09-27 engagement fixes. The summary shows a short hash of the rules played. |
 
 - **Exit codes:** 0 = ok, 1 = error, 2 = rule violation or bad order syntax, 3 = not your decision (or replay while running).
 - **Output format:** every command takes `--format text|toon|json` (§6.2). The default is `text`; the play skill always passes `toon`.
@@ -254,8 +261,8 @@ Invariants checked in layer 3:
 | **0** (with the first Core rules) | The §2 seams, `RulesConfig`, `ScenarioBuilder`, the ASCII map parser, `StateHash`, the determinism rules. Rules cover the **full match flow** (decided 2026-09-27): draft, hidden placement, movement with clashes, actions, reserves and Command, Rout and the turn limit, on Riverford. Scenarios can still start mid-match for focused tests. | Rules tests written against scenarios; a full match can be played start to finish through `Apply` |
 | **1** | `Fantactics.Ai`: `IPlayerAgent`, `MatchRunner`, `ScriptedAgent`, `RandomAgent`; `Fantactics.Ai.Tests` for layers 2–4 | Thousands of random games with no invariant failures |
 | **2** | `Fantactics.Sim`: match file, `new`/`status`/`view`/`legal`/`act`/`log`/`replay`, text/JSON/TOON output, orders grammar; the play skill | An LLM finishes a game against `RandomAgent`, then a self-play game (**both done 2026-09-27**, §10); the TOON comparison (§6.2) is done (**pending**: needs the token-counting endpoint) |
-| **3** | `GreedyAgent`, `run` tournaments and stats, golden replays | `GreedyAgent` reliably beats `RandomAgent` |
-| **Later** | `SearchAgent`, fog-of-war determinization; possibly an MCP server or a Claude API `IPlayerAgent` for unattended LLM batches | — |
+| **3** | `TacticalAgent` (one-ply), `run` tournaments and stats, golden replays | `TacticalAgent` reliably beats `RandomAgent` (**done 2026-09-28**: `bot:captain` wins 96–100% over 200 games per seat and race; golden replays pending) |
+| **Later** | Search in `TacticalAgent` (action queue, sampled opponent orders), Merlin, and weight tuning (personalities done 2026-09-28); fog-of-war determinization; possibly an MCP server or a Claude API `IPlayerAgent` for unattended LLM batches | — |
 
 ## 9. Open Questions
 
@@ -306,3 +313,29 @@ CLI findings:
 - Both players scripted auto-waits (about 80% of action prompts had no real choice). One script fired Call the Horde by accident because untargeted ability rows look like wait rows. This supports `act --auto-wait` and dropping Mend on full-HP allies from the list.
 - Wanted: a "who can hit this tile" threat view, and a Held/Braced preview while giving move orders.
 - The `reach` table leaves out tiles a friend holds now but will vacate. That's conservative by design, but it hides legal moves.
+
+### 2026-09-28 · Bot tournaments: personalities (bot plan Phase 2)
+
+One-ply `TacticalAgent` profiles on Riverford, 100–200 games per pairing. These are bots, not people, so they measure what the evaluator can find, but two results are worth a design look:
+
+- **Caution loses under the objective rule.** Starting from Captain and adding one defensive trait at a time (more terrain weight, more fear of exposure, less advance, holding, a banked reserve), every trait lowered the win rate, and they compound. A terrain weight of 0.8 alone dropped Captain vs Captain from 79 to 35 wins as Elves: units sat in forest instead of standing on the plains ford tiles. Warden (defensive) wins only about 20% as Elves against Captain, and Berserker beat Warden 200–0 on objective points while destroying *less* value. The 2026-09-27 engagement fixes worked, perhaps too well: holding ground is now close to strictly worse than contesting the ford.
+- **Elves are favored in the mirror.** Captain vs Captain: Elves as P1 win 79 of 100 and Goblins as P1 win 24 of 100. Berserker is the only personality that does well with Goblins (41 of 100 against a Captain playing Elves). This is the same Archer-heavy imbalance the LLM games showed.
+
+Fingerprints against Captain (as Elves, P1): Berserker makes first contact on turn 2.3, Captain 2.6, Trickster 2.9, Bumble 2.9–3.7, and the original Warden 7.8 (never engaging in 28% of games). Profile changes: Warden's terrain weight went from 0.8 to 0.4 and its exposure weight from 1.2 to 0.45, so it contests objectives at all.
+
+### 2026-09-28 · Race balance: Goblin options, Wolf Rider adopted
+
+Measured as the Elves' score rate in Captain-vs-Captain games, averaged over both seats (600 games per row; 0.50 is even).
+
+| Change | Elves |
+|---|---|
+| Rules 0.3.0 | 0.78 |
+| Archer cost 6 (nerf, not adopted) | 0.57 |
+| Bruiser HP 9 | 0.48 |
+| Grunt Attack 4 | 0.55 |
+| Rusher HP 6 / Rusher cost 2 | 0.68 / 0.70 |
+| Slinger (ranged Goblin, Cost 3, range 2–3) | 0.68 |
+| Shieldbearer (Cost 3, HP 6, Def 2) | 0.73 |
+| **Wolf Rider (Cost 4, HP 7, Atk 4, Mv 7, Init 6, Bloodthirst 1, Reckless)** | **0.48** |
+
+Closing the gap before the Archers' second volley mattered more than shooting back or armoring up. The Wolf Rider went into rules 0.4.0. With it, Captain as Elves scores 0.48 as P1 and 0.48 as P2, the bots field about 2.4 per Goblin game, and every normal personality still beats `bot:random` as Goblins (192–199 of 200). Objective-rule variants tested in the same session (entrenched objectives, per-tile scoring, hills at the ford) did not help cautious play and are not adopted.

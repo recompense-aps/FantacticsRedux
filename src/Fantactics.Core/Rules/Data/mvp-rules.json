@@ -63,6 +63,11 @@
       "minRange": 1, "maxRange": 1, "initiative": 6, "vision": 4, "unique": false,
       "traits": { "Bloodthirst": 1, "Reckless": 1 }, "abilities": []
     },
+    "WolfRider": {
+      "race": "Goblins", "cost": 4, "hp": 7, "attack": 4, "defense": 0, "movement": 7,
+      "minRange": 1, "maxRange": 1, "initiative": 6, "vision": 5, "unique": false,
+      "traits": { "Bloodthirst": 1, "Reckless": 1 }, "abilities": []
+    },
     "Bruiser": {
       "race": "Goblins", "cost": 4, "hp": 7, "attack": 5, "defense": 0, "movement": 4,
       "minRange": 1, "maxRange": 1, "initiative": 3, "vision": 3, "unique": false,

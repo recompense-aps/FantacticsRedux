@@ -1,0 +1,7 @@
+{
+  "budget": { "maxSimulations": 200 },
+  "temperature": 2.0,
+  "blunderChance": 0.15,
+  "visionRange": 6,
+  "ignoreThreats": false
+}

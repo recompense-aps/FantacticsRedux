@@ -103,7 +103,7 @@ public sealed class MatchSession
             // Seeded from the match seed and position, so a record replays to the same bot choices.
             int seed = unchecked((int)(Setup.Seed ^ ((ulong)(_commands.Count + 1) * 0x9E3779B97F4A7C15UL)))
                 ^ (int)decision.Seat;
-            IPlayerAgent agent = BotFactory.Create(KindOf(decision.Seat).BotName ?? "", seed);
+            IPlayerAgent agent = BotFactory.Create(KindOf(decision.Seat).BotName ?? "", _rules, seed);
             LegalActions legal = LegalActions.For(State, decision.Seat)
                 ?? throw new SimException($"No legal options for bot decision {decision}.");
             ICommand command = agent.Decide(PlayerView.Project(State, decision.Seat), decision, legal);

@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
+using Fantactics.Ai.Profiles;
 using Fantactics.Core;
 using Fantactics.Core.Records;
+using Fantactics.Core.Rules;
 
 namespace Fantactics.Ai.Tests;
 
@@ -8,16 +10,23 @@ namespace Fantactics.Ai.Tests;
 internal static class TestMatches
 {
     /// <summary>Elves (P1) vs Goblins (P2) on Riverford.</summary>
-    public static MatchSetup Riverford(ulong seed) => new(
+    public static MatchSetup Riverford(ulong seed) => Riverford(seed, "Elves", "Goblins");
+
+    /// <summary>A Riverford match with the given races.</summary>
+    public static MatchSetup Riverford(ulong seed, string p1Race, string p2Race) => new(
         "riverford",
-        new Dictionary<Seat, string> { [Seat.P1] = "Elves", [Seat.P2] = "Goblins" }.ToImmutableSortedDictionary(),
+        new Dictionary<Seat, string> { [Seat.P1] = p1Race, [Seat.P2] = p2Race }.ToImmutableSortedDictionary(),
         seed,
-        new Dictionary<Seat, string> { [Seat.P1] = "bot:random", [Seat.P2] = "bot:random" }.ToImmutableSortedDictionary());
+        new Dictionary<Seat, string> { [Seat.P1] = "bot", [Seat.P2] = "bot" }.ToImmutableSortedDictionary());
 
     /// <summary>Two random agents with seeds derived from <paramref name="seed"/>.</summary>
-    public static IReadOnlyDictionary<Seat, IPlayerAgent> RandomAgents(int seed) => new Dictionary<Seat, IPlayerAgent>
-    {
-        [Seat.P1] = new RandomAgent(seed * 2),
-        [Seat.P2] = new RandomAgent(seed * 2 + 1),
-    };
+    public static IReadOnlyDictionary<Seat, IPlayerAgent> RandomAgents(int seed) => Bots("random", "random", seed);
+
+    /// <summary>Two built-in bots with seeds derived from <paramref name="seed"/>.</summary>
+    public static IReadOnlyDictionary<Seat, IPlayerAgent> Bots(string p1, string p2, int seed) =>
+        new Dictionary<Seat, IPlayerAgent>
+        {
+            [Seat.P1] = BotLibrary.Create(p1, RulesConfig.Default, seed * 2),
+            [Seat.P2] = BotLibrary.Create(p2, RulesConfig.Default, seed * 2 + 1),
+        };
 }

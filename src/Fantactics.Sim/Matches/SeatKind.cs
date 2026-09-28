@@ -17,10 +17,10 @@ public sealed record SeatKind(string Value)
     public static SeatKind Parse(string value)
     {
         SeatKind kind = new(value.Trim().ToLowerInvariant());
-        bool known = kind.Value is "llm" or "human" || (kind.BotName is string bot && BotFactory.Names.Contains(bot));
+        bool known = kind.Value is "llm" or "human" || (kind.BotName is string bot && BotFactory.IsKnown(bot));
         return known
             ? kind
             : throw new SimException(
-                $"Unknown seat kind '{value}'. Use llm, human, or bot:<{string.Join("|", BotFactory.Names)}>.");
+                $"Unknown seat kind '{value}'. Use llm, human, or {BotFactory.Usage}.");
     }
 }

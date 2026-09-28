@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Fantactics.Core\Fantactics.Core.csproj" />
@@ -9,5 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Profiles\Data\*.json" LogicalName="Fantactics.Ai.Profiles.Data.%(Filename)%(Extension)" />
+  </ItemGroup>
 
 </Project>

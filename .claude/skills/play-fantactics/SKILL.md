@@ -33,6 +33,8 @@ Create a match if you weren't given one (defaults: P1 llm Elves, P2 bot:random G
 $SIM new --out playtests/match-1.json --p1 llm --p2 bot:random --seed 7
 ```
 
+For a real opponent, use a bot profile instead of `bot:random`, optionally with a difficulty: `--p2 bot:captain` or `--p2 bot:captain@hard` (difficulties: novice, easy, normal, hard, expert, master). Personalities: `captain` (balanced), `warden` (defensive), `berserker` (aggressive), `trickster` (baits, unpredictable), `bumble` (very weak).
+
 ## The loop
 
 Always pass `--format toon` (compact tables; about half the tokens of JSON).

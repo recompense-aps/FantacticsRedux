@@ -1,0 +1,23 @@
+{
+  "name": "berserker",
+  "description": "Aggressive: cheap fast units, all-in charges, focus fire, reserves thrown in at once.",
+  "difficulty": "normal",
+  "style": {
+    "material": 1.0,
+    "score": 0.5,
+    "objectives": 3.0,
+    "exposure": 0.15,
+    "opportunity": 0.8,
+    "terrain": 0.1,
+    "advance": 1.5,
+    "cohesion": 0.2,
+    "disable": 0.5,
+    "hold": 0.0,
+    "reserveEagerness": 1.0,
+    "focusFire": 1.0,
+    "bloodlust": 0.5,
+    "stances": { "allIn": 2.0, "balanced": 0, "objectivePush": 0.5 },
+    "formation": "Block",
+    "draftBias": { "Rusher": 1.8, "Grunt": 1.3, "Bruiser": 1.2, "Tank": 0.6, "Scout": 1.8, "Ranger": 1.3, "Herbalist": 0.5 }
+  }
+}

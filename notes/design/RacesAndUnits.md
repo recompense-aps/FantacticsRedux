@@ -134,6 +134,7 @@ Mountains give +2 Defense and block line of sight (GameDesign §4.3, §5). Gobli
 |---|---|---|---|---|---|---|---|---|---|---|
 | Grunt | Basic | 2 | 5 | 3 | 0 | 4 | 1 | 3 | 3 | Bloodthirst 1 |
 | Rusher | Fast flanker | 3 | 4 | 3 | 0 | 6 | 1 | 6 | 4 | Bloodthirst 1, Reckless |
+| Wolf Rider | Fast raider | 4 | 7 | 4 | 0 | 7 | 1 | 6 | 5 | Bloodthirst 1, Reckless |
 | Bruiser | Heavy hitter | 4 | 7 | 5 | 0 | 4 | 1 | 3 | 3 | Crush (no Bloodthirst) |
 | Tank | Frontline | 4 | 8 | 2 | 2 | 3 | 1 | 2 | 3 | Bloodthirst 3, Retaliate, Braced |
 | Mauler | Movement control | 4 | 6 | 3 | 1 | 4 | 1 | 4 | 3 | Bloodthirst 1, Hamstring, Throw Net |
@@ -145,6 +146,8 @@ Mountains give +2 Defense and block line of sight (GameDesign §4.3, §5). Gobli
 **Rusher.** Very high movement and initiative. It's the unit that reaches the elf backline and the one best at forcing clashes.
 
 - **Reckless:** +1 Attack in clashes.
+
+**Wolf Rider.** A heavier, faster Rusher that closes the gap before an Archer line gets its second volley. It has 7 HP, so it survives an Archer shot (4 damage) and reaches melee. It's the Goblins' answer to elves kiting from range. Added 2026-09-28 after bot tournaments showed Elves winning 78% of Captain mirrors; with it, Elves win 48% (Simulation §10). The original candidate traded Bloodthirst for Movement; the tested version keeps Bloodthirst 1 and Reckless.
 
 **Bruiser.** Big damage, no healing.
 
@@ -171,7 +174,6 @@ Mountains give +2 Defense and block line of sight (GameDesign §4.3, §5). Gobli
 
 ### 4.3 Later Candidates
 
-- **Wolf Rider:** mounted Rusher that trades Bloodthirst for more Movement.
 - **Sapper:** sets traps (GameDesign §7), or blows up after a countdown (possibly shared with the Demon Explosive Servant).
 
 ## 5. Other Races (Stubs)

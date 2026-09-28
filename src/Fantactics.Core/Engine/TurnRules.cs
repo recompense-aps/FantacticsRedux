@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Fantactics.Core.Events;
+using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
 namespace Fantactics.Core.Engine;
@@ -51,8 +52,10 @@ internal static class TurnRules
     }
 
     /// <summary>
-    /// The player holding more objective tiles (a unit standing on them) scores the configured points
-    /// (GameDesign §4.5). Holding the same number scores nothing, so each side must take the other's tiles.
+    /// Scores objective tiles held by a unit standing on them (GameDesign §4.5). With
+    /// <see cref="ObjectiveScoring.Majority"/>, the player holding more tiles scores the configured points and equal
+    /// holdings score nothing; with <see cref="ObjectiveScoring.PerTile"/>, each player scores the points per tile.
+    /// With <see cref="RulesConfig.ObjectivesNeedHold"/>, only units that didn't move this turn hold a tile.
     /// </summary>
     private static GameState ScoreObjectives(GameState state, List<GameEvent> events)
     {
@@ -63,23 +66,34 @@ internal static class TurnRules
 
         Dictionary<Seat, int> held = SeatExtensions.All.ToDictionary(
             seat => seat,
-            seat => state.Map.Objectives.Count(tile => state.UnitAt(tile)?.Owner == seat));
-        if (held[Seat.P1] == held[Seat.P2])
+            seat => state.Map.Objectives.Count(tile => state.UnitAt(tile) is Unit unit
+                && unit.Owner == seat
+                && HoldsObjective(state, unit)));
+        IEnumerable<(Seat Seat, int Points)> scores = state.Rules.ObjectiveScoring switch
         {
-            return state;
+            ObjectiveScoring.PerTile => SeatExtensions.All
+                .Where(seat => held[seat] > 0)
+                .Select(seat => (seat, held[seat] * state.Rules.ObjectivePointsPerTurn)),
+            _ when held[Seat.P1] == held[Seat.P2] => [],
+            _ => [(held[Seat.P1] > held[Seat.P2] ? Seat.P1 : Seat.P2, state.Rules.ObjectivePointsPerTurn)],
+        };
+
+        foreach ((Seat seat, int points) in scores.ToList())
+        {
+            PlayerState player = state.Players[seat];
+            int total = player.ObjectivePoints + points;
+            events.Add(new ObjectiveScored(seat, points, total, held[seat], held[seat.Opponent()]));
+            state = state.WithPlayer(player with { ObjectivePoints = total });
         }
 
-        Seat leader = held[Seat.P1] > held[Seat.P2] ? Seat.P1 : Seat.P2;
-        PlayerState player = state.Players[leader];
-        int total = player.ObjectivePoints + state.Rules.ObjectivePointsPerTurn;
-        events.Add(new ObjectiveScored(
-            leader,
-            state.Rules.ObjectivePointsPerTurn,
-            total,
-            held[leader],
-            held[leader.Opponent()]));
-        return state.WithPlayer(player with { ObjectivePoints = total });
+        return state;
     }
+
+    /// <summary>Whether <paramref name="unit"/>, standing on an objective, holds it for scoring this turn.</summary>
+    private static bool HoldsObjective(GameState state, Unit unit) =>
+        !state.Rules.ObjectivesNeedHold
+        || state.TurnState.Held.Contains(unit.Id)
+        || (unit.Has(StatusKind.Rooted) && !state.TurnState.ClashWinners.Contains(unit.Id));
 
     private static GameState ExpireStatuses(GameState state, List<GameEvent> events)
     {

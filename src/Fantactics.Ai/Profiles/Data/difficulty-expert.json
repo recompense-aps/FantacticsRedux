@@ -1,0 +1,6 @@
+{
+  "budget": { "maxSimulations": 5000 },
+  "temperature": 0.0,
+  "blunderChance": 0.0,
+  "ignoreThreats": false
+}

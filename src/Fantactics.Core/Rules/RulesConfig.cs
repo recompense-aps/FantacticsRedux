@@ -25,12 +25,17 @@ namespace Fantactics.Core.Rules;
 /// <param name="BracedTrigger">When Braced triggers (GameDesign §4.1).</param>
 /// <param name="SupportMeleeOnly">Whether Support only counts for melee strikes (GameDesign §4.3).</param>
 /// <param name="ObjectivePointsPerTurn">
-/// Points the player holding more objective tiles scores at the end of each turn; 0 disables objectives (§4.5).
+/// Points the player holding more objective tiles scores at the end of each turn (per tile held, with
+/// <see cref="ObjectiveScoring.PerTile"/>); 0 disables objectives (§4.5).
 /// </param>
 /// <param name="Terrain">Rules per terrain type.</param>
 /// <param name="Races">Race definitions by identifier.</param>
 /// <param name="Units">Unit definitions by type identifier.</param>
 /// <param name="Abilities">Ability tuning by identifier.</param>
+/// <param name="ObjectiveScoring">How held objective tiles score (majority or per tile).</param>
+/// <param name="ObjectivesNeedHold">
+/// Whether a unit must not have moved this turn to hold an objective tile ("entrenched" objectives).
+/// </param>
 public sealed record RulesConfig(
     int DraftBudget,
     int StartingCap,
@@ -50,7 +55,11 @@ public sealed record RulesConfig(
     ImmutableSortedDictionary<Terrain, TerrainDefinition> Terrain,
     ImmutableSortedDictionary<string, RaceDefinition> Races,
     ImmutableSortedDictionary<string, UnitDefinition> Units,
-    ImmutableSortedDictionary<string, AbilityDefinition> Abilities)
+    ImmutableSortedDictionary<string, AbilityDefinition> Abilities,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    ObjectiveScoring ObjectiveScoring = ObjectiveScoring.Majority,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    bool ObjectivesNeedHold = false)
 {
     private const string DefaultResource = "Fantactics.Core.Rules.Data.mvp-rules.json";
 
