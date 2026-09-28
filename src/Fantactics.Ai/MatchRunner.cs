@@ -3,6 +3,7 @@ using Fantactics.Core;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Events;
+using Fantactics.Core.Players;
 using Fantactics.Core.Records;
 using Fantactics.Core.Rules;
 using Fantactics.Core.State;
@@ -46,9 +47,7 @@ public static class MatchRunner
                 throw new InvalidOperationException($"Match exceeded {maxCommands} commands.");
             }
 
-            LegalActions legal = LegalActions.For(state, decision.Seat)
-                ?? throw new InvalidOperationException($"No legal actions for pending {decision}.");
-            ICommand command = agents[decision.Seat].Decide(PlayerView.Project(state, decision.Seat), decision, legal);
+            ICommand command = agents[decision.Seat].DecideFor(state, decision.Seat);
             (state, ImmutableArray<GameEvent> events) = GameEngine.Apply(state, decision.Seat, command) switch
             {
                 Accepted accepted => (accepted.State, accepted.Events),

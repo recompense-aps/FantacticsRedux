@@ -99,6 +99,8 @@ public sealed class ScenarioBuilder(RulesConfig? rules = null)
         GameState state = GameEngine.NewMatch(_rules, _map, _races[Seat.P1], _races[Seat.P2], _seed);
         return state with
         {
+            Owners = _units.ToImmutableSortedDictionary(unit => unit.Id, unit => unit.Owner),
+            FieldOrder = [.. _units.Where(unit => unit.IsOnField).Select(unit => unit.Id)],
             Turn = _turn,
             Phase = Phase.Movement,
             TiePriority = _tiePriority,

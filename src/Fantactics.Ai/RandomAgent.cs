@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Geometry;
+using Fantactics.Core.Players;
 
 namespace Fantactics.Ai;
 

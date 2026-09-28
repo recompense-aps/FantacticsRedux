@@ -159,7 +159,7 @@ Mountains give +2 Defense and block line of sight (GameDesign §4.3, §5). Gobli
 - Retaliate makes it a bad target for other melee units. Elves can shoot it freely, but that spends shots that aren't going into the rest of the swarm.
 - Braced: a held Tank that an enemy charges into strikes first (initiative 2 → 5), which makes it the Goblins' anchor on an objective tile.
 
-**Mauler** (name not settled; alternatives: *Hobbler*, *Netter*, *Snarer*). Stops elves from kiting.
+**Mauler** (name settled 2026-09-28). Stops elves from kiting.
 
 - **Hamstring:** its attacks (not clash strikes) also apply **Slowed** for 1 turn.
 - **Throw Net** (ability, Cooldown 3, range 2–3): deals no damage and **Roots** the target for 1 turn. Needs line of sight.

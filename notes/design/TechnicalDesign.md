@@ -38,8 +38,8 @@ All code lives under `src/` (solution at `src/Fantactics.sln`); the repo root ho
 | `Fantactics.Core` | `src/Fantactics.Core` | Class library | — | Game state, rules, map, units, serializable commands and events, rules config loading, seeded RNG. **No Godot or network references.** |
 | `Fantactics.Protocol` | `src/Fantactics.Protocol` | Class library | Core | Transport envelopes (match/seat addressing, lobby messages) around Core's commands and events, shared by client and server |
 | `Fantactics.Server` | `src/Fantactics.Server` | ASP.NET Core app | Core, Protocol | Hosts matches (SignalR hub at `/game`), lobbies, LAN discovery responder |
-| `Fantactics.Client` | `src/Fantactics.Client` | Godot .NET project (`project.godot` lives here) | Core, Protocol | Rendering, input, audio, UI; implements `IGameConnection` (local + remote) |
-| `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | Computer players (`IPlayerAgent`, bots) and `MatchRunner`; used by Client, Server, and Sim. See [Simulation §3](Simulation.md#3-projects) |
+| `Fantactics.Client` | `src/Fantactics.Client` | Godot .NET project (`project.godot` lives here) | Core, Protocol, Ai | Rendering, input, audio, UI; talks to a match only through `IGameConnection` (§2.4) |
+| `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | Computer players (bots implementing Core's `IPlayerAgent`) and `MatchRunner`; used by Client, Server, and Sim. See [Simulation §3](Simulation.md#3-projects) |
 | `Fantactics.Sim` | `src/Fantactics.Sim` | Console app | Core, Ai, Protocol | `fantactics-sim`: file-backed match CLI for LLM play, tournaments; built on CommandLineUtils (§2.3). See [Simulation §6](Simulation.md#6-llm-play-via-fantactics-sim) |
 | `Fantactics.Core.Tests` | `src/tests/Fantactics.Core.Tests` | xUnit | Core | Rules tests |
 | `Fantactics.Ai.Tests` | `src/tests/Fantactics.Ai.Tests` | xUnit | Core, Ai | Fuzzing, determinism, replay, and bot tests |
@@ -73,6 +73,18 @@ All command-line tools (first `fantactics-sim`, [Simulation §6](Simulation.md#6
 - **Version:** pinned to 4.1.1. Version 5.x ships a source generator that needs a newer C# compiler than the .NET 8.0.100 SDK provides.
 - **Tests run the CLI in-process** through `CliHost.Run(args, console)` with a capturing `IConsole`; `Program.cs` only calls it.
 - **Maintenance note:** the library has been in maintenance mode since 2022 (critical fixes only) and targets .NET 8. It's small and stable enough for internal tools. If it stops working on a future .NET version, `System.CommandLine` is the fallback, and only the command classes would change.
+
+### 2.4 Client Link (decided 2026-09-28)
+
+Settled before starting the Godot client, so the client never depends on engine internals:
+
+- **`IGameConnection`** (`Fantactics.Protocol.Connections`) is the client's only link to a match: `Current` (a `SeatUpdate`), an `Updated` event, `SubmitAsync`, `QueueAsync`, and `SetAutoSkipAsync`. The local implementation comes first; a SignalR one implements the same interface later.
+- **`MatchHost`** (`Fantactics.Core.Hosting`) is the push-based match wrapper the server and local play both host. It takes commands in the seat's own ids and, after each submission, sends every seat one **`SeatUpdate`**: its `PlayerView`, the events since the last update (the command plus any queued or auto-skipped actions it set off, so no prompt flashes up for a unit that is then skipped), and its `LegalActions` if it owes a decision. It also keeps the match record.
+- **`LocalMatch`** (Protocol) wraps a host for hotseat (a connection per human seat) and vs-bot play (bots are Core `IPlayerAgent`s). Work runs on a background task under a lock, so a slow bot never blocks the UI. `Updated` fires on that worker thread, and the Godot client marshals it to the main thread (`CallDeferred`).
+- **Rendering:** the client draws the latest `PlayerView` and animates the update's events on the way there (steps per tick, clash strikes, deaths, arrivals). It never keeps its own game state, so reconnects and replays need nothing extra.
+- **Per-player ids** (`ViewIds`): a seat numbers its own units 1, 2, 3, … in creation order and enemy units 1001, 1002, … in the order they first appeared on the field. Views, legal options, and events all use them, and commands are translated back. Engine ids, assigned in draft order, would reveal how many units the opponent drafted. `GameState` keeps `Owners` and `FieldOrder` so these ids stay stable after units die.
+- **Auto-skip and queued actions** are host features, not rules (GameDesign §4.2): with auto-skip on, a unit with nothing meaningful to do (`ActionFilter`) waits without asking, and a queued action plays at its unit's slot if it's still legal then.
+- **No fog in the MVP** (GameDesign §6.1). Per-player event filtering (hiding events, not just renaming ids) goes into the host's projection step when fog arrives.
 
 ## 3. Networking
 

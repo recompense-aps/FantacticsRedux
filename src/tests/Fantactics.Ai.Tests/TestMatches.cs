@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Fantactics.Ai.Profiles;
 using Fantactics.Core;
+using Fantactics.Core.Players;
 using Fantactics.Core.Records;
 using Fantactics.Core.Rules;
 

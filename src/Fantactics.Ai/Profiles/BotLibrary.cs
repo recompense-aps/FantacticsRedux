@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Fantactics.Core.Players;
 using Fantactics.Core.Rules;
 using Fantactics.Core.Serialization;
 

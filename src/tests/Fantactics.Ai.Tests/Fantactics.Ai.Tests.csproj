@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Fantactics.Core\Fantactics.Core.csproj" />
     <ProjectReference Include="..\..\Fantactics.Ai\Fantactics.Ai.csproj" />
+    <ProjectReference Include="..\..\Fantactics.Protocol\Fantactics.Protocol.csproj" />
   </ItemGroup>
 
 </Project>

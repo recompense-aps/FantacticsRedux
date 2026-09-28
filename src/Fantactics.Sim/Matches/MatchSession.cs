@@ -3,6 +3,7 @@ using Fantactics.Core;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Events;
+using Fantactics.Core.Players;
 using Fantactics.Core.Records;
 using Fantactics.Core.Rules;
 using Fantactics.Core.State;
@@ -104,9 +105,7 @@ public sealed class MatchSession
             int seed = unchecked((int)(Setup.Seed ^ ((ulong)(_commands.Count + 1) * 0x9E3779B97F4A7C15UL)))
                 ^ (int)decision.Seat;
             IPlayerAgent agent = BotFactory.Create(KindOf(decision.Seat).BotName ?? "", _rules, seed);
-            LegalActions legal = LegalActions.For(State, decision.Seat)
-                ?? throw new SimException($"No legal options for bot decision {decision}.");
-            ICommand command = agent.Decide(PlayerView.Project(State, decision.Seat), decision, legal);
+            ICommand command = agent.DecideFor(State, decision.Seat);
             if (Submit(decision.Seat, command, note: null) is Rejected rejected)
             {
                 throw new SimException($"Bot {decision.Seat} made an illegal move: {rejected.Violation.Message}");

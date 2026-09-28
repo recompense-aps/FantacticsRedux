@@ -4,6 +4,7 @@ using Fantactics.Ai.Profiles;
 using Fantactics.Core;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
+using Fantactics.Core.Players;
 using Fantactics.Core.Rules;
 using Fantactics.Core.Scenarios;
 using Fantactics.Core.Serialization;
@@ -94,7 +95,9 @@ public class TacticalAgentTests
 
         Assert.Equal(state.Turn, belief.Turn);
         Assert.Equal(state.Phase, belief.Phase);
-        Assert.Equal(state.FieldUnits, belief.FieldUnits);
+        Assert.Equal(
+            state.FieldUnits.Select(unit => (unit.Owner, unit.Type, unit.Position, unit.Hp)).Order(),
+            belief.FieldUnits.Select(unit => (unit.Owner, unit.Type, unit.Position, unit.Hp)).Order());
         Assert.Equal(UnitRules.ArmyValue(state, Seat.P2), UnitRules.ArmyValue(belief, Seat.P2));
         Assert.Equal(UnitRules.ArmyValue(state, Seat.P1), UnitRules.ArmyValue(belief, Seat.P1));
         Assert.Equal(
@@ -193,8 +196,7 @@ public class TacticalAgentTests
     private static ICommand Decide(GameState state, Seat seat)
     {
         TacticalAgent agent = new(BotLibrary.Profile("captain"), RulesConfig.Default, seed: 1);
-        LegalActions legal = LegalActions.For(state, seat) ?? throw new InvalidOperationException("Nothing to decide.");
-        return agent.Decide(PlayerView.Project(state, seat), legal.Decision, legal);
+        return agent.DecideFor(state, seat);
     }
 
     private static GameState Accept(GameState state, Seat seat, ICommand command) =>

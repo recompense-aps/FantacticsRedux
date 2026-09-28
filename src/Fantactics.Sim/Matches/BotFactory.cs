@@ -1,5 +1,6 @@
 using Fantactics.Ai;
 using Fantactics.Ai.Profiles;
+using Fantactics.Core.Players;
 using Fantactics.Core.Rules;
 
 namespace Fantactics.Sim.Matches;

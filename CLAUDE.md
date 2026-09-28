@@ -8,10 +8,10 @@ All code lives under `src/`; the repo root holds only docs and config.
 
 - `src/Fantactics.sln`
 - `src/Fantactics.Core`: game rules and state. Must not reference Godot or networking.
-- `src/Fantactics.Protocol`: wire DTOs shared by client and server.
+- `src/Fantactics.Protocol`: wire DTOs shared by client and server, and `IGameConnection` (the client's only link to a match) with its in-process `LocalMatch`. Core's `MatchHost` is the match wrapper behind it (TechnicalDesign §2.4).
 - `src/Fantactics.Server`: ASP.NET Core + SignalR server.
 - `src/Fantactics.Client`: Godot project (`project.godot` lives here).
-- `src/Fantactics.Ai`: computer players (`IPlayerAgent`, `TacticalAgent`, `RandomAgent`) and `MatchRunner` for in-memory matches. References Core only. Bot profiles and difficulty presets are embedded JSON in `Profiles/Data/`; bots are named `profile[@difficulty]` (e.g. `captain@easy`).
+- `src/Fantactics.Ai`: computer players (`TacticalAgent`, `RandomAgent`, implementing Core's `IPlayerAgent`) and `MatchRunner` for in-memory matches. References Core only. Bot profiles and difficulty presets are embedded JSON in `Profiles/Data/`; bots are named `profile[@difficulty]` (e.g. `captain@easy`).
 - `src/Fantactics.Sim`: the `fantactics-sim` CLI (file-backed matches for LLM/human seats, bot tournaments). See `notes/design/Simulation.md` §6.
 - `src/tests/Fantactics.Core.Tests`: xUnit rules tests for Core (built with `ScenarioBuilder`).
 - `src/tests/Fantactics.Ai.Tests`: fuzz, determinism, replay, and legal-actions agreement tests.

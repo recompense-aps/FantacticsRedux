@@ -36,6 +36,13 @@ public sealed record LegalActions(
             _ => null,
         };
 
+    /// <summary>
+    /// Like <see cref="For"/>, but with <paramref name="seat"/>'s own unit ids (<see cref="ViewIds"/>), to go with
+    /// <see cref="PlayerView.Project"/>. Translate a chosen command back with <see cref="ViewIds.ToEngine(ICommand)"/>.
+    /// </summary>
+    public static LegalActions? ForView(GameState state, Seat seat) =>
+        For(state, seat) is LegalActions legal ? ViewIds.For(state, seat).ToView(legal) : null;
+
     private static DraftOptions DraftOptionsFor(GameState state, Seat seat)
     {
         string race = state.Players[seat].Race;

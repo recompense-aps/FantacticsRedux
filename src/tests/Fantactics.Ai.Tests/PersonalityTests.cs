@@ -3,6 +3,7 @@ using Fantactics.Ai.Profiles;
 using Fantactics.Core;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
+using Fantactics.Core.Players;
 using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
@@ -96,8 +97,7 @@ public class PersonalityTests
     private static ICommand Decide(string bot, GameState state, Seat seat)
     {
         TacticalAgent agent = new(BotLibrary.Profile(bot), RulesConfig.Default, seed: 1);
-        LegalActions legal = LegalActions.For(state, seat) ?? throw new InvalidOperationException("Nothing to decide.");
-        return agent.Decide(PlayerView.Project(state, seat), legal.Decision, legal);
+        return agent.DecideFor(state, seat);
     }
 
     private static GameState Accept(GameState state, Seat seat, ICommand command) =>

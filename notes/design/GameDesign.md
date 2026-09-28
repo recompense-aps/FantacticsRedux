@@ -135,7 +135,7 @@ A unit takes exactly **one** of:
 
 - Hit and run: how far can the unit move after acting (1–2 tiles?), does zone of control stop it, and is it too strong a kiting tool for elves?
 - Does Delay give up the Held/Braced initiative bonus? (It shouldn't matter, since delayed units go last anyway, unless several units delay.)
-- Should the UI let a player queue actions for several units ahead of their slots, or always prompt slot by slot?
+- ~~Should the UI let a player queue actions for several units ahead of their slots, or always prompt slot by slot?~~ Both, as options (decided 2026-09-28): with **auto-skip** on, units with nothing meaningful to do (only Wait or Delay, or an ability with no effect) wait without asking, and a player may **queue** an action for a unit that hasn't acted yet; it plays when the slot comes up if it's still legal, otherwise the player is asked. Queued actions expire at the end of the turn. Neither changes the rules: they submit ordinary commands.
 
 ### 4.3 Combat (proposed)
 
@@ -390,7 +390,7 @@ A strong contrast to prove out the core systems: **few, fragile, ranged units th
 **Open for this matchup:**
 
 - The Elf mage ability is still undefined. Options include growing forest tiles (mirroring the Dwarf mountain mage) or rooting/entangling units.
-- Is forest invisibility in the MVP? It needs per-player views of the state, which the server design supports, but it adds scope.
+- ~~Is forest invisibility in the MVP?~~ No (decided 2026-09-28): the MVP has full visibility on the field. The client draws only from per-player views, so fog and invisibility can come later without a rewrite.
 - Army sizes: how many goblins per elf keeps it balanced? Now set by the draft budget and starting cap (§4.4).
 
 ## 7. Systems (later)
@@ -459,3 +459,4 @@ Answer inline or move decisions into the [Decision Log](#decision-log).
 | 2026-09-27 | Engine edge cases confirmed: clashes are pure fighting (no on-hit effects); paths may enter an enemy's current tile; friendly back-up cascades; Slippery always retreats; Braced range is 1 to max range; Mend targets allies only; same-tile arrivals clash | Found while building the engine and fuzzing it; see §4.1, §4.3, §4.4 and RacesAndUnits §3.2, §4.1 |
 | 2026-09-27 | Headless simulation and LLM play: matches run in memory on a deterministic Core engine; bots in `Fantactics.Ai`; LLMs play through a file-backed `fantactics-sim` CLI | Bots only see a player view; match records are JSON (seed + command log + state hashes); the CLI prints TOON for LLM seats to save tokens; see [Simulation](Simulation.md) |
 | 2026-09-28 | Goblins get the Wolf Rider (Cost 4, HP 7, Atk 4, Mv 7, Init 6, Bloodthirst 1, Reckless) | Bot tournaments showed Elves winning 78% of Captain mirrors. Goblin buffs beat an Archer nerf, and closing the gap beat shooting back or armoring up; the Wolf Rider brought Elves to 48% (Simulation §10). Rules 0.4.0 |
+| 2026-09-28 | Before the Godot client: action-phase auto-skip plus queued actions; no forest invisibility in the MVP; the Mauler keeps its name | Auto-skip and queuing are host features, not rules; see §4.2, §6.1, and TechnicalDesign §2.4 |

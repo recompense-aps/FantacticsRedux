@@ -6,6 +6,7 @@ using Fantactics.Ai.Profiles;
 using Fantactics.Core;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
+using Fantactics.Core.Players;
 using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 

@@ -67,9 +67,11 @@ internal static class DraftRules
             }
         }
 
+        ImmutableSortedDictionary<int, Unit> created = units.ToImmutable();
         return state with
         {
-            Units = units.ToImmutable(),
+            Units = created,
+            Owners = state.Owners.SetItems(created.Select(pair => KeyValuePair.Create(pair.Key, pair.Value.Owner))),
             NextUnitId = nextId,
             PendingOrders = ImmutableSortedDictionary<Seat, ICommand>.Empty,
             Phase = Phase.Placement,

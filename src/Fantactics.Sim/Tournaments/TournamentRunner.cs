@@ -4,6 +4,7 @@ using Fantactics.Ai.Profiles;
 using Fantactics.Core;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Events;
+using Fantactics.Core.Players;
 using Fantactics.Core.Records;
 using Fantactics.Core.Rules;
 using Fantactics.Core.State;

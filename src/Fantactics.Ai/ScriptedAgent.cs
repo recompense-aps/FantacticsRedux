@@ -1,5 +1,6 @@
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
+using Fantactics.Core.Players;
 
 namespace Fantactics.Ai;
 

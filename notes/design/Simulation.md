@@ -69,9 +69,9 @@ The dependency rule still holds: Core references nothing, and nothing references
 
 ## 4. Computer Players (`Fantactics.Ai`)
 
-- **`IPlayerAgent.Decide(PlayerView view, Decision decision, LegalActions legal) → ICommand`.** It's synchronous and pure CPU, and it never receives a `GameState`.
+- **`IPlayerAgent.Decide(PlayerView view, Decision decision, LegalActions legal) → ICommand`.** It's synchronous and pure CPU, and it never receives a `GameState`. The interface lives in Core (`Fantactics.Core.Players`, moved 2026-09-28) so the local match host can drive bots without referencing Ai. Its view and options use per-player ids; drivers call it through `agent.DecideFor(state, seat)`, which translates the answer back to engine ids.
 - **`MatchRunner`** is a pull loop: it asks each seat's agent for its pending decision, calls `Apply`, and repeats until `MatchOver`. It returns a `MatchResult` (winner, end reason Rout / TurnLimit / Draw, turns played, the full `MatchRecord`). An optional per-step observer hooks in invariant checks or logging.
-- **Humans don't go through `IPlayerAgent`.** The UI and network submit commands to the push-based `Match` wrapper that the server and client host. `MatchRunner` is just another driver of the same engine.
+- **Humans don't go through `IPlayerAgent`.** The UI and network submit commands to the push-based `MatchHost` that the server and client host (TechnicalDesign §2.4). `MatchRunner` is just another driver of the same engine.
 
 **Bots, by phase:**
 
@@ -270,7 +270,7 @@ Invariants checked in layer 3:
 2. What tournament scale do we need (games per minute), and will Core need profiling for it?
 3. How should LLM playtest findings feed into balance work? A structured `RULES?` report format?
 4. ~~The draft uses `--json` for now. Does it deserve its own grammar?~~ It has one: `--draft "Archer Archer Ranger | Scout"`.
-5. Enemy unit ids in `PlayerView` are engine ids, which are assigned in draft order, so the first enemy id reveals how many units the other player drafted. The CLI hides this behind handles; the server will need the same before fog of war.
+5. ~~Enemy unit ids in `PlayerView` are engine ids, which reveal draft sizes.~~ Fixed 2026-09-28: views, legal options, and events use per-player ids (`ViewIds`, TechnicalDesign §2.4); the CLI's handles follow the same order.
 
 ## 10. Playtest Log
 

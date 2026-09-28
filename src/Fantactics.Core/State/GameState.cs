@@ -34,6 +34,15 @@ public sealed record GameState(
     int NextUnitId,
     MatchOutcome? Outcome)
 {
+    /// <summary>The owner of every unit ever created, including dead ones (for stable per-player ids).</summary>
+    public ImmutableSortedDictionary<int, Seat> Owners { get; init; } = ImmutableSortedDictionary<int, Seat>.Empty;
+
+    /// <summary>
+    /// Every unit that has been on the field, in the order it first appeared. Players identify enemy units by this
+    /// order (see <see cref="Engine.ViewIds"/>), so ids never reveal the size of the enemy's draft or reserve.
+    /// </summary>
+    public ImmutableArray<int> FieldOrder { get; init; } = [];
+
     /// <summary>Units on the map, by id.</summary>
     [JsonIgnore]
     public IEnumerable<Unit> FieldUnits => Units.Values.Where(unit => unit.IsOnField);
@@ -44,8 +53,16 @@ public sealed record GameState(
     /// <summary>The definition of <paramref name="unit"/>'s type.</summary>
     public UnitDefinition DefinitionOf(Unit unit) => Rules.Units[unit.Type];
 
-    /// <summary>Returns a copy with <paramref name="unit"/> added or replaced.</summary>
-    public GameState WithUnit(Unit unit) => this with { Units = Units.SetItem(unit.Id, unit) };
+    /// <summary>
+    /// Returns a copy with <paramref name="unit"/> added or replaced, recording its owner and, the first time it's
+    /// on the field, its place in <see cref="FieldOrder"/>.
+    /// </summary>
+    public GameState WithUnit(Unit unit) => this with
+    {
+        Units = Units.SetItem(unit.Id, unit),
+        Owners = Owners.ContainsKey(unit.Id) ? Owners : Owners.Add(unit.Id, unit.Owner),
+        FieldOrder = unit.IsOnField && !FieldOrder.Contains(unit.Id) ? FieldOrder.Add(unit.Id) : FieldOrder,
+    };
 
     /// <summary>Returns a copy with <paramref name="player"/> replaced.</summary>
     public GameState WithPlayer(PlayerState player) => this with { Players = Players.SetItem(player.Seat, player) };

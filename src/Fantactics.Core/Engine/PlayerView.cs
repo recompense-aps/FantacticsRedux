@@ -7,7 +7,8 @@ namespace Fantactics.Core.Engine;
 
 /// <summary>
 /// What one seat is allowed to see (Simulation §2). Bots only ever get this, never the full state. Hidden: the
-/// opponent's pending orders, draft, unplaced units, and reserve composition (only its value is shown).
+/// opponent's pending orders, draft, unplaced units, and reserve composition (only its value is shown). Units are
+/// named with the seat's own ids (<see cref="ViewIds"/>), never engine ids, which would reveal draft sizes.
 /// </summary>
 /// <param name="Seat">The viewing seat.</param>
 /// <param name="Turn">Current turn.</param>
@@ -36,8 +37,11 @@ public sealed record PlayerView(
     /// <summary>Projects the full state down to what <paramref name="seat"/> may see.</summary>
     public static PlayerView Project(GameState state, Seat seat)
     {
+        ViewIds ids = ViewIds.For(state, seat);
         ImmutableArray<Unit> units = state.Units.Values
             .Where(unit => unit.Owner == seat || unit.IsOnField)
+            .Select(ids.ToView)
+            .OrderBy(unit => unit.Id)
             .ToImmutableArray();
         ImmutableSortedDictionary<Seat, PlayerSummary> players = state.Players.Values
             .ToImmutableSortedDictionary(
@@ -59,9 +63,9 @@ public sealed record PlayerView(
             state.Map,
             units,
             players,
-            state.TurnState,
-            state.PendingOrders.GetValueOrDefault(seat),
-            GameEngine.PendingDecisions(state),
+            ids.ToView(state.TurnState),
+            state.PendingOrders.GetValueOrDefault(seat) is ICommand mine ? ids.ToView(mine) : null,
+            [.. GameEngine.PendingDecisions(state).Select(ids.ToView)],
             state.Outcome);
     }
 }

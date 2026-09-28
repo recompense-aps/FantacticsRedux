@@ -28,18 +28,22 @@ public static class ViewBuilder
         GameState state = session.State;
         PlayerView view = PlayerView.Project(state, viewer);
         UnitHandles handles = session.HandlesFor(viewer);
+        ViewIds ids = ViewIds.For(state, viewer);
+
+        // The view carries per-player ids; handles are keyed by engine ids.
+        string Handle(int viewId) => handles.Of(ids.ToEngine(viewId));
 
         ImmutableArray<UnitRow> units = view.Units
             .Where(unit => unit.IsOnField)
             .OrderBy(unit => unit.Owner == viewer ? 0 : 1)
-            .ThenBy(unit => handles.Of(unit.Id).Length)
-            .ThenBy(unit => handles.Of(unit.Id), StringComparer.Ordinal)
-            .Select(unit => Row(state, view, unit, handles))
+            .ThenBy(unit => Handle(unit.Id).Length)
+            .ThenBy(unit => Handle(unit.Id), StringComparer.Ordinal)
+            .Select(unit => Row(state, view, unit, Handle))
             .ToImmutableArray();
         ImmutableArray<ReserveRow> reserve = view.Units
             .Where(unit => unit.Owner == viewer && !unit.IsOnField)
             .Select(unit => new ReserveRow(
-                handles.Of(unit.Id),
+                Handle(unit.Id),
                 unit.Type,
                 unit.Location == UnitLocation.Reserve ? "reserve" : "unplaced",
                 state.DefinitionOf(unit).Cost,
@@ -56,10 +60,10 @@ public static class ViewBuilder
             Pending(GameEngine.PendingDecisionFor(state, viewer), handles),
             WaitingFor(view),
             Legend,
-            includeMap ? Rows(view, viewer, handles) : null,
+            includeMap ? Rows(view, viewer, Handle) : null,
             units,
             reserve,
-            Order(view, handles),
+            Order(view, Handle),
             Recent(session, viewer, handles),
             Outcome(view.Outcome));
     }
@@ -99,7 +103,7 @@ public static class ViewBuilder
         _ => $"draw ({outcome.Reason})",
     };
 
-    private static UnitRow Row(GameState state, PlayerView view, Unit unit, UnitHandles handles)
+    private static UnitRow Row(GameState state, PlayerView view, Unit unit, Func<int, string> handle)
     {
         UnitDefinition definition = state.DefinitionOf(unit);
         IEnumerable<string> statuses = unit.Statuses
@@ -115,7 +119,7 @@ public static class ViewBuilder
             .Where(flag => flag.On)
             .Select(flag => flag.Flag);
         return new UnitRow(
-            handles.Of(unit.Id),
+            handle(unit.Id),
             unit.Owner == view.Seat ? "you" : "enemy",
             unit.Type,
             unit.Position.X,
@@ -149,13 +153,13 @@ public static class ViewBuilder
         _ => new PendingInfo(KindOf(decision), null),
     };
 
-    private static ImmutableArray<string> Rows(PlayerView view, Seat viewer, UnitHandles handles)
+    private static ImmutableArray<string> Rows(PlayerView view, Seat viewer, Func<int, string> handle)
     {
         Dictionary<Point, char> overlay = view.Units
             .Where(unit => unit.IsOnField)
             .ToDictionary(
                 unit => unit.Position,
-                unit => handles.Of(unit.Id) is { Length: 1 } handle ? handle[0] : '@');
+                unit => handle(unit.Id) is { Length: 1 } letter ? letter[0] : '@');
         return Enumerable.Range(0, view.Map.Height)
             .Select(y => new string(Enumerable.Range(0, view.Map.Width)
                 .Select(x => new Point(x, y))
@@ -166,17 +170,17 @@ public static class ViewBuilder
             .ToImmutableArray();
     }
 
-    private static string? Order(PlayerView view, UnitHandles handles)
+    private static string? Order(PlayerView view, Func<int, string> handle)
     {
         if (view.Phase != Phase.Action)
         {
             return null;
         }
 
-        string queue = string.Join(" ", view.TurnState.ActionQueue.Select(handles.Of));
+        string queue = string.Join(" ", view.TurnState.ActionQueue.Select(handle));
         return view.TurnState.DelayedQueue.IsEmpty
             ? queue
-            : $"{queue} | delayed: {string.Join(" ", view.TurnState.DelayedQueue.Select(handles.Of))}";
+            : $"{queue} | delayed: {string.Join(" ", view.TurnState.DelayedQueue.Select(handle))}";
     }
 
     private static ImmutableArray<EventLine> Recent(MatchSession session, Seat viewer, UnitHandles handles)
