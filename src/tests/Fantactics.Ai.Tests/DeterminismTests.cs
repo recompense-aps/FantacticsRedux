@@ -30,7 +30,7 @@ public class DeterminismTests
         MatchResult result = Play(11);
 
         MatchRecord record = result.Record ?? throw new InvalidOperationException("The runner kept no record.");
-        MatchRecord parsed = MatchRecord.FromJson(record.ToJson());
+        MatchRecord parsed = MatchRecord.FromJson(record.ToJson(), RulesConfig.Default);
         ReplayResult replay = MatchReplay.Run(RulesConfig.Default, parsed);
 
         Assert.Null(replay.DriftAtSeq);

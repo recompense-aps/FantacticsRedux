@@ -36,13 +36,15 @@ All code lives under `src/` (solution at `src/Fantactics.sln`); the repo root ho
 | Project | Path | Type | Depends on | Purpose |
 |---|---|---|---|---|
 | `Fantactics.Core` | `src/Fantactics.Core` | Class library | — | Game state, rules, map, units, serializable commands and events, rules config loading, seeded RNG. **No Godot or network references.** |
-| `Fantactics.Protocol` | `src/Fantactics.Protocol` | Class library | Core | Transport envelopes (match/seat addressing, lobby messages) around Core's commands and events, shared by client and server |
+| `Fantactics.Protocol` | `src/Fantactics.Protocol` | Class library | Core | Transport envelopes around Core's commands and events, shared by client and server; `IGameConnection` and `LocalMatch` (§2.4); match files (`MatchFiles`, `SharedMatchFile`) shared with the Sim CLI (§2.5) |
 | `Fantactics.Server` | `src/Fantactics.Server` | ASP.NET Core app | Core, Protocol | Hosts matches (SignalR hub at `/game`), lobbies, LAN discovery responder |
-| `Fantactics.Client` | `src/Fantactics.Client` | Godot .NET project (`project.godot` lives here) | Core, Protocol, Ai | Rendering, input, audio, UI; talks to a match only through `IGameConnection` (§2.4) |
+| `Fantactics.Client` | `src/Fantactics.Client` | Godot .NET project (`project.godot` lives here) | Core, Protocol, Ai, Client.Logic | Scenes, rendering, input, audio; talks to a match only through `IGameConnection` (§2.4, §2.5) |
+| `Fantactics.Client.Logic` | `src/Fantactics.Client.Logic` | Class library | Core, Protocol | Presentation logic without Godot: input builders, playback timeline, board model, session, launch options (§2.5) |
 | `Fantactics.Ai` | `src/Fantactics.Ai` | Class library | Core | Computer players (bots implementing Core's `IPlayerAgent`) and `MatchRunner`; used by Client, Server, and Sim. See [Simulation §3](Simulation.md#3-projects) |
 | `Fantactics.Sim` | `src/Fantactics.Sim` | Console app | Core, Ai, Protocol | `fantactics-sim`: file-backed match CLI for LLM play, tournaments; built on CommandLineUtils (§2.3). See [Simulation §6](Simulation.md#6-llm-play-via-fantactics-sim) |
 | `Fantactics.Core.Tests` | `src/tests/Fantactics.Core.Tests` | xUnit | Core | Rules tests |
 | `Fantactics.Ai.Tests` | `src/tests/Fantactics.Ai.Tests` | xUnit | Core, Ai | Fuzzing, determinism, replay, and bot tests |
+| `Fantactics.Client.Logic.Tests` | `src/tests/Fantactics.Client.Logic.Tests` | xUnit | Client.Logic, Ai | Input builders fuzzed against bot-match states, playback coverage, sessions |
 | `Fantactics.Sim.Tests` | `src/tests/Fantactics.Sim.Tests` | xUnit | Sim, Core | CLI grammar and in-process CLI tests |
 
 Dependency rule: nothing references `Fantactics.Client`, `Fantactics.Server`, or `Fantactics.Sim`, and `Fantactics.Core` references nothing.
@@ -86,6 +88,34 @@ Settled before starting the Godot client, so the client never depends on engine 
 - **Auto-skip and queued actions** are host features, not rules (GameDesign §4.2): with auto-skip on, a unit with nothing meaningful to do (`ActionFilter`) waits without asking, and a queued action plays at its unit's slot if it's still legal then.
 - **No fog in the MVP** (GameDesign §6.1). Per-player event filtering (hiding events, not just renaming ids) goes into the host's projection step when fog arrives.
 
+### 2.5 Client Structure (decided 2026-09-28)
+
+The Godot project is a thin presentation layer. Everything about playing a match that doesn't need a scene tree lives in **`Fantactics.Client.Logic`** (plain C#, Core + Protocol, xUnit-tested in `Fantactics.Client.Logic.Tests`):
+
+| Folder | Contents |
+|---|---|
+| `Input/` | `MoveOrderBuilder` (click a unit, then a highlighted destination; the engine's cheapest path; arrivals for reserve units; joint problems before Submit) and `ActionPicker` (click an enemy to attack, 1–9 for abilities, Wait/Delay). Both build only from `LegalActions`, so they can only produce legal commands. |
+| `Playback/` | `TimelineBuilder`: an update's events → `Beat`s of `Step`s (one movement tick's steps play together). Every event type maps to a step or is explicitly ignored, and a test enforces that. |
+| `Board/` | `BoardModel` (tokens, tile highlights, order arrows, hover hint: a pure function of the view and input state) and `HudText`. |
+| `Session/` | `ClientSession` (a connection per seat, which seat is shown, hotseat switching, and the quick start where a bot drafts and places for human seats until the draft screens exist) and `SaveLocations`. |
+| `Launch/`, `Settings/` | `LaunchArgs` (below) and `ClientSettings` (speed, auto-skip, curtain; JSON under `user://`). |
+
+**Godot side** (`src/Fantactics.Client`, folders by feature, scene and script side by side):
+
+```
+App/Main.tscn            root: launch options, settings, starts or loads the match, --autoplay
+Common/                  GodotConversions (Point <-> Vector2I, tile size 32), MainThread
+Match/MatchScreen.tscn   one match: queues updates, plays them, then snaps board and HUD to the view
+Match/Board/             BoardView (TileMapLayer + BoardOverlay + tokens), UnitToken, PlaceholderTiles
+Match/Hud/               MatchHud (status, prompt, hint, action bar, reserve, Submit, speed, banner)
+Match/Playback/          EventPlayer (tweens per beat, speed-scaled, Space skips)
+```
+
+- **Playback never has the final word.** After an update's beats play, the board snaps to the update's `PlayerView`, so a wrong or missing animation can't leave the board in a wrong state. Skipping just stops early.
+- **Placeholder art:** terrain is a runtime-built `TileSet` (one flat color per `Terrain`, atlas tile = terrain index), and units are drawn discs. Real art swaps the `TileSet` and token scene without changing code that uses them.
+- **Launch options** (after `--` on the Godot command line) skip the menu: `--new`/`--p1`/`--p2 <human|llm|bot:spec>`, `--p1-race`, `--p2-race`, `--map`, `--seed`, `--draft-as <profile|none>`, `--load <file> [--as P1]`, `--out <file>`, `--saves <dir>`, `--speed <n>`, `--autoplay` (bots play to the end, then quit with 0; 1 on failure, 2 on timeout: the headless smoke test), and `--screenshot <png>` (save the screen after a few seconds and quit, for checking layout without looking).
+- **LLM seats:** when a seat is `llm` (or `--out` is given), the match runs on a shared file (`SharedMatchFile`, Protocol): every local operation takes the file's lock, catches up on commands the CLI appended (`MatchHost.CatchUp`, which publishes them so they animate), and saves; a 500 ms poll picks up the LLM's moves in between. If the file stops extending the match, syncing stops with a warning instead of guessing.
+
 ## 3. Networking
 
 ### 3.1 Requirements (turn-based)
@@ -122,10 +152,12 @@ Settled before starting the Godot client, so the client never depends on engine 
 3. UDP broadcast discovery across two machines on the LAN (Windows Firewall prompts).
 4. If mobile or web is in scope: check whether Godot C# supports those export targets and the SignalR client in 4.7.2.
 
-## 4. Persistence — TBD
+## 4. Persistence (decided 2026-09-28)
 
-- Save/resume a match = snapshot + command log.
-- Replays from the command log.
+- **The save file is the match record** (Simulation §5, format 2): setup + command log, plus a `snapshot` of the whole `GameState` after the last command, and a `start` state when the match continued from a saved position. Godot saves and Sim match files are the same format, so either tool opens the other's files.
+- **Resuming** (`MatchResume`, `MatchHost.Resume`): keep the history when it replays with matching hashes and ends at the snapshot. Otherwise continue from the snapshot without the history and show a warning: after a rules change (the history no longer replays), or after the snapshot was edited by hand, which is how test positions are set up (save, edit HP/units/Command in the JSON, load). With no snapshot and a broken history, loading fails, as before.
+- **Rewind and branch:** `MatchRecord.Truncated(seq)` resumes from any earlier command; the client saves branches as `<name>.b<seq>.json`.
+- **Where:** in development the repo's `playtests/` folder (where the Sim and the LLM skill look), in exported builds `user://saves`, `--saves <dir>` overrides. Autosave each turn (planned for M2).
 - Online accounts/stats: out of scope until online play.
 
 ## 5. Open Technical Questions

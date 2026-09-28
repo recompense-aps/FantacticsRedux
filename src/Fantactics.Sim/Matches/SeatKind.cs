@@ -1,3 +1,4 @@
+using Fantactics.Ai;
 namespace Fantactics.Sim.Matches;
 
 /// <summary>Who plays a seat: <c>llm</c>, <c>human</c>, or <c>bot:&lt;name&gt;</c>.</summary>

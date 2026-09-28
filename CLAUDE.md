@@ -8,9 +8,10 @@ All code lives under `src/`; the repo root holds only docs and config.
 
 - `src/Fantactics.sln`
 - `src/Fantactics.Core`: game rules and state. Must not reference Godot or networking.
-- `src/Fantactics.Protocol`: wire DTOs shared by client and server, and `IGameConnection` (the client's only link to a match) with its in-process `LocalMatch`. Core's `MatchHost` is the match wrapper behind it (TechnicalDesign §2.4).
+- `src/Fantactics.Protocol`: wire DTOs shared by client and server, `IGameConnection` (the client's only link to a match) with its in-process `LocalMatch`, and match files (`MatchFiles`, `SharedMatchFile` for LLM seats) shared with the Sim CLI. Core's `MatchHost` is the match wrapper behind it (TechnicalDesign §2.4–2.5).
 - `src/Fantactics.Server`: ASP.NET Core + SignalR server.
-- `src/Fantactics.Client`: Godot project (`project.godot` lives here).
+- `src/Fantactics.Client`: Godot project (`project.godot` lives here). Scenes and nodes only; see Godot Conventions below.
+- `src/Fantactics.Client.Logic`: the client's presentation logic without Godot (input builders, playback timeline, board model, session, launch options), tested by `src/tests/Fantactics.Client.Logic.Tests`.
 - `src/Fantactics.Ai`: computer players (`TacticalAgent`, `RandomAgent`, implementing Core's `IPlayerAgent`) and `MatchRunner` for in-memory matches. References Core only. Bot profiles and difficulty presets are embedded JSON in `Profiles/Data/`; bots are named `profile[@difficulty]` (e.g. `captain@easy`).
 - `src/Fantactics.Sim`: the `fantactics-sim` CLI (file-backed matches for LLM/human seats, bot tournaments). See `notes/design/Simulation.md` §6.
 - `src/tests/Fantactics.Core.Tests`: xUnit rules tests for Core (built with `ScenarioBuilder`).
@@ -31,7 +32,9 @@ Core's rules data (unit stats, tunable numbers) is `src/Fantactics.Core/Rules/Da
 - Run server: `dotnet run --project src/Fantactics.Server`
 - Simulation CLI: `dotnet run --project src/Fantactics.Sim -- <command>` (e.g. `new --out playtests/m.json`, `run --p1 bot:captain --games 500 --threads 0`). To play a seat as an LLM, use the `play-fantactics` skill.
 - Re-import Godot assets headlessly: `<console binary> --headless --path src/Fantactics.Client --import`
-- Run the game: `<console binary> --path src/Fantactics.Client`
+- Run the game: `<console binary> --path src/Fantactics.Client`, with launch options after `--` (TechnicalDesign §2.5), e.g. `-- --p2 bot:captain@easy`, `-- --load playtests/x.json --as P1`, `-- --p2 llm --out playtests/x.json`.
+- Godot smoke test (bots play a match through the real scenes, exit 0): `<console binary> --headless --path src/Fantactics.Client -- --autoplay`
+- Check layout without looking: `<console binary> --path src/Fantactics.Client -- --p2 bot:captain --seed 3 --screenshot <png>`, then view the PNG.
 
 ## C# Conventions
 
@@ -62,6 +65,20 @@ Enforced by `src/.editorconfig` (formatter and IDE analyzers) and `src/Directory
       .ToList();
   ```
 - Member order: constants/static members, fields, constructors, properties, Godot overrides (`_Ready`, `_Process`, ...), public methods, then private methods.
+
+## Godot Conventions
+
+- **No rules or match logic in nodes.** Nodes render `Fantactics.Client.Logic` models and forward input to them. Anything testable without a scene tree goes in Client.Logic.
+- **Scenes for layout, code for behavior.** Each reusable piece is a `.tscn` with a same-named script at its root, in the same folder, grouped by feature (`App/`, `Match/Board/`, `Match/Hud/`, …). Layout and containers are set in the scene. Dynamic nodes (unit tokens, buttons built from options) are instanced from `PackedScene` exports or created in code.
+- **Node references through `[Export]` fields** assigned in the scene (`[Export] private BoardView _board = null!;`: the `null!` is fine here because Godot assigns exports before `_Ready`). No `GetNode("a/b/c")` string paths; `%UniqueName` only where an export isn't practical.
+- **Signals go up, calls go down.** Parents call methods on children. Children raise `[Signal] public delegate void XEventHandler(...)` and emit with `EmitSignal(SignalName.X, ...)`. Siblings never reference each other, and there's no global event bus. Plain C# events are for non-Node types (`IGameConnection`, `ClientSession`).
+- **No autoloads** unless justified. `Main` owns the services and passes them down with an `Initialize(...)` method called before the node enters the tree (nodes can't use constructor injection).
+- **Threading:** never touch a node off the main thread. Match updates and file-watcher callbacks arrive on worker threads; marshal them with `MainThread.Post` (`Callable.From(...).CallDeferred()`). Unsubscribe C# events in `_ExitTree`.
+- Scripts are `partial` classes whose name matches the file name (Godot requires it); namespaces follow folders (`Fantactics.Client.Match.Board`). Don't name a class like its own namespace's last part (`MatchHud` in `Match/Hud`, not `Hud`).
+- **Input goes through InputMap actions** defined in `project.godot` (`confirm`, `cancel`, `submit`, `wait_action`, `delay_action`, `ability_1`–`ability_9`, `skip_animation`, `quicksave`, `quickload`, `toggle_debug`, `queue_modifier`), never raw keycodes.
+- **Animation uses `Tween`s**, with durations multiplied by the speed setting; instant speed plays nothing. After playback the board always snaps to the authoritative view.
+- Core's `Point` converts to and from `Vector2I` only through `Common/GodotConversions`, which also holds the tile size (32).
+- Scene files may be written as text (omit `uid=` attributes); then run the headless `--import` so Godot generates the `.uid` files.
 
 ## Conventions
 

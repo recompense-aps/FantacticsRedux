@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text;
 using Fantactics.Core.Events;
 using Fantactics.Core.Geometry;
+using Fantactics.Core.Records;
 using Fantactics.Sim.Matches;
 
 namespace Fantactics.Sim.Views;

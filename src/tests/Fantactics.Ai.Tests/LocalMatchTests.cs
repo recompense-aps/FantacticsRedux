@@ -23,7 +23,7 @@ public class LocalMatchTests
     [InlineData(2)]
     public async Task HotseatWithAutoSkipPlaysToTheEndAndOnlyShowsSeatIds(int seed)
     {
-        LocalMatch match = new(RulesConfig.Default, TestMatches.Riverford((ulong)seed), new Dictionary<Seat, IPlayerAgent>());
+        LocalMatch match = Match((ulong)seed, "human", "human");
         List<IGameConnection> seats = [.. SeatExtensions.All.Select(match.Connect)];
         foreach (IGameConnection seat in seats)
         {
@@ -35,28 +35,24 @@ public class LocalMatchTests
 
         Assert.Empty(problems.Take(10));
         MatchRecord record = match.ToRecord();
-        Assert.Null(MatchReplay.Run(RulesConfig.Default, MatchRecord.FromJson(record.ToJson())).DriftAtSeq);
+        Assert.Null(MatchReplay.Run(RulesConfig.Default, MatchRecord.FromJson(record.ToJson(), RulesConfig.Default)).DriftAtSeq);
     }
 
     [Fact]
     public async Task AVsBotMatchPlaysToTheEnd()
     {
-        LocalMatch match = new(
-            RulesConfig.Default,
-            TestMatches.Riverford(3),
-            new Dictionary<Seat, IPlayerAgent> { [Seat.P2] = BotLibrary.Create("captain", RulesConfig.Default, 1) });
+        LocalMatch match = Match(3, "human", "bot:captain");
         await match.StartAsync();
 
         await PlayOut(match, [match.Connect(Seat.P1)], 3, (_, _) => { });
 
         Assert.True(match.IsOver);
-        Assert.Throws<ArgumentException>(() => match.Connect(Seat.P2));
     }
 
     [Fact]
     public async Task QueuedActionsPlayWhenTheirSlotComesUp()
     {
-        LocalMatch match = new(RulesConfig.Default, TestMatches.Riverford(4), new Dictionary<Seat, IPlayerAgent>());
+        LocalMatch match = Match(4, "human", "human");
         List<IGameConnection> seats = [.. SeatExtensions.All.Select(match.Connect)];
         Dictionary<Seat, RandomAgent> players = SeatExtensions.All.ToDictionary(seat => seat, seat => new RandomAgent((int)seat));
         (IGameConnection Seat, int UnitId)? queued = null;
@@ -103,6 +99,38 @@ public class LocalMatchTests
             updates,
             entry => entry.Seat == queuer.Seat && entry.Update.Events.Any(e => e is UnitWaited { UnitId: var id } && id == queuedUnit));
     }
+
+    [Fact]
+    public async Task ASavedMatchResumesBranchesAndCanBeHandedToBots()
+    {
+        LocalMatch original = Match(6, "human", "human");
+        List<IGameConnection> seats = [.. SeatExtensions.All.Select(original.Connect)];
+        Dictionary<Seat, RandomAgent> players = SeatExtensions.All.ToDictionary(seat => seat, seat => new RandomAgent((int)seat));
+        for (int step = 0; step < 40; step++)
+        {
+            IGameConnection owing = seats.First(seat => seat.Current.Legal is not null);
+            await owing.SubmitAsync(Decide(players[owing.Seat], owing.Current));
+        }
+
+        MatchRecord saved = MatchRecord.FromJson(original.ToRecord().ToJson(), RulesConfig.Default);
+        LocalMatch resumed = new(MatchHost.Resume(RulesConfig.Default, saved), TestMatches.CreateBot);
+        LocalMatch branch = original.Branch(20);
+
+        Assert.Null(resumed.ResumeWarning);
+        Assert.Equal(StateHash.Compute(original.State), StateHash.Compute(resumed.State));
+        Assert.Equal(20, branch.ToRecord().Commands.Length);
+
+        await resumed.SetControllerAsync(Seat.P1, SeatController.Bot("captain"));
+        await resumed.SetControllerAsync(Seat.P2, SeatController.Bot("bumble"));
+
+        Assert.True(resumed.IsOver);
+        Assert.Equal("bot:captain", resumed.ToRecord().Setup.Seats[Seat.P1]);
+    }
+
+    /// <summary>A Riverford match with the given seat labels (<c>human</c>, <c>bot:…</c>).</summary>
+    internal static LocalMatch Match(ulong seed, string p1, string p2) => new(
+        new MatchHost(RulesConfig.Default, TestMatches.Riverford(seed).WithSeats(p1, p2)),
+        TestMatches.CreateBot);
 
     private static async Task PlayOut(
         LocalMatch match,

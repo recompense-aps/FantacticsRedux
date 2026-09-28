@@ -1,0 +1,99 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Match/Hud/MatchHud.cs" id="1_hud"]
+
+[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_hint", "_actions", "_reserve", "_problems", "_submit", "_speed", "_banner")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_hud")
+_status = NodePath("Top/Status")
+_prompt = NodePath("Top/Prompt")
+_hint = NodePath("Bottom/Hint")
+_actions = NodePath("Bottom/Actions")
+_reserve = NodePath("Bottom/Reserve")
+_problems = NodePath("Bottom/Problems")
+_submit = NodePath("Bottom/Submit")
+_speed = NodePath("Bottom/Speed")
+_banner = NodePath("Banner")
+
+[node name="Top" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 4.0
+offset_right = -8.0
+offset_bottom = 52.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Status" type="Label" parent="Top"]
+layout_mode = 2
+text = "Status"
+
+[node name="Prompt" type="Label" parent="Top"]
+layout_mode = 2
+text = "Prompt"
+
+[node name="Bottom" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -44.0
+offset_right = -8.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Hint" type="Label" parent="Bottom"]
+layout_mode = 2
+size_flags_horizontal = 3
+clip_text = true
+
+[node name="Actions" type="HBoxContainer" parent="Bottom"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Reserve" type="HBoxContainer" parent="Bottom"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Problems" type="Label" parent="Bottom"]
+layout_mode = 2
+modulate = Color(1, 0.5, 0.5, 1)
+
+[node name="Submit" type="Button" parent="Bottom"]
+layout_mode = 2
+focus_mode = 0
+text = "Submit (Enter)"
+
+[node name="Speed" type="Button" parent="Bottom"]
+layout_mode = 2
+focus_mode = 0
+text = "Speed"
+
+[node name="Banner" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -30.0
+offset_right = 300.0
+offset_bottom = 30.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+vertical_alignment = 1

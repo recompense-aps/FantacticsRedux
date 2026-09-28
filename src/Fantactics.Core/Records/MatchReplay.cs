@@ -14,7 +14,7 @@ public static class MatchReplay
     /// <exception cref="InvalidOperationException">A recorded command is now rejected.</exception>
     public static ReplayResult Run(RulesConfig rules, MatchRecord record)
     {
-        GameState state = record.Setup.CreateInitialState(rules);
+        GameState state = record.StartState(rules);
         int? driftAt = null;
         foreach (RecordedCommand entry in record.Commands)
         {

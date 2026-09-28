@@ -33,6 +33,10 @@ Create a match if you weren't given one (defaults: P1 llm Elves, P2 bot:random G
 $SIM new --out playtests/match-1.json --p1 llm --p2 bot:random --seed 7
 ```
 
+If you're playing against a person in the Godot client, they start the game with `-- --p2 llm --out playtests/<name>.json`
+(or load a file with an `llm` seat) and give you the file; their seat is labeled `human`. Play exactly as below:
+`status --wait-for <your seat>` blocks while they think, and the client animates your moves as they land.
+
 For a real opponent, use a bot profile instead of `bot:random`, optionally with a difficulty: `--p2 bot:captain` or `--p2 bot:captain@hard` (difficulties: novice, easy, normal, hard, expert, master). Personalities: `captain` (balanced), `warden` (defensive), `berserker` (aggressive), `trickster` (baits, unpredictable), `bumble` (very weak).
 
 ## The loop

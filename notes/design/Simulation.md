@@ -95,7 +95,7 @@ A `MatchRecord` is a JSON file:
 
 ```json
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "rulesVersion": "0.1.0",
   "rulesConfigHash": "a41e…",
   "seed": 1234,
@@ -103,11 +103,14 @@ A `MatchRecord` is a JSON file:
              "seats": { "P1": "llm", "P2": "bot:random" } },
   "commands": [
     { "seq": 1, "seat": "P1", "command": { "$type": "SubmitMoveOrders", "...": "Core command" }, "stateHashAfter": "9f3c…", "note": "screen the forest" }
-  ]
+  ],
+  "start": null,
+  "snapshot": { "...": "the whole GameState after the last command" }
 }
 ```
 
-- **Replay** folds `Apply` over the commands, starting from the setup. A hash mismatch reports **rules drift** at that `seq`.
+- **Replay** folds `Apply` over the commands, starting from the setup (or from `start`, for a match continued from a saved position). A hash mismatch reports **rules drift** at that `seq`.
+- **Format 2 (2026-09-28)** added `start` and `snapshot`, so the record is also the save file (TechnicalDesign §4). Every save writes `snapshot`. Loading (`MatchResume`) keeps the history when it replays and ends at the snapshot. Otherwise it continues from the snapshot and drops the history, with a warning: when the rules changed (the history no longer replays), or when the snapshot was edited by hand (how to set up a test position). Format 1 files still load.
 - **Uses:** saves, reconnects, bug reports, and golden regression tests.
 - **`note`** is optional free text (a bot's or LLM's reasoning), kept for post-game review. It's never part of the opponent's view.
 - **Records stay JSON, not TOON (§6.2).** The LLM never reads the record (§6.1), so a compact format would save no tokens there. JSON also matches how Core commands serialize (System.Text.Json), diffs cleanly for golden replays, and any tool can read it.
@@ -129,11 +132,12 @@ A `MatchRecord` is a JSON file:
 | `act match.json --as P1 (--pick N \| --orders "<grammar>" \| --draft "<grammar>" \| --json '<command>') [--note "…"]` | Submit a decision. Prints the visible resulting events (including bot moves that followed), then **the seat's next view and options**, so a playing seat needs one call per decision. The map is included when the next decision is movement or placement. On failure it prints the `RuleViolation` instead. |
 | `log match.json --as P1 [--last N]` | That seat's event history |
 | `replay match.json [--as P1]` | Full history including every `--note`. Only allowed after the match ends. |
-| `run [--p1 bot:random] [--p2 bot:random] [--games 100] [--seed 1] [--map …] [--rules variant.json] [--threads N | --parallel] [--csv out.csv] [--out dir] [--p1-profile file.json] [--p2-profile file.json]` | Tournament (§7): win counts, P1's score rate with a 95% Wilson interval and a significance flag, end reasons, a **style fingerprint** per side (mean first-contact turn, games with no contact, first reserve arrival, objective points, damage dealt and taken, value destroyed), and damage/kills/deaths per unit type. The summary's size doesn't grow with `--games`. Per-game rows go to `--csv`; `--out` writes `games.csv`, `units.csv`, and `bots.csv`. `--p1-profile`/`--p2-profile` play a profile JSON file (same shape as `src/Fantactics.Ai/Profiles/Data/*.json`) instead of a built-in bot.| --parallel] [--csv out.csv]` | Tournament (§7): win counts, P1's score rate with a 95% Wilson interval and a significance flag, end reasons, average turns, and damage/kills/deaths per unit type. The summary's size doesn't grow with `--games`; per-game rows go to `--csv`. `--threads 0` (or `--parallel`) plays games on every core, and results are identical for any thread count. `--rules` plays a rules-config variant instead of the built-in rules; `src/Fantactics.Sim/Variants/pre-engagement.json` is the rule set before the 2026-09-27 engagement fixes. The summary shows a short hash of the rules played. |
+| `run [--p1 bot:random] [--p2 bot:random] [--games 100] [--seed 1] [--map …] [--rules variant.json] [--threads N | --parallel] [--csv out.csv] [--out dir] [--p1-profile file.json] [--p2-profile file.json]` | Tournament (§7): win counts, P1's score rate with a 95% Wilson interval and a significance flag, end reasons, a **style fingerprint** per side (mean first-contact turn, games with no contact, first reserve arrival, objective points, damage dealt and taken, value destroyed), and damage/kills/deaths per unit type. The summary's size doesn't grow with `--games`. Per-game rows go to `--csv`; `--out` writes `games.csv`, `units.csv`, and `bots.csv`. `--p1-profile`/`--p2-profile` play a profile JSON file (same shape as `src/Fantactics.Ai/Profiles/Data/*.json`) instead of a built-in bot. `--threads 0` (or `--parallel`) plays games on every core, and results are identical for any thread count. `--rules` plays a rules-config variant instead of the built-in rules; `src/Fantactics.Sim/Variants/pre-engagement.json` is the rule set before the 2026-09-27 engagement fixes. The summary shows a short hash of the rules played. |
 
 - **Exit codes:** 0 = ok, 1 = error, 2 = rule violation or bad order syntax, 3 = not your decision (or replay while running).
 - **Output format:** every command takes `--format text|toon|json` (§6.2). The default is `text`; the play skill always passes `toon`.
 - **Bot seats auto-advance.** After any `act`, the CLI runs bot decisions in-process until a non-bot seat owes a decision or the match ends. An LLM playing a bot then needs one `act` per LLM decision.
+- **Shared with the Godot client (decided 2026-09-28).** The CLI and the client host matches on the same Core `MatchHost` and read and write the same files (Protocol's `MatchFiles`, same lock). A seat labeled `human` is a person in the Godot client: it plays through the file and watches it for the LLM's moves (TechnicalDesign §2.5). Bots get a fresh agent per decision seeded from the match seed and the command number (`BotSeeds`), so whichever process plays a bot seat makes the same move. Either side can relabel a seat mid-match (e.g. hand it to a bot), and the other picks the new label up from the file.
 - **Hidden information is on the honor system.** The file contains everything, including the opponent's pending hidden orders. LLM seats use only `status`, `view`, `legal`, `act`, and `log`, and never read the file. That's fine for playtesting; real enforcement is the server's job.
 
 **Input forms:**
@@ -231,7 +235,7 @@ One Claude Code session acts as **referee**:
 2. Each subagent plays **autonomously**: `status --wait-for <seat>` blocks until its seat owes a decision, then it acts, and repeats until the match ends. (The first design had the referee message a subagent for every decision, but action slots alternate between seats many times per turn, so that would take hundreds of round trips.)
 3. When both finish, the referee runs `replay` and summarizes the game, including every `RULES?` note.
 
-The same pattern covers LLM vs. bot (only one subagent is needed, or the session plays the seat itself) and human vs. LLM (the human uses `--format text` for their own seat).
+The same pattern covers LLM vs. bot (only one subagent is needed, or the session plays the seat itself) and human vs. LLM. The human plays in the Godot client on the same file (`--new --p2 llm --out playtests/x.json`, or `--load` a file with an `llm` seat), or uses `--format text` for their own seat.
 
 ## 7. Testing Strategy
 
