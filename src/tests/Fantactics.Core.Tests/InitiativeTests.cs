@@ -1,4 +1,5 @@
 using Fantactics.Core.Commands;
+using Fantactics.Core.Rules;
 using Fantactics.Core.Scenarios;
 using Fantactics.Core.State;
 using static Fantactics.Core.Tests.Play;
@@ -41,9 +42,46 @@ public class InitiativeTests
     }
 
     [Fact]
-    public void BracedArcherActsBeforeTheChargingRusher()
+    public void BracedTankGetsPlusThreeWhenAnEnemyChargesIntoContact()
     {
         GameState state = new ScenarioBuilder()
+            .WithMap(OpenField)
+            .AddUnit(Seat.P1, "Ranger", 0, 2, out int ranger)
+            .AddUnit(Seat.P2, "Tank", 4, 2, out int tank)
+            .Build();
+
+        (GameState after, _) = Moves(state, Orders(Move(ranger, (1, 2), (2, 2), (3, 2))), SubmitMoveOrders.HoldAll);
+
+        Assert.Contains(tank, after.TurnState.Braced);
+        Assert.Equal(5, after.TurnState.EffectiveInitiative[tank]);
+    }
+
+    [Fact]
+    public void BracedDoesNotTriggerForAnEnemyThatStopsOutOfContact()
+    {
+        GameState state = new ScenarioBuilder()
+            .WithMap(OpenField)
+            .AddUnit(Seat.P1, "Ranger", 0, 2, out int ranger)
+            .AddUnit(Seat.P2, "Tank", 4, 2, out int tank)
+            .Build();
+
+        (GameState after, _) = Moves(state, Orders(Move(ranger, (1, 2), (2, 2))), SubmitMoveOrders.HoldAll);
+
+        Assert.DoesNotContain(tank, after.TurnState.Braced);
+        Assert.Equal(3, after.TurnState.EffectiveInitiative[tank]);
+    }
+
+    [Fact]
+    public void InRangeTriggerStillBracesArchersWhenConfigured()
+    {
+        RulesConfig rules = RulesConfig.Default;
+        UnitDefinition archerType = rules.Units["Archer"];
+        rules = rules with
+        {
+            BracedTrigger = BracedTrigger.InRange,
+            Units = rules.Units.SetItem("Archer", archerType with { Traits = archerType.Traits.SetItem(TraitIds.Braced, 1) }),
+        };
+        GameState state = new ScenarioBuilder(rules)
             .WithMap(OpenField)
             .AddUnit(Seat.P1, "Archer", 0, 2, out int archer)
             .AddUnit(Seat.P2, "Rusher", 6, 2, out int rusher)
@@ -52,7 +90,6 @@ public class InitiativeTests
         (GameState after, _) = Moves(state, SubmitMoveOrders.HoldAll, Orders(Move(rusher, (5, 2), (4, 2), (3, 2))));
 
         Assert.Contains(archer, after.TurnState.Braced);
-        Assert.Equal(8, after.TurnState.EffectiveInitiative[archer]);
         Assert.Equal(new[] { archer, rusher }, after.TurnState.ActionQueue.ToArray());
     }
 

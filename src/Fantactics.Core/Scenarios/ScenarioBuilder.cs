@@ -31,6 +31,13 @@ public sealed class ScenarioBuilder(RulesConfig? rules = null)
         return this;
     }
 
+    /// <summary>Marks objective tiles on the current map.</summary>
+    public ScenarioBuilder WithObjectives(params (int X, int Y)[] tiles)
+    {
+        _map = _map with { Objectives = [.. tiles.Select(tile => new Point(tile.X, tile.Y))] };
+        return this;
+    }
+
     /// <summary>Sets both races.</summary>
     public ScenarioBuilder WithRaces(string p1, string p2)
     {

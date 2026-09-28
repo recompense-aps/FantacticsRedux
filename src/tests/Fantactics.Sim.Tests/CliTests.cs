@@ -57,6 +57,31 @@ public sealed class CliTests : IDisposable
     }
 
     [Fact]
+    public void WaitForReturnsWhenTheSeatOwesAndTimesOutWhenItDoesNot()
+    {
+        Run(out _, "new", "--out", MatchPath, "--p1", "llm", "--p2", "llm");
+        Run(out _, "act", MatchPath, "--as", "P1", "--draft", "Archer Archer Ranger | Scout");
+
+        Assert.Equal(ExitCodes.Ok, Run(out _, "status", MatchPath, "--wait-for", "P2", "--format", "json"));
+        Assert.Equal(ExitCodes.NotYourDecision, Run(out _, "status", MatchPath, "--wait-for", "P1", "--timeout", "1", "--format", "json"));
+    }
+
+    [Fact]
+    public void RuleViolationsNameUnitsByHandle()
+    {
+        Run(out _, "new", "--out", MatchPath, "--p1", "llm", "--p2", "llm");
+        Run(out _, "act", MatchPath, "--as", "P1", "--draft", "Archer Archer Ranger | Scout");
+        Run(out _, "act", MatchPath, "--as", "P2", "--draft", "Grunt Grunt Tank | Rusher");
+        Run(out _, "act", MatchPath, "--as", "P1", "--orders", "A@0,5 B@0,6 C@0,7");
+        Run(out _, "act", MatchPath, "--as", "P2", "--orders", "A@19,5 B@19,6 C@19,7");
+
+        int exit = Run(out JsonElement error, "act", MatchPath, "--as", "P1", "--json", """{"$type":"SubmitMoveOrders","moves":[{"unitId":1,"path":[{"x":1,"y":5},{"x":2,"y":5},{"x":3,"y":5},{"x":4,"y":5},{"x":5,"y":5},{"x":6,"y":5}]}],"deploys":[]}""", "--format", "json");
+
+        Assert.Equal(ExitCodes.RuleViolation, exit);
+        Assert.Contains("Unit A's path", error.GetProperty("message").GetString());
+    }
+
+    [Fact]
     public void ReplayIsRefusedWhileTheMatchIsRunning()
     {
         Run(out _, "new", "--out", MatchPath);
@@ -76,6 +101,17 @@ public sealed class CliTests : IDisposable
     }
 
     [Fact]
+    public void TournamentsCanPlayARulesVariant()
+    {
+        string variant = Path.Combine(SourceRoot(), "Fantactics.Sim", "Variants", "pre-engagement.json");
+
+        Assert.Equal(ExitCodes.Ok, Run(out JsonElement baseline, "run", "--games", "1", "--format", "json"));
+        Assert.Equal(ExitCodes.Ok, Run(out JsonElement summary, "run", "--games", "1", "--rules", variant, "--format", "json"));
+
+        Assert.NotEqual(baseline.GetProperty("rules").GetString(), summary.GetProperty("rules").GetString());
+    }
+
+    [Fact]
     public void ToonOutputIsProduced()
     {
         Run(out _, "new", "--out", MatchPath);
@@ -83,6 +119,18 @@ public sealed class CliTests : IDisposable
 
         Assert.Equal(ExitCodes.Ok, CliHost.Run(["legal", MatchPath, "--as", "P1", "--format", "toon"], console));
         Assert.Contains("draftable[", console.Output);
+    }
+
+    /// <summary>The <c>src</c> folder, found by walking up to the solution file.</summary>
+    private static string SourceRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Fantactics.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("Can't find Fantactics.sln.");
     }
 
     private static string OwingSeat(JsonElement status) =>

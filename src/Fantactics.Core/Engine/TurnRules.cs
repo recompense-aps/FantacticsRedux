@@ -36,6 +36,7 @@ internal static class TurnRules
     /// <summary>Ends the current turn: expires statuses, checks Rout and the turn limit, and starts the next turn.</summary>
     public static GameState EndTurn(GameState state, List<GameEvent> events)
     {
+        state = ScoreObjectives(state, events);
         events.Add(new TurnEnded(state.Turn));
         state = ExpireStatuses(state, events);
 
@@ -47,6 +48,37 @@ internal static class TurnRules
         }
 
         return StartTurn(state, state.Turn + 1, state.TiePriority.Opponent(), events);
+    }
+
+    /// <summary>
+    /// The player holding more objective tiles (a unit standing on them) scores the configured points
+    /// (GameDesign §4.5). Holding the same number scores nothing, so each side must take the other's tiles.
+    /// </summary>
+    private static GameState ScoreObjectives(GameState state, List<GameEvent> events)
+    {
+        if (state.Rules.ObjectivePointsPerTurn <= 0 || state.Map.Objectives.IsEmpty)
+        {
+            return state;
+        }
+
+        Dictionary<Seat, int> held = SeatExtensions.All.ToDictionary(
+            seat => seat,
+            seat => state.Map.Objectives.Count(tile => state.UnitAt(tile)?.Owner == seat));
+        if (held[Seat.P1] == held[Seat.P2])
+        {
+            return state;
+        }
+
+        Seat leader = held[Seat.P1] > held[Seat.P2] ? Seat.P1 : Seat.P2;
+        PlayerState player = state.Players[leader];
+        int total = player.ObjectivePoints + state.Rules.ObjectivePointsPerTurn;
+        events.Add(new ObjectiveScored(
+            leader,
+            state.Rules.ObjectivePointsPerTurn,
+            total,
+            held[leader],
+            held[leader.Opponent()]));
+        return state.WithPlayer(player with { ObjectivePoints = total });
     }
 
     private static GameState ExpireStatuses(GameState state, List<GameEvent> events)
@@ -91,8 +123,8 @@ internal static class TurnRules
 
         if (state.Turn >= state.Rules.TurnLimit)
         {
-            int p1 = state.Players[Seat.P1].DestroyedValue;
-            int p2 = state.Players[Seat.P2].DestroyedValue;
+            int p1 = state.Players[Seat.P1].Score;
+            int p2 = state.Players[Seat.P2].Score;
             Seat? winner = p1 == p2 ? null : p1 > p2 ? Seat.P1 : Seat.P2;
             return new MatchOutcome(winner, EndReason.TurnLimit);
         }

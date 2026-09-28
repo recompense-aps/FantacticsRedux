@@ -14,7 +14,7 @@ namespace Fantactics.Core.Engine;
 public static class GameEngine
 {
     /// <summary>Version of the rules code, recorded in match records. Bump it when rule behavior changes.</summary>
-    public const string RulesVersion = "0.2.0";
+    public const string RulesVersion = "0.3.0";
 
     /// <summary>Creates a match waiting for both drafts.</summary>
     /// <param name="rules">Rules config.</param>

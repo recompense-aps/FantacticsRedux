@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
+using System.Text.Json;
 using Fantactics.Core.Maps;
+using Fantactics.Core.Rules;
 using Fantactics.Sim.Matches;
 using Fantactics.Sim.Output;
 using Fantactics.Sim.Tournaments;
@@ -45,6 +47,10 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : S
     [Option("--parallel", Description = "Play matches in parallel.")]
     public bool Parallel { get; set; }
 
+    /// <summary>A rules config file to play instead of the built-in rules.</summary>
+    [Option("--rules", Description = "Rules config JSON to play instead of the built-in rules (for A/B tests).")]
+    public string? Rules { get; set; }
+
     /// <summary>Per-match CSV output.</summary>
     [Option("--csv", Description = "Also write one CSV line per match to this file.")]
     public string? Csv { get; set; }
@@ -65,7 +71,8 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : S
         }
 
         (TournamentSummary summary, ImmutableArray<GameResult> games) = runner.Run(
-            new TournamentOptions(Map, P1Race, P2Race, p1Bot, p2Bot, Games, Seed, Parallel));
+            new TournamentOptions(Map, P1Race, P2Race, p1Bot, p2Bot, Games, Seed, Parallel),
+            LoadVariant());
         if (Csv is string csv)
         {
             File.WriteAllLines(csv, [GameResult.CsvHeader, .. games.Select(game => game.ToCsv())]);
@@ -73,5 +80,22 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : S
 
         Output.Write(summary, Format);
         return ExitCodes.Ok;
+    }
+
+    private RulesConfig? LoadVariant()
+    {
+        if (Rules is not string path)
+        {
+            return null;
+        }
+
+        try
+        {
+            return RulesConfig.FromJson(File.ReadAllText(path));
+        }
+        catch (Exception ex) when (ex is IOException or JsonException)
+        {
+            throw new SimException($"Can't load rules from '{path}': {ex.Message}");
+        }
     }
 }

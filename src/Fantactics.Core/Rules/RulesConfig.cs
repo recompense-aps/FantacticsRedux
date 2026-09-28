@@ -22,6 +22,11 @@ namespace Fantactics.Core.Rules;
 /// <param name="RoutPercent">A player whose army value falls below this percent of the draft budget routs.</param>
 /// <param name="TurnLimit">Last turn of a Deathmatch.</param>
 /// <param name="MaxClashStrikes">Strikes after which a clash ends with no winner.</param>
+/// <param name="BracedTrigger">When Braced triggers (GameDesign §4.1).</param>
+/// <param name="SupportMeleeOnly">Whether Support only counts for melee strikes (GameDesign §4.3).</param>
+/// <param name="ObjectivePointsPerTurn">
+/// Points the player holding more objective tiles scores at the end of each turn; 0 disables objectives (§4.5).
+/// </param>
 /// <param name="Terrain">Rules per terrain type.</param>
 /// <param name="Races">Race definitions by identifier.</param>
 /// <param name="Units">Unit definitions by type identifier.</param>
@@ -39,6 +44,9 @@ public sealed record RulesConfig(
     int RoutPercent,
     int TurnLimit,
     int MaxClashStrikes,
+    BracedTrigger BracedTrigger,
+    bool SupportMeleeOnly,
+    int ObjectivePointsPerTurn,
     ImmutableSortedDictionary<Terrain, TerrainDefinition> Terrain,
     ImmutableSortedDictionary<string, RaceDefinition> Races,
     ImmutableSortedDictionary<string, UnitDefinition> Units,

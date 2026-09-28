@@ -74,7 +74,7 @@ Each turn has three phases:
 
 - Each unit has a base **Initiative** stat.
 - **Held (+1):** a unit with a Hold order that didn't move gets a small bonus. Any movement, even a 1-tile step, counts as moving. Rooted units don't get it (RacesAndUnits §2.2).
-- **Braced (+3)** (unit trait, only some units): a held unit that an enemy moved into range of (an enemy that moved this turn and ended 1 tile to max range away, so adjacent counts even for an Archer) gets a larger bonus instead. A braced Archer (5 → 8) acts before a Rusher (6). Bracing units are the counter to blind charges, and they give a race a defensive identity without making every unit reward sitting still.
+- **Braced (+3)** (unit trait, melee defenders only): a held unit that an enemy **moved next to** this turn gets a larger bonus instead. A braced Goblin Tank (2 → 5) strikes a charging Grunt (3) first. Bracing units are the counter to blind charges, and they give a race a defensive identity without making every unit reward sitting still. (Decided 2026-09-27, after self-play: Braced used to trigger anywhere in range and belonged to Archers, which made a held Archer line nearly unassailable. `bracedTrigger` in the rules config switches between `Adjacent` and the old `InRange`.)
 - **Ties between players** go to the player with tie priority, which alternates each turn. **Who has it on turn 1 is set by the game mode.** In Deathmatch it's the player with the lower value **on the field** (the Cost of their placed starting army, reserves not counted); if the values are equal, a coin flip seeded by the match seed decides. Starting lighter to keep a bigger reserve buys the first tie.
 - **Ties between one player's own units** go by unit ID, lowest first.
 - After movement and clashes resolve, the full action order is shown before anyone acts.
@@ -162,7 +162,7 @@ damage = max(1, Attack + Support − (Defense + terrain Defense))
 ```
 
 - **Minimum 1 damage:** chip damage always lands, so nothing is fully immune to a swarm.
-- **Support:** +1 Attack for each *other* friendly unit adjacent to the target, up to +2. It applies to **all** attacks, ranged included, so it also rewards focus fire. This is how cheap goblins hurt armored or entrenched targets: surround first, then strike. It also rewards the elves for not getting caught in the open.
+- **Support:** +1 Attack for each *other* friendly unit adjacent to the target, up to +2. It applies to **melee strikes only**: attacks from 1 tile (including point blank and Retaliate) and clash strikes. Ranged shots from 2+ tiles get none. This is how cheap goblins hurt armored or entrenched targets: surround first, then strike. (Decided 2026-09-27, after self-play: with Support, a single Archer shot killed any 5-HP Goblin, so the defender's first volley decided fights. `supportMeleeOnly` in the rules config restores the old rule.)
 - **Terrain Defense** applies to the defender's tile only (values in §5, e.g. forest/hills +1, mountains +2, swamp −1).
 - There are no hit chances and no damage variance. Randomness can come in later through specific abilities (e.g. the Demon mind control), never through basic attacks.
 
@@ -265,8 +265,9 @@ Mode-dependent (see [Game Modes](#8-game-modes)).
 
 - **Army value** = the Cost of a player's units on the field plus the Cost of their undeployed reserves. Summoned units are worth 0 (RacesAndUnits §2.1).
 - **Rout:** at the end of any turn, a player whose army value is below **25% of their draft budget** loses. If both players rout on the same turn, the one with more army value left wins; if that's also tied, the match is a draw.
-- **Turn limit:** if nobody has routed by the end of turn **15**, the player who destroyed more enemy value wins. Equal destroyed value is a draw.
-- Both players' army values and destroyed value are always shown in the HUD, so a rout never comes as a surprise.
+- **Objectives** (decided 2026-09-27): maps mark objective tiles (Riverford: the four ford tiles, §5.1). At the end of each turn, the player with a unit on **more** objective tiles than the opponent scores **2 objective points**. Holding equally many scores nothing, so each side has to take tiles from the other. This exists because a safe draw at the turn limit made waiting outside the enemy's range the best play (Simulation §10).
+- **Turn limit:** if nobody has routed by the end of turn **15**, the player with the higher **score** wins: destroyed value plus objective points. An equal score is a draw.
+- Both players' army values, destroyed value, and objective points are always shown in the HUD, so neither a rout nor the turn-limit result comes as a surprise.
 
 There's no leader or king unit. Not every race has a natural leader, and a fragile elf leader would just sit at the back.
 
@@ -344,6 +345,7 @@ A first map, so simulations have something real to play on. It's **20×14 and po
 Terrain: `.` plains, `=` road, `%` forest, `+` hills, `^` mountains, `#` bridge, `~` water (this is the Simulation scenario format).
 
 - **Three ways across the river** (columns 9–10): a bridge at each end of the map (rows 2 and 11), each fed by a road, and an open ford in the middle (rows 5–8). The ford is the shortest route and the most exposed.
+- **Objectives:** the four plains tiles in the middle of the ford, (9,6), (10,6), (9,7), and (10,7) (§4.5). Each side is closest to two of them, so scoring means pushing into the other half of the ford.
 - **Forest and mountains on both halves:** the forest pockets next to the ford (e.g. (12–13, 5)) give elves firing positions, and mountain spurs (e.g. (4–5, 5) and (6–7, 0)) give goblins covered approaches.
 - **Deploy zones** each have forest (for From the Trees) and a mountain (for Out of the Caves) nearby, so both MVP arrival rules get exercised.
 - All of it is a first pass for simulations to test. Expect it to change once tournaments show which side each route favors.
@@ -453,5 +455,6 @@ Answer inline or move decisions into the [Decision Log](#decision-log).
 | 2026-09-27 | Economy details: Command income starts on turn 2; the Goblin discount applies only to Cost 3+; the opponent's reserve composition is hidden, its value is visible | See §4.4 |
 | 2026-09-27 | First MVP map drafted: Riverford, 20×14, point-symmetric, two bridges and a central ford | See §5.1 |
 | 2026-09-27 | Command-line tools use McMaster.Extensions.CommandLineUtils (attribute API) | Only command-line projects reference it; see TechnicalDesign §2.3 |
+| 2026-09-27 | Engagement fixes after self-play showed defense dominating: Braced triggers only on enemies that end adjacent and moves from Archers to Tanks; Support counts for melee strikes only; Deathmatch scores objective points for holding more objective tiles, and the turn limit compares destroyed value plus objective points | All three are rules-config switches (`bracedTrigger`, `supportMeleeOnly`, `objectivePointsPerTurn`) so tournaments can compare variants; see §4.1, §4.3, §4.5, Simulation §10 |
 | 2026-09-27 | Engine edge cases confirmed: clashes are pure fighting (no on-hit effects); paths may enter an enemy's current tile; friendly back-up cascades; Slippery always retreats; Braced range is 1 to max range; Mend targets allies only; same-tile arrivals clash | Found while building the engine and fuzzing it; see §4.1, §4.3, §4.4 and RacesAndUnits §3.2, §4.1 |
 | 2026-09-27 | Headless simulation and LLM play: matches run in memory on a deterministic Core engine; bots in `Fantactics.Ai`; LLMs play through a file-backed `fantactics-sim` CLI | Bots only see a player view; match records are JSON (seed + command log + state hashes); the CLI prints TOON for LLM seats to save tokens; see [Simulation](Simulation.md) |

@@ -120,6 +120,65 @@ public class MatchFlowTests
         Assert.Equal(new MatchOutcome(Seat.P1, EndReason.TurnLimit), over.Outcome);
     }
 
+    [Fact]
+    public void HoldingMoreObjectiveTilesScoresAtTheEndOfTheTurn()
+    {
+        GameState state = new ScenarioBuilder()
+            .WithMap(OpenField)
+            .WithObjectives((3, 1), (3, 3))
+            .AddUnit(Seat.P1, "Druid", 3, 1)
+            .AddUnit(Seat.P2, "WarLord", 6, 4)
+            .WithBallast()
+            .Build();
+
+        (GameState moved, _) = Moves(state, SubmitMoveOrders.HoldAll, SubmitMoveOrders.HoldAll);
+        (GameState next, List<Events.GameEvent> events) = WaitOutTurn(moved);
+
+        Assert.Equal(2, next.Players[Seat.P1].ObjectivePoints);
+        Assert.Equal(0, next.Players[Seat.P2].ObjectivePoints);
+        Assert.Contains(events, e => e is Events.ObjectiveScored { Seat: Seat.P1, Held: 1, EnemyHeld: 0 });
+    }
+
+    [Fact]
+    public void HoldingEquallyManyObjectiveTilesScoresNothing()
+    {
+        GameState state = new ScenarioBuilder()
+            .WithMap(OpenField)
+            .WithObjectives((3, 1), (3, 3))
+            .AddUnit(Seat.P1, "Druid", 3, 1)
+            .AddUnit(Seat.P2, "WarLord", 3, 3)
+            .WithBallast()
+            .Build();
+
+        (GameState moved, _) = Moves(state, SubmitMoveOrders.HoldAll, SubmitMoveOrders.HoldAll);
+        (GameState next, _) = WaitOutTurn(moved);
+
+        Assert.All(next.Players.Values, player => Assert.Equal(0, player.ObjectivePoints));
+    }
+
+    [Fact]
+    public void ObjectivePointsCountAtTheTurnLimit()
+    {
+        GameState state = new ScenarioBuilder()
+            .WithMap(OpenField)
+            .WithObjectives((3, 1))
+            .WithTurn(RulesConfig.Default.TurnLimit)
+            .AddUnit(Seat.P1, "Druid", 3, 1)
+            .AddUnit(Seat.P1, "Ranger", 0, 1)
+            .AddUnit(Seat.P2, "WarLord", 6, 4)
+            .AddUnit(Seat.P2, "Shaman", 6, 3)
+            .Build();
+        state = state
+            .WithPlayer(state.Players[Seat.P1] with { ObjectivePoints = 2 })
+            .WithPlayer(state.Players[Seat.P2] with { DestroyedValue = 3 });
+
+        (GameState moved, _) = Moves(state, SubmitMoveOrders.HoldAll, SubmitMoveOrders.HoldAll);
+        (GameState over, _) = WaitOutTurn(moved);
+
+        // P1: 0 destroyed + 2 + 2 objective = 4 beats P2's 3 destroyed.
+        Assert.Equal(new MatchOutcome(Seat.P1, EndReason.TurnLimit), over.Outcome);
+    }
+
     private static GameState NewMatch() =>
         GameEngine.NewMatch(RulesConfig.Default, MapLibrary.Load("riverford"), "Elves", "Goblins", seed: 42);
 

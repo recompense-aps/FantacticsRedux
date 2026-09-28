@@ -116,13 +116,13 @@ A `MatchRecord` is a JSON file:
 | Command | Purpose |
 |---|---|
 | `new --out match.json [--map riverford] [--p1 llm] [--p2 bot:random] [--p1-race Elves] [--p2-race Goblins] [--seed N] [--force]` | Create a match. Seats are `llm`, `human`, or `bot:<name>`. Scenario files beyond built-in maps come later. |
-| `status match.json` | Phase, turn, and which seats owe a decision. Contains no hidden information. |
+| `status match.json [--wait-for P1 [--timeout 600]]` | Phase, turn, and which seats owe a decision. Contains no hidden information. `--wait-for` blocks until that seat owes a decision or the match ends (for autonomous self-play agents). |
 | `view match.json --as P1` | That seat's `PlayerView`: header, map, unit table, reserve, pending decision, events since the seat last acted |
 | `legal match.json --as P1 [--unit <id>]` | Numbered action options with attack previews (damage, kills), reachable tiles with costs, deploy tiles, draft or placement options, and a usage line |
 | `act match.json --as P1 (--pick N \| --orders "<grammar>" \| --draft "<grammar>" \| --json '<command>') [--note "…"]` | Submit a decision. Prints the visible resulting events (including bot moves that followed), then **the seat's next view and options**, so a playing seat needs one call per decision. The map is included when the next decision is movement or placement. On failure it prints the `RuleViolation` instead. |
 | `log match.json --as P1 [--last N]` | That seat's event history |
 | `replay match.json [--as P1]` | Full history including every `--note`. Only allowed after the match ends. |
-| `run [--p1 bot:random] [--p2 bot:random] [--games 100] [--seed 1] [--map …] [--parallel] [--csv out.csv]` | Tournament (§7): win counts, end reasons, average turns, and damage/kills/deaths per unit type |
+| `run [--p1 bot:random] [--p2 bot:random] [--games 100] [--seed 1] [--map …] [--rules variant.json] [--parallel] [--csv out.csv]` | Tournament (§7): win counts, end reasons, average turns, and damage/kills/deaths per unit type. `--rules` plays a rules-config variant instead of the built-in rules; `src/Fantactics.Sim/Variants/pre-engagement.json` is the rule set before the 2026-09-27 engagement fixes. The summary shows a short hash of the rules played. |
 
 - **Exit codes:** 0 = ok, 1 = error, 2 = rule violation or bad order syntax, 3 = not your decision (or replay while running).
 - **Output format:** every command takes `--format text|toon|json` (§6.2). The default is `text`; the play skill always passes `toon`.
@@ -220,9 +220,9 @@ A Claude Code skill, [`.claude/skills/play-fantactics/SKILL.md`](../../.claude/s
 
 One Claude Code session acts as **referee**:
 
-1. It creates the match with both seats set to `llm`, and spawns **two subagents**, each briefed with the playbook and bound to one seat. Separate contexts keep each seat's hidden plans private.
-2. It loops on `status`. When a seat owes a decision, it messages that seat's subagent, which keeps its own context between turns. In simultaneous phases it messages both.
-3. At `MatchOver` it runs `replay` and summarizes the game, including every `RULES?` note.
+1. It creates the match with both seats set to `llm`, and spawns **two background subagents**, each briefed with the playbook and bound to one seat. Separate contexts keep each seat's hidden plans private.
+2. Each subagent plays **autonomously**: `status --wait-for <seat>` blocks until its seat owes a decision, then it acts, and repeats until the match ends. (The first design had the referee message a subagent for every decision, but action slots alternate between seats many times per turn, so that would take hundreds of round trips.)
+3. When both finish, the referee runs `replay` and summarizes the game, including every `RULES?` note.
 
 The same pattern covers LLM vs. bot (only one subagent is needed, or the session plays the seat itself) and human vs. LLM (the human uses `--format text` for their own seat).
 
@@ -253,7 +253,7 @@ Invariants checked in layer 3:
 |---|---|---|
 | **0** (with the first Core rules) | The §2 seams, `RulesConfig`, `ScenarioBuilder`, the ASCII map parser, `StateHash`, the determinism rules. Rules cover the **full match flow** (decided 2026-09-27): draft, hidden placement, movement with clashes, actions, reserves and Command, Rout and the turn limit, on Riverford. Scenarios can still start mid-match for focused tests. | Rules tests written against scenarios; a full match can be played start to finish through `Apply` |
 | **1** | `Fantactics.Ai`: `IPlayerAgent`, `MatchRunner`, `ScriptedAgent`, `RandomAgent`; `Fantactics.Ai.Tests` for layers 2–4 | Thousands of random games with no invariant failures |
-| **2** | `Fantactics.Sim`: match file, `new`/`status`/`view`/`legal`/`act`/`log`/`replay`, text/JSON/TOON output, orders grammar; the play skill | An LLM finishes a game against `RandomAgent`, then a self-play game; the TOON comparison (§6.2) is done |
+| **2** | `Fantactics.Sim`: match file, `new`/`status`/`view`/`legal`/`act`/`log`/`replay`, text/JSON/TOON output, orders grammar; the play skill | An LLM finishes a game against `RandomAgent`, then a self-play game (**both done 2026-09-27**, §10); the TOON comparison (§6.2) is done (**pending**: needs the token-counting endpoint) |
 | **3** | `GreedyAgent`, `run` tournaments and stats, golden replays | `GreedyAgent` reliably beats `RandomAgent` |
 | **Later** | `SearchAgent`, fog-of-war determinization; possibly an MCP server or a Claude API `IPlayerAgent` for unattended LLM batches | — |
 
@@ -264,3 +264,45 @@ Invariants checked in layer 3:
 3. How should LLM playtest findings feed into balance work? A structured `RULES?` report format?
 4. ~~The draft uses `--json` for now. Does it deserve its own grammar?~~ It has one: `--draft "Archer Archer Ranger | Scout"`.
 5. Enemy unit ids in `PlayerView` are engine ids, which are assigned in draft order, so the first enemy id reveals how many units the other player drafted. The CLI hides this behind handles; the server will need the same before fog of war.
+
+## 10. Playtest Log
+
+Findings from LLM playtests. Rules findings graduate to GameDesign once decided; CLI findings become tasks.
+
+### 2026-09-27 · Game 1: LLM (Elves, P1) vs `bot:random` (Goblins), Riverford, seed 7
+
+**Result: P1 wins by Rout on turn 11**, destroyed value 32 to 2. The elves drafted three Archers, a Ranger, a Herbalist, and two Scouts (reserve: Archer, Herbalist, Scout). They held forest pockets overlooking the ford until turn 4, then pushed across and killed the WarLord, the Shaman, the Tank, a Bruiser, three Rushers, and two Grunts, losing one Scout.
+
+Rules findings:
+
+- **`RULES?` Tank Retaliate + Bloodthirst.** Retaliate strikes trigger Bloodthirst 3, so any attack from distance 1 on a Tank heals it (a Scout's 1-damage hit cost the Scout 2 HP and healed the Tank to 6 from 4). Only ranged fire from 2+ tiles works on Tanks. Intended?
+- Braced plus Held is strong: holding a forest line in range of the approach gave initiative 8 Archers that shot every charger first.
+- Summoned Grunts are worth 0, so the Shaman's summons are free fodder that also block lanes. That's as designed, but it made the Shaman the highest-priority target.
+- `bot:random` is too passive to say anything about balance (it wanders and waits a lot). A `GreedyAgent` (Phase 3) is needed before tournaments mean much.
+
+CLI findings:
+
+- Most action decisions only offer wait/delay (or Mend on full-HP allies), and each costs a call. The player wrote a helper that auto-waits those. Candidates: list Mend only for hurt or slowed/rooted allies, and add `act --auto-wait` to skip units with no meaningful option.
+- The movement `reach` table is 200–300 rows once the army spreads out; players filter it out and rely on the map. Consider leaving it out of `act` output by default (keeping it in `legal`).
+- Nothing blocked play: 232 commands, no grammar errors after the first attempt, no rules crashes.
+
+### 2026-09-27 · Game 2: LLM self-play, Elves (P1) vs Goblins (P2), Riverford, seed 11
+
+Two subagents, each seeing only its own seat and waiting with `status --wait-for`. **Result: P1 wins by Rout at the end of turn 10**, destroyed value 32 to 4, in 206 commands.
+
+- **P1 (Elves)** drafted four Archers, a Ranger, and two Scouts (reserve: Ranger, Herbalist). It held Braced in its home forests with Scouts in front and let the Goblins come.
+- **P2 (Goblins)** drafted a Shaman, a Mauler, two Bruisers, three Rushers, and two Grunts (reserve: Bruiser and two Rushers). It staged just out of range for four turns, traded Scouts for a Bruiser on turn 5, then charged on turn 8. Braced Archers (initiative 8) and a held Ranger (7) fired before the moving Rushers (6), and the Goblins lost three Rushers and the Shaman while dealing 1 damage. That score went from 4–4 to 22–4 in one turn.
+
+Rules findings (both players raised the same one):
+
+- **`RULES?` The defender's first volley decides everything.** Holding Braced in edge forest, screened by cheap blockers, means anything that moves into range gets shot by every Archer first. With Support, one shot kills any Goblin except a Bruiser. The attacker always eats the whole volley, so the natural play for both sides is to wait one tile outside range, and a 0–0 draw is easy. This is the "do maps and modes need to force engagement?" question in GameDesign §4.1, now with evidence.
+- Support on ranged shots cancels the mountain Defense bonus (4 + 2 − 2). It works as written, but the Goblin player didn't expect it.
+- Summoned Grunts worth 0 soaked Braced shots, which is useful and as designed.
+- Throw Net rooting an Archer on open ground nearly traded it. Strong, but seems fine.
+
+CLI findings:
+
+- Fixed after this game: violation messages named engine ids ("Unit 12"); they now use handles. `--wait-for` defaulted to a 600s timeout, the same as the agent watchdog, and now defaults to 240s.
+- Both players scripted auto-waits (about 80% of action prompts had no real choice). One script fired Call the Horde by accident because untargeted ability rows look like wait rows. This supports `act --auto-wait` and dropping Mend on full-HP allies from the list.
+- Wanted: a "who can hit this tile" threat view, and a Held/Braced preview while giving move orders.
+- The `reach` table leaves out tiles a friend holds now but will vacate. That's conservative by design, but it hides legal moves.

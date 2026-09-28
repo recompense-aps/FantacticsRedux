@@ -16,6 +16,22 @@ public class MapTests
     }
 
     [Fact]
+    public void RiverfordHasFourPointSymmetricFordObjectives()
+    {
+        GameMap map = MapLibrary.Load("riverford");
+
+        Assert.Equal(4, map.Objectives.Length);
+        Assert.All(map.Objectives, p => Assert.Contains(new Point(19 - p.X, 13 - p.Y), map.Objectives));
+        Assert.All(map.Objectives, p => Assert.Equal(Terrain.Plains, map[p]));
+    }
+
+    [Fact]
+    public void ObjectivesMustBeOnTheMap()
+    {
+        Assert.Throws<FormatException>(() => MapParser.Parse("bad", ["...", "@objectives 5,5"]));
+    }
+
+    [Fact]
     public void RaggedRowsAreRejected()
     {
         Assert.Throws<FormatException>(() => MapParser.Parse("bad", ["...", ".."]));

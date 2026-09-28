@@ -31,15 +31,26 @@ public static class CombatRules
         }
 
         int defense = state.DefinitionOf(target).Defense + terrainDefense;
-        return Math.Max(1, attack + Support(state, attacker, target) - defense);
+        return Math.Max(1, attack + Support(state, attacker, target, kind) - defense);
     }
 
-    /// <summary>+1 per other friendly unit of the attacker adjacent to the target, up to the cap.</summary>
-    public static int Support(GameState state, Unit attacker, Unit target) =>
-        Math.Min(
+    /// <summary>
+    /// +1 per other friendly unit of the attacker adjacent to the target, up to the cap. With
+    /// <see cref="RulesConfig.SupportMeleeOnly"/>, ranged strikes (basic attacks from 2+ tiles) get none.
+    /// </summary>
+    public static int Support(GameState state, Unit attacker, Unit target, AttackKind kind)
+    {
+        bool ranged = kind == AttackKind.Basic && attacker.Position.DistanceTo(target.Position) > 1;
+        if (ranged && state.Rules.SupportMeleeOnly)
+        {
+            return 0;
+        }
+
+        return Math.Min(
             state.Rules.SupportCap,
             state.FieldUnits.Count(unit =>
                 unit.Owner == attacker.Owner && unit.Id != attacker.Id && unit.Position.IsAdjacentTo(target.Position)));
+    }
 
     /// <summary>
     /// The kind of basic attack <paramref name="attacker"/> can make on <paramref name="target"/>, or <c>null</c> if

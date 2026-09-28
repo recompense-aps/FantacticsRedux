@@ -13,3 +13,5 @@
 ...+..===##=======..
 .^....%%.~~..^+..%..
 ...+..%..~~.^^..%%..
+// The four ford tiles in the middle of the map; whoever holds more of them scores each turn.
+@objectives 9,6 10,6 9,7 10,7

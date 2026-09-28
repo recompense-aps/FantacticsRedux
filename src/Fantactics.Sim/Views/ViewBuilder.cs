@@ -15,7 +15,7 @@ public static class ViewBuilder
     /// <summary>How to read the map and unit ids.</summary>
     public const string Legend =
         "map x=column y=row from top-left; terrain . plains = road % forest + hills ^ mountains # bridge ~ water; "
-        + "units UPPER=yours lower=enemy (@ = unit with a 2-letter id)";
+        + "* = objective tile (hold more of them than the enemy to score each turn); units UPPER=yours lower=enemy (@ = unit with a 2-letter id)";
 
     private const int RecentLimit = 60;
 
@@ -139,7 +139,8 @@ public static class ViewBuilder
         player.Command,
         player.ArmyValue,
         player.ReserveValue,
-        player.DestroyedValue);
+        player.DestroyedValue,
+        player.ObjectivePoints);
 
     private static PendingInfo? Pending(Decision? decision, UnitHandles handles) => decision switch
     {
@@ -158,7 +159,9 @@ public static class ViewBuilder
         return Enumerable.Range(0, view.Map.Height)
             .Select(y => new string(Enumerable.Range(0, view.Map.Width)
                 .Select(x => new Point(x, y))
-                .Select(p => overlay.TryGetValue(p, out char unit) ? unit : TerrainChars.ToChar(view.Map[p]))
+                .Select(p => overlay.TryGetValue(p, out char unit) ? unit
+                    : view.Map.Objectives.Contains(p) ? '*'
+                    : TerrainChars.ToChar(view.Map[p]))
                 .ToArray()))
             .ToImmutableArray();
     }

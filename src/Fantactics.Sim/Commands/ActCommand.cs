@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Serialization;
@@ -18,7 +19,7 @@ namespace Fantactics.Sim.Commands;
 /// <param name="store">Match file store.</param>
 /// <param name="output">Where results are printed.</param>
 [Command("act", Description = "Submit a seat's decision.")]
-public sealed class ActCommand(MatchStore store, OutputWriter output) : SeatCommand(output)
+public sealed partial class ActCommand(MatchStore store, OutputWriter output) : SeatCommand(output)
 {
     /// <summary>Numbered action option.</summary>
     [Option("--pick", Description = "Action phase: the number of an option from 'legal'.")]
@@ -67,7 +68,10 @@ public sealed class ActCommand(MatchStore store, OutputWriter output) : SeatComm
         int before = session.CommandCount;
         if (session.Submit(As, command, Note) is Rejected rejected)
         {
-            return Fail(rejected.Violation.Code, rejected.Violation.Message, ExitCodes.RuleViolation);
+            return Fail(
+                rejected.Violation.Code,
+                WithHandles(rejected.Violation.Message, session.HandlesFor(As)),
+                ExitCodes.RuleViolation);
         }
 
         session.AdvanceBots();
@@ -94,6 +98,10 @@ public sealed class ActCommand(MatchStore store, OutputWriter output) : SeatComm
                 ExitCodes.RuleViolation),
         };
     }
+
+    /// <summary>Rewrites engine ids in a violation message ("Unit 12") to the seat's handles ("Unit C").</summary>
+    private static string WithHandles(string message, UnitHandles handles) =>
+        UnitIdRegex().Replace(message, match => $"{match.Groups["word"].Value} {handles.Of(int.Parse(match.Groups["id"].Value))}");
 
     private ICommand PickOption(MatchSession session, int pick)
     {
@@ -132,4 +140,7 @@ public sealed class ActCommand(MatchStore store, OutputWriter output) : SeatComm
             ViewBuilder.WaitingFor(PlayerView.Project(session.State, As)),
             ViewBuilder.Outcome(session.State.Outcome));
     }
+
+    [GeneratedRegex(@"\b(?<word>[Uu]nit) (?<id>\d+)\b")]
+    private static partial Regex UnitIdRegex();
 }

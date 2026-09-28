@@ -54,7 +54,7 @@ Traits more than one race can use.
 
 | Trait | Effect |
 |---|---|
-| Braced | From GameDesign §4.1: a held unit that an enemy moved into range of gets a larger initiative bonus. |
+| Braced | From GameDesign §4.1: a held unit that an enemy moved next to gets a larger initiative bonus. For melee defenders. |
 | Retaliate | From GameDesign §4.3: strikes back once per turn at a melee attacker it survives. |
 | Aura (X, r) | Friendly units within `r` tiles get effect X. Auras of the same name don't stack. Range is checked at the moment the effect applies (e.g. when an attack deals damage), so it always reflects current positions. |
 | Cooldown N | After use, the ability can't be used again for N turns: used on turn t, it's ready again on turn t + N + 1. |
@@ -80,13 +80,13 @@ Elves also get the general ranged rules from GameDesign §4.3: half Attack at po
 
 | Unit | Role | Cost | HP | Atk | Def | Mv | Range | Init | Vision | Traits / abilities |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Archer | Main damage | 5 | 7 | 4 | 1 | 4 | 2–3 | 5 | 5 | Braced |
+| Archer | Main damage | 5 | 7 | 4 | 1 | 4 | 2–3 | 5 | 5 | — |
 | Ranger | Movement control | 6 | 7 | 3 | 1 | 5 | 1–3 | 6 | 5 | Pinning Shot |
 | Herbalist | Support, healer | 4 | 6 | 1 | 0 | 4 | 1–2 | 4 | 4 | Mend |
 | Scout | Recon, blocker | 2 | 3 | 1 | 0 | 5 | 1 | 7 | 7 | Forest Stride, Slippery |
 | Druid | Mage | 6 | 6 | 2 | 0 | 4 | 1–2 | 4 | 4 | Unique; Overgrowth, Entangle |
 
-**Archer.** The backbone. Longest range, but it can't attack adjacent units at all (min range 2). Braced makes a held Archer in forest the main answer to a blind goblin charge: it gets to shoot first.
+**Archer.** The backbone. Longest range, but it can't attack adjacent units at all (min range 2). It lost Braced on 2026-09-27 (GameDesign §4.1): a held Archer line that always shot first made attacking pointless. Archers now rely on range, forest cover, and screens.
 
 **Ranger.** The movement-limiting specialist from the brainstorm. Shorter range, faster, and it can defend itself up close (at half Attack).
 
@@ -135,7 +135,7 @@ Mountains give +2 Defense and block line of sight (GameDesign §4.3, §5). Gobli
 | Grunt | Basic | 2 | 5 | 3 | 0 | 4 | 1 | 3 | 3 | Bloodthirst 1 |
 | Rusher | Fast flanker | 3 | 4 | 3 | 0 | 6 | 1 | 6 | 4 | Bloodthirst 1, Reckless |
 | Bruiser | Heavy hitter | 4 | 7 | 5 | 0 | 4 | 1 | 3 | 3 | Crush (no Bloodthirst) |
-| Tank | Frontline | 4 | 8 | 2 | 2 | 3 | 1 | 2 | 3 | Bloodthirst 3, Retaliate |
+| Tank | Frontline | 4 | 8 | 2 | 2 | 3 | 1 | 2 | 3 | Bloodthirst 3, Retaliate, Braced |
 | Mauler | Movement control | 4 | 6 | 3 | 1 | 4 | 1 | 4 | 3 | Bloodthirst 1, Hamstring, Throw Net |
 | War Lord | Leader | 6 | 8 | 4 | 1 | 4 | 1 | 4 | 4 | Unique; Bloodthirst 1, War Cry |
 | Shaman | Mage | 5 | 5 | 2 | 0 | 4 | 1–2 | 3 | 4 | Unique; Call the Horde |
@@ -154,6 +154,7 @@ Mountains give +2 Defense and block line of sight (GameDesign §4.3, §5). Gobli
 
 - Bloodthirst 3 heals 3 HP whenever its attack deals any damage, even the minimum 1.
 - Retaliate makes it a bad target for other melee units. Elves can shoot it freely, but that spends shots that aren't going into the rest of the swarm.
+- Braced: a held Tank that an enemy charges into strikes first (initiative 2 → 5), which makes it the Goblins' anchor on an objective tile.
 
 **Mauler** (name not settled; alternatives: *Hobbler*, *Netter*, *Snarer*). Stops elves from kiting.
 

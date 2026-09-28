@@ -1,5 +1,6 @@
 using Fantactics.Core.Engine;
 using Fantactics.Core.Events;
+using Fantactics.Core.Rules;
 using Fantactics.Core.Scenarios;
 using Fantactics.Core.State;
 
@@ -48,6 +49,33 @@ public class DamageTests
             .Build();
 
         Assert.Equal(3, CombatRules.Damage(state, state.Units[grunt], state.Units[archer], AttackKind.Basic));
+    }
+
+    [Fact]
+    public void RangedShotsGetNoSupport()
+    {
+        GameState state = new ScenarioBuilder()
+            .WithMap(_map)
+            .AddUnit(Seat.P1, "Archer", 0, 0, out int archer)
+            .AddUnit(Seat.P1, "Scout", 3, 1)
+            .AddUnit(Seat.P1, "Scout", 4, 0)
+            .AddUnit(Seat.P2, "Grunt", 3, 0, out int grunt)
+            .Build();
+
+        Assert.Equal(4, CombatRules.Damage(state, state.Units[archer], state.Units[grunt], AttackKind.Basic));
+    }
+
+    [Fact]
+    public void RangedShotsGetSupportWhenTheRuleIsOff()
+    {
+        GameState state = new ScenarioBuilder(RulesConfig.Default with { SupportMeleeOnly = false })
+            .WithMap(_map)
+            .AddUnit(Seat.P1, "Archer", 0, 0, out int archer)
+            .AddUnit(Seat.P1, "Scout", 3, 1)
+            .AddUnit(Seat.P2, "Grunt", 3, 0, out int grunt)
+            .Build();
+
+        Assert.Equal(5, CombatRules.Damage(state, state.Units[archer], state.Units[grunt], AttackKind.Basic));
     }
 
     [Fact]

@@ -100,6 +100,12 @@ public static class EventFormatter
             e.Target is Point target ? $"{e.Ability} at {Tile(target)}" : e.Ability),
         TileChanged e => Line(logged, "terrain", "", "", $"{Tile(e.Tile)} is now {e.Terrain}"),
         UnitSummoned e => Line(logged, "summoned", h.Of(e.UnitId), "", $"{e.Type} at {Tile(e.Tile)}; can't act this turn"),
+        ObjectiveScored e => Line(
+            logged,
+            "objective",
+            e.Seat.ToString(),
+            "",
+            $"held {e.Held} vs {e.EnemyHeld} objective tiles: +{e.Points} = {e.Total}"),
         TurnEnded e => Line(logged, "turn-end", "", "", $"turn {e.Turn} ends"),
         MatchEnded e => Line(logged, "match-end", e.Winner?.ToString() ?? "", "", $"{e.Reason}"),
         _ => Line(logged, logged.Event.GetType().Name, "", "", ""),

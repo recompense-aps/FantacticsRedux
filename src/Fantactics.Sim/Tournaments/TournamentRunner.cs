@@ -16,12 +16,17 @@ namespace Fantactics.Sim.Tournaments;
 public sealed class TournamentRunner(RulesConfig rules)
 {
     /// <summary>Plays the tournament.</summary>
+    /// <param name="options">What to play.</param>
+    /// <param name="variant">Rules to use instead of the default, e.g. from <c>run --rules</c>.</param>
     /// <returns>The summary and every match's result, in game order.</returns>
-    public (TournamentSummary Summary, ImmutableArray<GameResult> Games) Run(TournamentOptions options)
+    public (TournamentSummary Summary, ImmutableArray<GameResult> Games) Run(
+        TournamentOptions options,
+        RulesConfig? variant = null)
     {
+        RulesConfig effective = variant ?? rules;
         ConcurrentBag<(GameResult Result, List<(Seat Seat, string Type, UnitTypeStats Delta)> Stats)> results = [];
         ParallelOptions parallel = new() { MaxDegreeOfParallelism = options.Parallel ? -1 : 1 };
-        Parallel.For(0, options.Games, parallel, game => results.Add(PlayOne(options, game)));
+        Parallel.For(0, options.Games, parallel, game => results.Add(PlayOne(effective, options, game)));
 
         ImmutableArray<GameResult> games = [.. results.Select(r => r.Result).OrderBy(r => r.Game)];
         ImmutableArray<UnitTypeStats> unitStats = results
@@ -44,6 +49,7 @@ public sealed class TournamentRunner(RulesConfig rules)
             .ToImmutableArray();
 
         TournamentSummary summary = new(
+            effective.Hash[..12],
             games.Length,
             $"bot:{options.P1Bot} {options.P1Race}",
             $"bot:{options.P2Bot} {options.P2Race}",
@@ -56,7 +62,8 @@ public sealed class TournamentRunner(RulesConfig rules)
         return (summary, games);
     }
 
-    private (GameResult Result, List<(Seat Seat, string Type, UnitTypeStats Delta)> Stats) PlayOne(
+    private static (GameResult Result, List<(Seat Seat, string Type, UnitTypeStats Delta)> Stats) PlayOne(
+        RulesConfig rules,
         TournamentOptions options,
         int game)
     {
@@ -123,7 +130,9 @@ public sealed class TournamentRunner(RulesConfig rules)
             UnitRules.ArmyValue(final, Seat.P1),
             UnitRules.ArmyValue(final, Seat.P2),
             final.Players[Seat.P1].DestroyedValue,
-            final.Players[Seat.P2].DestroyedValue);
+            final.Players[Seat.P2].DestroyedValue,
+            final.Players[Seat.P1].ObjectivePoints,
+            final.Players[Seat.P2].ObjectivePoints);
         return (row, stats);
     }
 }

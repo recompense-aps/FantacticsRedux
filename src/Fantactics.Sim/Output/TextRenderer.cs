@@ -26,6 +26,7 @@ public static class TextRenderer
         text.AppendLine(
             $"Turn {view.Turn} · {view.Phase} · You: {view.You} ({view.Me.Race}) · Command {view.Me.Command} · "
             + $"Army {view.Me.Army} vs {view.Enemy.Army} · Destroyed {view.Me.Destroyed} vs {view.Enemy.Destroyed} · "
+            + $"Objective {view.Me.Objective} vs {view.Enemy.Objective} · "
             + $"Tie priority {view.TiePriority}");
         text.AppendLine(view.Outcome is string outcome
             ? $"Match over: {outcome}"
@@ -162,7 +163,7 @@ public static class TextRenderer
         StringBuilder text = new();
         text.AppendLine(
             $"{summary.Games} games · P1 {summary.P1} ({summary.P1Wins} wins) vs P2 {summary.P2} ({summary.P2Wins} wins)"
-            + $" · {summary.Draws} draws · avg {summary.AverageTurns:F1} turns");
+            + $" · {summary.Draws} draws · avg {summary.AverageTurns:F1} turns · rules {summary.Rules}");
         text.Append(Table(
             ["End", "Count"],
             summary.EndReasons.Select(e => new[] { e.Reason, $"{e.Count}" })));

@@ -11,9 +11,9 @@
   "routPercent": 25,
   "turnLimit": 15,
   "maxClashStrikes": 100,
-  "bracedTrigger": "Adjacent",
-  "supportMeleeOnly": true,
-  "objectivePointsPerTurn": 2,
+  "bracedTrigger": "InRange",
+  "supportMeleeOnly": false,
+  "objectivePointsPerTurn": 0,
   "terrain": {
     "Plains": { "moveCost": 1, "defense": 0, "blocksSight": false },
     "Road": { "moveCost": 1, "defense": 0, "blocksSight": false },
@@ -31,7 +31,7 @@
     "Archer": {
       "race": "Elves", "cost": 5, "hp": 7, "attack": 4, "defense": 1, "movement": 4,
       "minRange": 2, "maxRange": 3, "initiative": 5, "vision": 5, "unique": false,
-      "traits": {}, "abilities": []
+      "traits": { "Braced": 1 }, "abilities": []
     },
     "Ranger": {
       "race": "Elves", "cost": 6, "hp": 7, "attack": 3, "defense": 1, "movement": 5,
@@ -71,7 +71,7 @@
     "Tank": {
       "race": "Goblins", "cost": 4, "hp": 8, "attack": 2, "defense": 2, "movement": 3,
       "minRange": 1, "maxRange": 1, "initiative": 2, "vision": 3, "unique": false,
-      "traits": { "Bloodthirst": 3, "Retaliate": 1, "Braced": 1 }, "abilities": []
+      "traits": { "Bloodthirst": 3, "Retaliate": 1 }, "abilities": []
     },
     "Mauler": {
       "race": "Goblins", "cost": 4, "hp": 6, "attack": 3, "defense": 1, "movement": 4,

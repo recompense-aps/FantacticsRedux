@@ -43,7 +43,7 @@ Always pass `--format toon` (compact tables; about half the tokens of JSON).
 3. `$SIM act <match> --as <seat> ... --note "..." --format toon`. The output lists what happened (including bot moves
    that followed), then your next view and options. Keep calling `act` from that output. Go back to `view`/`legal`
    only when you need the full map again.
-4. Exit code 3 means it's not your decision: run `status` and wait (in self-play, the referee tells you when to act).
+4. Exit code 3 means it's not your decision: run `status --wait-for <seat>`, which blocks until it is.
    Exit code 2 means your input broke a rule or the grammar; read the message and try again.
 
 ## Input forms
@@ -57,7 +57,7 @@ Always pass `--format toon` (compact tables; about half the tokens of JSON).
 
 - Unit ids: UPPERCASE letters are yours (including reserve units), lowercase are the enemy's. Ids never change.
 - Coordinates are `x,y`: x is the column and y the row, counted from the top-left, as in the map rows.
-- Units without a move clause hold (Held gives +1 initiative; Braced units get +3 when an enemy moves into range).
+- Units without a move clause hold (Held gives +1 initiative; Braced units get +3 when an enemy moves into contact).
 - Move orders are hidden and simultaneous. Enemies entering the same tile, or swapping tiles, clash to the death with
   basic strikes. Zone of control stops a unit that becomes adjacent to an enemy.
 - Attack options show exact damage and whether they kill. Combat is deterministic.
@@ -65,15 +65,18 @@ Always pass `--format toon` (compact tables; about half the tokens of JSON).
 ## Winning (Deathmatch)
 
 A player whose army value (units on the field plus undeployed reserve) falls below 25% of the draft budget at the end
-of a turn loses (Rout). Otherwise, after turn 15 the player who destroyed more enemy value wins.
+of a turn loses (Rout). Objective tiles (`*` on the map) score 2 points at the end of each turn for the player who
+holds more of them than the opponent. After turn 15, the higher score wins: destroyed enemy value plus objective
+points. Sitting back is not safe: an opponent holding the objectives wins on points.
 
 ## Self-play (referee)
 
 When asked to run LLM vs LLM:
 
 1. `$SIM new --out playtests/<name>.json --p1 llm --p2 llm --seed N`.
-2. Start two subagents, one per seat, each given this skill and its seat. Each keeps its own context, so neither
-   sees the other's plans.
-3. Loop on `$SIM status <match> --format toon`. Message the subagent for each seat that owes a decision (both, in
-   simultaneous phases) and wait for it to act.
-4. When the match ends, run `$SIM replay <match> --format text`, then summarize the game and every `RULES?` note.
+2. Start two background subagents, one per seat, each told to read this skill, to use only `--as <its seat>`, and to
+   never read `playtests/`. Each keeps its own context, so neither sees the other's plans.
+3. Each subagent plays autonomously: `$SIM status <match> --wait-for <seat> --format toon` blocks until that seat
+   owes a decision (or the match ends), then it acts, and repeats. Action slots alternate between seats many times per
+   turn, so relaying every handoff through the referee would take hundreds of round trips.
+4. When both report back, run `$SIM replay <match> --format text`, then summarize the game and every `RULES?` note.

@@ -47,6 +47,7 @@ public sealed record PlayerView(
                     player.Race,
                     player.Command,
                     player.DestroyedValue,
+                    player.ObjectivePoints,
                     UnitRules.ArmyValue(state, player.Seat),
                     UnitRules.ReserveValue(state, player.Seat),
                     state.PendingOrders.ContainsKey(player.Seat)));

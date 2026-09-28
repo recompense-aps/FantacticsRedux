@@ -28,6 +28,7 @@ namespace Fantactics.Core.Events;
 [JsonDerivedType(typeof(AbilityUsed), nameof(AbilityUsed))]
 [JsonDerivedType(typeof(TileChanged), nameof(TileChanged))]
 [JsonDerivedType(typeof(UnitSummoned), nameof(UnitSummoned))]
+[JsonDerivedType(typeof(ObjectiveScored), nameof(ObjectiveScored))]
 [JsonDerivedType(typeof(TurnEnded), nameof(TurnEnded))]
 [JsonDerivedType(typeof(MatchEnded), nameof(MatchEnded))]
 public abstract record GameEvent;

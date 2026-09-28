@@ -8,7 +8,13 @@ namespace Fantactics.Core.Maps;
 /// <param name="Width">Number of columns.</param>
 /// <param name="Height">Number of rows.</param>
 /// <param name="Tiles">Terrain in row-major order.</param>
-public sealed record GameMap(string Name, int Width, int Height, ImmutableArray<Terrain> Tiles)
+/// <param name="Objectives">Objective tiles scored by the game mode (GameDesign §4.5); may be empty.</param>
+public sealed record GameMap(
+    string Name,
+    int Width,
+    int Height,
+    ImmutableArray<Terrain> Tiles,
+    ImmutableArray<Point> Objectives)
 {
     /// <summary>The terrain at <paramref name="point"/>.</summary>
     public Terrain this[Point point] => Tiles[Index(point)];

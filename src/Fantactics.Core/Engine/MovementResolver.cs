@@ -49,7 +49,10 @@ internal static class MovementResolver
         return InitiativeRules.BeginActionPhase(state, held, braced, winners.ToImmutableSortedSet(), events);
     }
 
-    /// <summary>A held unit with Braced that an enemy moved into range of (GameDesign §4.1).</summary>
+    /// <summary>
+    /// A held unit with Braced that an enemy moved next to (or, with <see cref="BracedTrigger.InRange"/>, into its
+    /// range) this turn (GameDesign §4.1).
+    /// </summary>
     private static bool IsBraced(GameState state, Unit unit, HashSet<int> moved)
     {
         if (!UnitRules.HasTrait(state, unit, TraitIds.Braced))
@@ -57,13 +60,11 @@ internal static class MovementResolver
             return false;
         }
 
-        UnitDefinition definition = state.DefinitionOf(unit);
+        int maxDistance = state.Rules.BracedTrigger == BracedTrigger.Adjacent ? 1 : state.DefinitionOf(unit).MaxRange;
         return state.FieldUnits.Any(enemy =>
             enemy.Owner != unit.Owner
             && moved.Contains(enemy.Id)
-            && enemy.Position.DistanceTo(unit.Position) is int distance
-            && distance >= Math.Min(1, definition.MinRange)
-            && distance <= definition.MaxRange);
+            && enemy.Position.DistanceTo(unit.Position) <= maxDistance);
     }
 
     /// <summary>
