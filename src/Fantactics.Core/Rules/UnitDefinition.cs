@@ -16,6 +16,7 @@ namespace Fantactics.Core.Rules;
 /// <param name="Unique">At most one per army.</param>
 /// <param name="Traits">Trait identifiers (see <see cref="TraitIds"/>) and their values.</param>
 /// <param name="Abilities">Ability identifiers (see <see cref="AbilityIds"/>).</param>
+/// <param name="Classes">Class tags (see <see cref="ClassIds"/>), or <c>null</c> for none (RacesAndUnits §2.4).</param>
 public sealed record UnitDefinition(
     string Race,
     int Cost,
@@ -29,7 +30,8 @@ public sealed record UnitDefinition(
     int Vision,
     bool Unique,
     ImmutableSortedDictionary<string, int> Traits,
-    ImmutableArray<string> Abilities)
+    ImmutableArray<string> Abilities,
+    ImmutableSortedSet<string>? Classes = null)
 {
     /// <summary>Whether the unit's basic attack reaches beyond adjacent tiles.</summary>
     public bool IsRanged => MaxRange > 1;

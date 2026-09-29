@@ -125,7 +125,6 @@ public sealed class SharedMatchFileTests : IDisposable
 
     private static MatchSetup Setup(string p1, string p2) => new(
         "riverford",
-        ImmutableSortedDictionary.CreateRange([KeyValuePair.Create(Seat.P1, "Elves"), KeyValuePair.Create(Seat.P2, "Goblins")]),
         5,
         ImmutableSortedDictionary.CreateRange([KeyValuePair.Create(Seat.P1, p1), KeyValuePair.Create(Seat.P2, p2)]));
 

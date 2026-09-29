@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Fantactics.Client.Logic.Launch;
 using Fantactics.Client.Logic.Session;
 using Fantactics.Core;
@@ -27,6 +28,34 @@ public class SessionTests
         Assert.StartsWith("bot:", LaunchArgs.Parse(["--autoplay"]).P1);
         Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--load"]));
         Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--bogus"]));
+    }
+
+    [Fact]
+    public void RaceListsLimitOnlyTheSeatsGivenOne()
+    {
+        LaunchArgs args = LaunchArgs.Parse(["--p1-races", "Elves, Goblins", "--p2-races", "any"]);
+
+        Assert.Equal(["Elves", "Goblins"], args.P1Races);
+        Assert.Null(args.P2Races);
+        Assert.Equal([Seat.P1], args.AllowedRaces()?.Keys ?? []);
+        Assert.Null(LaunchArgs.Parse(["--new"]).AllowedRaces());
+    }
+
+    [Fact]
+    public void BudgetsApplyToBothSeatsUnlessASeatHasItsOwn()
+    {
+        LaunchArgs args = LaunchArgs.Parse(["--budget", "60", "--p2-budget", "30", "--p1-starting-cap", "45"]);
+
+        ImmutableSortedDictionary<Seat, int>? budgets = args.DraftBudgets();
+        ImmutableSortedDictionary<Seat, int>? caps = args.StartingCaps();
+
+        Assert.NotNull(budgets);
+        Assert.NotNull(caps);
+        Assert.Equal(new Dictionary<Seat, int> { [Seat.P1] = 60, [Seat.P2] = 30 }, budgets);
+        Assert.Equal(new Dictionary<Seat, int> { [Seat.P1] = 45 }, caps);
+        Assert.Null(LaunchArgs.Parse(["--new"]).DraftBudgets());
+        Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--budget", "0"]));
+        Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--budget", "lots"]));
     }
 
     [Fact]

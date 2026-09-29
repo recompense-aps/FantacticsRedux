@@ -7,7 +7,8 @@ namespace Fantactics.Core.Engine;
 
 /// <summary>
 /// What one seat is allowed to see (Simulation §2). Bots only ever get this, never the full state. Hidden: the
-/// opponent's pending orders, draft, unplaced units, and reserve composition (only its value is shown). Units are
+/// opponent's pending orders, draft, unplaced units, and reserve composition (only its value is shown, plus the unit
+/// count per race once both drafts are in: the draft reveal, GameDesign §4.4). Units are
 /// named with the seat's own ids (<see cref="ViewIds"/>), never engine ids, which would reveal draft sizes.
 /// </summary>
 /// <param name="Seat">The viewing seat.</param>
@@ -48,13 +49,16 @@ public sealed record PlayerView(
                 player => player.Seat,
                 player => new PlayerSummary(
                     player.Seat,
-                    player.Race,
                     player.Command,
                     player.DestroyedValue,
                     player.ObjectivePoints,
                     UnitRules.ArmyValue(state, player.Seat),
                     UnitRules.ReserveValue(state, player.Seat),
-                    state.PendingOrders.ContainsKey(player.Seat)));
+                    state.PendingOrders.ContainsKey(player.Seat),
+                    player.AllowedRaces,
+                    player.DraftedRaces,
+                    player.BudgetUnder(state.Rules),
+                    player.StartingCapUnder(state.Rules)));
         return new PlayerView(
             seat,
             state.Turn,

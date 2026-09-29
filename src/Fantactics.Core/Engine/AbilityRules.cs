@@ -79,6 +79,10 @@ internal static class AbilityRules
             ally is not null && ally.Owner == unit.Owner && ally.Id != unit.Id,
             "bad-target",
             $"Mend needs another friendly unit on {target}.");
+        RuleViolationException.ThrowUnless(
+            ability.AllyScope == AllyScope.AnyFriendly || UnitRules.SharesRace(state, unit, ally),
+            "bad-target",
+            $"Mend only heals units that share the Herbalist's race; unit {ally.Id} doesn't.");
         RequireInRange(unit, target, ability);
         state = CombatRules.Heal(state, ally.Id, ability.Amount, events);
         state = CombatRules.RemoveStatus(state, ally.Id, StatusKind.Slowed, events);

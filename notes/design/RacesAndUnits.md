@@ -8,7 +8,7 @@ All numbers are first-pass values for the prototype. They are here so the rules 
 
 ## 1. Race Roster
 
-Proposed final roster: **eight races**.
+Proposed final roster: **seven races**. Races are unit tags, not army choices: players draft from every race's units (GameDesign §4.4, and §2.4 below).
 
 | Race | Identity | Home terrain | Race mechanic | Mage | Status |
 |---|---|---|---|---|---|
@@ -16,16 +16,16 @@ Proposed final roster: **eight races**.
 | [Goblins](#4-goblins) | Many, cheap, melee swarm | Mountains | Bloodthirst (heal on attack); mountain movement | Shaman: summons Grunts | **MVP, detailed** |
 | [Humans](#51-humans) | Well-rounded, disciplined, light magic | Plains, roads | Reshape land (Workers); healing | Cleric: heal / light | Stub |
 | [Dwarves](#52-dwarves) | Defensive, siege | Mountains, hills | Fortify over time; tunnels | Runesmith: create/remove mountains, tunnels | Stub |
-| [Undead](#53-undead) | Attrition, won't stay dead | Swamp | Units return after N turns | Necromancer: revive-on-death curse | Stub |
+| [Undead](#53-undead) | Attrition, won't stay dead | Swamp | Units return after N turns; raises fallen units as Undead hybrids | Necromancer: raise fallen units | Stub |
 | [Merfolk](#54-merfolk) | Water control | Water | Must touch water every N turns | Tidecaller: summons water | Stub |
 | [Demons](#55-demons) | Expensive, sacrifice | Any | Sacrifice to cut costs or buff | Lord of Death / mind control | Stub |
-| [Wizards](#56-wizards) | Technical spellcasters | Any | Every unit is a caster; spells cost HP or cooldowns | Grand Wizard | Stub |
 
 **Roster decisions (proposed):**
 
 - **Holy/Light folds into Humans.** Humans already had "light magic" and healing in the brainstorm. A separate Holy race would overlap with them.
 - **Undead and Demons stay separate, split by theme.** Undead is about *returning* (revival, reanimation). Demons is about *sacrifice* (spending your own units for power). The brainstorm's Demon Zombie and "raise corpses" ideas move to Undead. The Lord of Death stays with Demons but feeds on sacrifices instead of raising the dead.
-- **Wizards stay a race.** Their "mage" is the Grand Wizard. Every other Wizard unit is a lesser caster, so their identity is spell variety, not terrain.
+- ~~**Wizards stay a race.**~~ **Wizards dissolve into the Mage class** (decided 2026-09-28). With the open draft, "every unit is a caster" is what the Mage class describes, so it no longer needs its own race. The Wizard unit ideas move to other races' mages (§5.6).
+- **Undead is a race and a template.** Undead keeps a small draftable roster, and its Necromancer turns fallen units into Undead versions of themselves. This is where multi-race units come from (§2.4, §5.3).
 
 ## 2. Shared Rules
 
@@ -58,6 +58,63 @@ Traits more than one race can use.
 | Retaliate | From GameDesign §4.3: strikes back once per turn at a melee attacker it survives. |
 | Aura (X, r) | Friendly units within `r` tiles get effect X. Auras of the same name don't stack. Range is checked at the moment the effect applies (e.g. when an attack deals damage), so it always reflects current positions. |
 | Cooldown N | After use, the ability can't be used again for N turns: used on turn t, it's ready again on turn t + N + 1. |
+
+### 2.4 Races, Classes, and the Open Draft
+
+> Decided and implemented 2026-09-28 (rules 0.6.0). Engine notes:
+> - A setup may still limit a seat to some races (`allowedRaces`; the CLI's `--p1-races`); drafting outside them is rejected with `race-not-allowed`. Tournaments use this for mono-race comparisons, and records made before 0.6.0 load their one race per seat as that filter.
+> - Class tags live on unit definitions (`classes`); the Beast/Mounted class id is `Mounted`.
+> - Ally-targeting abilities carry an `allyScope` (`OwnRace` by default, or `AnyFriendly`).
+> - Extra races sit on the unit itself (`extraRaces`), ready for the Necromancer; no content uses them yet.
+> - Bots have a `raceFocus` style knob that pulls later draft picks toward the races already drafted.
+
+Players draft from **every race's units** (GameDesign §4.4). Race is a tag on each unit, not a choice made for the army.
+
+**Tags.** Every unit has:
+
+- **One race** (a raised unit has two; see Hybrids below). Race traits (Forestwalk, Bloodthirst, …) belong to every unit of that race, as they already do in the engine.
+- **Zero or more classes**, assigned by the designer rather than derived from stats:
+
+| Class | Meaning | MVP units |
+|---|---|---|
+| Mage | Casters and terrain shapers; the race's signature unit | Druid, Shaman |
+| Ranged | Fights mainly from range | Archer, Ranger |
+| Beast/Mounted | Animals and riders | Wolf Rider |
+| Defender | Frontline anchors (Braced, Retaliate) | Tank |
+
+Classes start as tags that abilities and auras can target (e.g. "Mages within 3", "can't target Beasts"). Whether classes get synergies of their own is open (§7).
+
+**Race unity** is rewarded **on the board**, not with draft thresholds:
+
+- **Positional auras** that buff nearby units of the same race (War Cry is the model: "other Goblins within 2").
+- **Race-scoped abilities** that only affect the caster's own race.
+- So unity is something you keep up through positioning, and a mixed army pays for its flexibility with auras that cover fewer units.
+
+**Scope rule.** A race mechanic or ability affects **its own race by default**. An ability that reaches other races says so explicitly ("any friendly unit", "any unit"). Abilities that target enemies or terrain aren't restricted by race. Current MVP scopes:
+
+| Mechanic | Scope | Change? |
+|---|---|---|
+| Forestwalk, Canopy Sight, Bloodthirst, Mountain-born | The unit itself (race trait) | No |
+| From the Trees | Elf reserves | Already per unit |
+| Out of the Caves | Goblin reserves | Already per unit |
+| War Cry | Other Goblins | No |
+| Mend | Another friendly **Elf** | **Yes:** was any friendly unit |
+| Call the Horde | Summons Goblin Grunts | No |
+| Pinning Shot, Entangle, Throw Net, Hamstring | Enemies of any race | No |
+| Overgrowth | Terrain | No |
+
+**Mages.** There's no cap on Mage-class units beyond each mage being Unique. An army may field a Druid and a Shaman (and later a Runesmith). Watch tournaments for terraforming armies that shut down every other plan.
+
+**Hybrids (multi-race units)** come from the **Undead template**, not from the draft:
+
+- The Necromancer raises a fallen unit as "Undead *X*" (e.g. an Undead Grunt), tagged with **both** its original race and Undead.
+- It gets **both races' traits in full** and counts for both races' auras and race-scoped abilities.
+- It follows the **Summoned** rule: it can't act on the turn it appears, and it's worth 0 for army value, Rout, and destroyed value (§2.1, GameDesign §4.5).
+- Draftable hybrids (Half-Elf and similar) are out for now.
+
+**Information.** After both drafts lock in, each player sees the other's races and unit count per race (GameDesign §4.4).
+
+**Balance target** (Simulation §7): mono-race and mixed armies are both viable. Two-race armies should be the most common winning shape, mono-race close behind, and "each race's best units" the weakest. Tournaments should report win rate by army shape (mono, two-race, three or more) as well as per unit.
 
 ## 3. Elves
 
@@ -94,7 +151,7 @@ Elves also get the general ranged rules from GameDesign §4.3: half Attack at po
 
 **Herbalist.** Weak in a fight, and the only elf healing.
 
-- **Mend** (ability, range 1–2): heal another friendly unit (not the Herbalist itself) for 3 HP and remove Slowed and Rooted from it. This is the answer to the Goblin Mauler.
+- **Mend** (ability, range 1–2): heal another friendly unit (not the Herbalist itself) for 3 HP and remove Slowed and Rooted from it. This is the answer to the Goblin Mauler. It heals **Elves only** (§2.4, rules 0.6.0).
 
 **Scout.** Ridiculously frail; it exists to move.
 
@@ -198,9 +255,11 @@ Enough to keep the identities distinct. Units are from the brainstorm and aren't
 ### 5.3 Undead
 
 - **Identity:** attrition. Killing an undead unit isn't the end of it.
-- **Race mechanic (draft):** dead units return after N turns at a graveyard or where they fell.
-- **Mage:** **Necromancer**: curse an enemy or ally. If the cursed unit dies while the curse lasts, it comes back as an undead unit under the Necromancer's control. Enemies may prefer to leave a cursed unit alive for a while.
-- **Units (draft):** Skeleton (basic), Zombie (slow, tough; moved over from the Demons brainstorm), Necromancer.
+- **Race mechanic (draft):** dead Undead units return after N turns at a graveyard or where they fell.
+- **Template** (decided 2026-09-28): Undead is also something that happens to other races' units. A raised unit becomes "Undead *X*", keeps its original race and traits, gains the Undead tag and traits, and is Summoned (can't act on arrival, worth 0). See §2.4.
+- **Mage:** **Necromancer**: raises fallen units through the template. The earlier curse version still works as the trigger: curse an enemy or ally, and if the cursed unit dies while the curse lasts, it comes back as an Undead version under the Necromancer's control. Enemies may prefer to leave a cursed unit alive for a while.
+- **Units (draft):** a small roster: Skeleton (basic), Zombie (slow, tough; moved over from the Demons brainstorm), Necromancer (Mage, Unique).
+- **Open:** the Undead race traits. They stack in full on raised hybrids, so keep them modest, or limit raising (Cooldown, a cap on raised units alive, raised at reduced HP). Can raising target enemy corpses? Do raised units return through the race mechanic?
 
 ### 5.4 Merfolk
 
@@ -216,12 +275,16 @@ Enough to keep the identities distinct. Units are from the brainstorm and aren't
 - **Mage:** very low chance to mind control an enemy unit (temporary or permanent). This is one of the few places randomness is allowed (GameDesign §4.3).
 - **Units:** Cultist (cheap sacrifice fodder), Legion (splits when sacrificed into), Explosive Servant (suicide unit on a countdown), Lord of Death (grows stronger from each sacrifice).
 
-### 5.6 Wizards
+### 5.6 Wizards (dissolved)
 
-- **Identity:** technical spellcasters. Strong at range, bad in prolonged fights up close.
-- **Race mechanic (draft):** TBD. Options: every unit has a spell; spells cost HP or have long cooldowns.
-- **Mage:** **Grand Wizard**: elemental spells (time, fire, lightning in a piercing line, ice, earth).
-- **Units:** Loyalist (buffs wizards), Novice (Grand Wizard damage, but hurts itself), Apprentice (a subset of Grand Wizard spells at lower damage), Battle Mage (melee-range AoE).
+No longer a race (decided 2026-09-28). The **Mage** class (§2.4) covers "technical spellcasters", so these ideas are a bank for other races' Mage-class units:
+
+- **Grand Wizard:** elemental spells (time, fire, lightning in a piercing line, ice, earth).
+- **Loyalist:** buffs mages (a natural class-targeting aura: "Mages within N").
+- **Novice:** Grand Wizard damage, but hurts itself.
+- **Apprentice:** a subset of Grand Wizard spells at lower damage.
+- **Battle Mage:** melee-range AoE.
+- **Open:** which races get them (Humans are the likely home).
 
 ## 6. Matchup Sanity Checks (Elves vs Goblins)
 
@@ -242,6 +305,7 @@ Quick math with the damage formula, `damage = max(1, Attack + Support − (Defen
 
 - Elves, starting army: Druid, 2 Archers, Ranger, Herbalist, 2 Scouts (6 + 10 + 6 + 4 + 4 = 30): 7 units. Reserve: Ranger, Herbalist (6 + 4 = 10).
 - Goblins, starting army: Shaman, War Lord, Tank, Mauler, Rusher, 4 Grunts (5 + 6 + 4 + 4 + 3 + 8 = 30): 9 units, plus up to 4 summoned. Reserve: Bruiser, Rusher, Grunt (4 + 3 + 2 = 9) or 5 Grunts (10). With Out of the Caves, the Bruiser + Rusher + Grunt reserve costs 7 Command to deploy; Grunts get no discount.
+- Mixed (open draft, §2.4), starting army: 3 Archers, Tank, 2 Grunts, Herbalist, Scout (15 + 4 + 4 + 4 + 2 = 29): 8 units. Reserve: Wolf Rider, Archer (4 + 5 = 9). Goblins screen the Archers, but the Herbalist can't Mend them and there's no War Cry to boost two Grunts. The Wolf Rider deploys at 3 Command.
 
 ## 7. Open Questions
 
@@ -254,3 +318,7 @@ Quick math with the damage formula, `damage = max(1, Attack + Support − (Defen
 7. ~~**Leaders.**~~ Deathmatch has no leader unit (GameDesign §4.5). Revisit only if a later mode needs one.
 8. **Mauler name:** Mauler, Hobbler, Netter, or Snarer?
 9. ~~**Out of the Caves discount.**~~ Decided 2026-09-27: it applies only to units of Cost 3 or more, so Grunts no longer flood in at 1 Command each.
+10. **Open draft: race auras.** Elves have no same-race aura yet, only Mend. What rewards a mono-Elf or Elf-heavy army on the board? Goblins already have War Cry.
+11. **Open draft: classes.** Are classes only tags for targeting and draft reveal, or do some get their own synergies? Which Elf/Goblin units beyond those in §2.4 get classes (Herbalist, Scout, Mauler)?
+12. **Open draft: budget.** Does the 40 / 30 draft budget still fit when armies can mix cheap Goblins with elite Elves?
+13. **Open draft: raised hybrids.** See §5.3: Undead traits, raising enemies, and whether raised units return.

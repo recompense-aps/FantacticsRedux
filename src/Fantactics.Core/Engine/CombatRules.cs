@@ -80,12 +80,16 @@ public static class CombatRules
         return new AttackPreview(target.Id, damage, damage >= target.Hp);
     }
 
-    /// <summary>Heal amount after the unit's attack deals damage: Bloodthirst plus 1 inside another unit's War Cry.</summary>
+    /// <summary>
+    /// Heal amount after the unit's attack deals damage: Bloodthirst plus 1 inside the War Cry of another unit of its
+    /// race (race auras only reach their own race, RacesAndUnits §2.4).
+    /// </summary>
     public static int EffectiveBloodthirst(GameState state, Unit unit)
     {
         bool inWarCry = state.FieldUnits.Any(other =>
             other.Owner == unit.Owner
             && other.Id != unit.Id
+            && UnitRules.SharesRace(state, other, unit)
             && UnitRules.Trait(state, other, TraitIds.WarCry) is int radius and > 0
             && other.Position.DistanceTo(unit.Position) <= radius);
         return UnitRules.Trait(state, unit, TraitIds.Bloodthirst) + (inWarCry ? 1 : 0);

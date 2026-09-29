@@ -13,10 +13,9 @@ namespace Fantactics.Client.Logic.Tests;
 /// <summary>Real mid-match states, taken from bot matches, for fuzzing the input builders.</summary>
 internal static class States
 {
-    /// <summary>Riverford, Elves (P1) vs Goblins (P2), with the given seat labels.</summary>
+    /// <summary>Riverford with the open draft and the given seat labels.</summary>
     public static MatchSetup Setup(ulong seed, string p1 = "human", string p2 = "human") => new(
         "riverford",
-        ImmutableSortedDictionary.CreateRange([KeyValuePair.Create(Seat.P1, "Elves"), KeyValuePair.Create(Seat.P2, "Goblins")]),
         seed,
         ImmutableSortedDictionary.CreateRange([KeyValuePair.Create(Seat.P1, p1), KeyValuePair.Create(Seat.P2, p2)]));
 

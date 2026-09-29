@@ -6,8 +6,9 @@ using Fantactics.Core.Rules;
 namespace Fantactics.Ai.Belief;
 
 /// <summary>
-/// Guesses the opponent's hidden reserve: a composition of their race's unit types whose Cost adds up to the reserve
-/// value the view shows (GameDesign §4.4). Only the value matters for Rout, so a plausible guess is enough for now.
+/// Guesses the opponent's hidden reserve: a composition of unit types from the races they drafted (the draft reveal,
+/// GameDesign §4.4) whose Cost adds up to the reserve value the view shows. Only the value matters for Rout, so a
+/// plausible guess is enough for now.
 /// </summary>
 public static class ReserveGuesser
 {
@@ -22,12 +23,16 @@ public static class ReserveGuesser
             return [];
         }
 
-        // Uniques can't be proven absent from the field, so leave them out; the cheap commons always fit.
+        // Uniques can't be proven absent from the field, so leave them out; the cheap commons always fit. Among equal
+        // costs, the race they drafted most goes first, so the guess leans on the army's main race.
+        IReadOnlyDictionary<string, int> drafted = enemy.DraftedRaces
+            ?? (enemy.AllowedRaces ?? [.. rules.Races.Keys]).ToImmutableSortedDictionary(race => race, _ => 1);
         List<(string Type, int Cost)> types = rules.Units
-            .Where(pair => pair.Value.Race == enemy.Race && !pair.Value.Unique)
+            .Where(pair => drafted.ContainsKey(pair.Value.Race) && !pair.Value.Unique)
+            .OrderByDescending(pair => pair.Value.Cost)
+            .ThenByDescending(pair => drafted[pair.Value.Race])
+            .ThenBy(pair => pair.Key, StringComparer.Ordinal)
             .Select(pair => (pair.Key, pair.Value.Cost))
-            .OrderByDescending(type => type.Cost)
-            .ThenBy(type => type.Key, StringComparer.Ordinal)
             .ToList();
         return FewestUnits(types, enemy.ReserveValue);
     }

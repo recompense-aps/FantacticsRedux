@@ -48,7 +48,7 @@ public static class LegalBuilder
             { Draft: DraftOptions draft } => new LegalView(
                 "Draft",
                 null,
-                "act --draft \"Archer Archer Ranger | Scout\": starting units, then | and reserve units",
+                "act --draft \"Archer Archer Tank | Scout\": starting units, then | and reserve units, any races",
                 Draftable: [.. draft.Units.Select(option => DraftRow(state.Rules, option))],
                 Budget: draft.Budget,
                 StartingCap: draft.StartingCap),
@@ -94,11 +94,12 @@ public static class LegalBuilder
     private static DraftRow DraftRow(RulesConfig rules, DraftUnitOption option)
     {
         UnitDefinition definition = rules.Units[option.Type];
-        IEnumerable<string> traits = definition.Traits
+        IEnumerable<string> traits = rules.TraitsOf(option.Type)
             .Select(pair => pair.Value > 1 ? $"{pair.Key}{pair.Value}" : pair.Key)
             .Concat(definition.Abilities);
         return new DraftRow(
             option.Type,
+            option.Race,
             option.Cost,
             definition.Hp,
             definition.Attack,
@@ -109,6 +110,7 @@ public static class LegalBuilder
                 : $"{definition.MinRange}-{definition.MaxRange}",
             definition.Initiative,
             option.Unique,
+            string.Join(" ", option.Classes),
             string.Join(" ", traits));
     }
 

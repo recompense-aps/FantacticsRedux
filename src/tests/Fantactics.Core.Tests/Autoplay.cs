@@ -11,12 +11,9 @@ namespace Fantactics.Core.Tests;
 /// <summary>Plays a Riverford match on a <see cref="MatchHost"/> with simple seeded choices, for tests that need real mid-match states.</summary>
 internal static class Autoplay
 {
-    /// <summary>Riverford, Elves (P1) vs Goblins (P2).</summary>
+    /// <summary>Riverford with the open draft; P1 drafts Elves and P2 drafts Goblins (see <see cref="Choose"/>).</summary>
     public static MatchSetup Setup(ulong seed) => new(
         "riverford",
-        ImmutableSortedDictionary.CreateRange([
-            KeyValuePair.Create(Seat.P1, "Elves"),
-            KeyValuePair.Create(Seat.P2, "Goblins")]),
         seed,
         ImmutableSortedDictionary.CreateRange([
             KeyValuePair.Create(Seat.P1, "human"),
@@ -48,7 +45,7 @@ internal static class Autoplay
 
     private static ICommand Choose(LegalActions legal, Random random) => legal.Decision switch
     {
-        DraftArmyDecision when legal.Draft?.Units[0].Type == "Archer" =>
+        DraftArmyDecision { Seat: Seat.P1 } =>
             new SubmitDraft(["Archer", "Archer", "Scout"], ["Ranger"]),
         DraftArmyDecision => new SubmitDraft(["Grunt", "Grunt", "Tank"], ["Rusher"]),
         PlaceStartingArmyDecision => Place(legal.Placement ?? throw new InvalidOperationException("No placement.")),

@@ -73,11 +73,13 @@ public static class ViewBuilder
     {
         GameState state = session.State;
         ImmutableArray<SeatStatus> seats = SeatExtensions.All
-            .Select(seat => new SeatStatus(
-                seat.ToString(),
-                session.KindOf(seat).Value,
-                state.Players[seat].Race,
-                GameEngine.PendingDecisionFor(state, seat) is Decision decision ? KindOf(decision) : ""))
+            .Select(seat => (Seat: seat, Player: state.Players[seat]))
+            .Select(pair => new SeatStatus(
+                pair.Seat.ToString(),
+                session.KindOf(pair.Seat).Value,
+                RaceText.Allowed(pair.Player.AllowedRaces),
+                $"{pair.Player.BudgetUnder(state.Rules)}/{pair.Player.StartingCapUnder(state.Rules)}",
+                GameEngine.PendingDecisionFor(state, pair.Seat) is Decision decision ? KindOf(decision) : ""))
             .ToImmutableArray();
         return new StatusView(state.Turn, state.Phase.ToString(), seats, session.CommandCount, Outcome(state.Outcome));
     }
@@ -139,7 +141,7 @@ public static class ViewBuilder
 
     private static SideSummary Side(PlayerSummary player) => new(
         player.Seat.ToString(),
-        player.Race,
+        RaceText.Drafted(player.DraftedRaces),
         player.Command,
         player.ArmyValue,
         player.ReserveValue,

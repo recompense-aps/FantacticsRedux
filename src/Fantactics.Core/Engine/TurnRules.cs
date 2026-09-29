@@ -118,9 +118,10 @@ internal static class TurnRules
 
     private static MatchOutcome? CheckOutcome(GameState state)
     {
-        int threshold = state.Rules.DraftBudget * state.Rules.RoutPercent;
         Dictionary<Seat, int> values = SeatExtensions.All.ToDictionary(seat => seat, seat => UnitRules.ArmyValue(state, seat));
-        List<Seat> routed = SeatExtensions.All.Where(seat => values[seat] * 100 < threshold).ToList();
+        List<Seat> routed = SeatExtensions.All
+            .Where(seat => values[seat] * 100 < state.Players[seat].BudgetUnder(state.Rules) * state.Rules.RoutPercent)
+            .ToList();
 
         if (routed.Count == 2)
         {

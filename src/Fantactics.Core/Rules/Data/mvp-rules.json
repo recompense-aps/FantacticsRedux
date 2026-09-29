@@ -31,12 +31,12 @@
     "Archer": {
       "race": "Elves", "cost": 5, "hp": 7, "attack": 4, "defense": 1, "movement": 4,
       "minRange": 2, "maxRange": 3, "initiative": 5, "vision": 5, "unique": false,
-      "traits": {}, "abilities": []
+      "traits": {}, "abilities": [], "classes": ["Ranged"]
     },
     "Ranger": {
       "race": "Elves", "cost": 6, "hp": 7, "attack": 3, "defense": 1, "movement": 5,
       "minRange": 1, "maxRange": 3, "initiative": 6, "vision": 5, "unique": false,
-      "traits": {}, "abilities": ["PinningShot"]
+      "traits": {}, "abilities": ["PinningShot"], "classes": ["Ranged"]
     },
     "Herbalist": {
       "race": "Elves", "cost": 4, "hp": 6, "attack": 1, "defense": 0, "movement": 4,
@@ -51,7 +51,7 @@
     "Druid": {
       "race": "Elves", "cost": 6, "hp": 6, "attack": 2, "defense": 0, "movement": 4,
       "minRange": 1, "maxRange": 2, "initiative": 4, "vision": 4, "unique": true,
-      "traits": {}, "abilities": ["Overgrowth", "Entangle"]
+      "traits": {}, "abilities": ["Overgrowth", "Entangle"], "classes": ["Mage"]
     },
     "Grunt": {
       "race": "Goblins", "cost": 2, "hp": 5, "attack": 3, "defense": 0, "movement": 4,
@@ -66,7 +66,7 @@
     "WolfRider": {
       "race": "Goblins", "cost": 4, "hp": 7, "attack": 4, "defense": 0, "movement": 7,
       "minRange": 1, "maxRange": 1, "initiative": 6, "vision": 5, "unique": false,
-      "traits": { "Bloodthirst": 1, "Reckless": 1 }, "abilities": []
+      "traits": { "Bloodthirst": 1, "Reckless": 1 }, "abilities": [], "classes": ["Mounted"]
     },
     "Bruiser": {
       "race": "Goblins", "cost": 4, "hp": 7, "attack": 5, "defense": 0, "movement": 4,
@@ -76,7 +76,7 @@
     "Tank": {
       "race": "Goblins", "cost": 4, "hp": 8, "attack": 2, "defense": 2, "movement": 3,
       "minRange": 1, "maxRange": 1, "initiative": 2, "vision": 3, "unique": false,
-      "traits": { "Bloodthirst": 3, "Retaliate": 1, "Braced": 1 }, "abilities": []
+      "traits": { "Bloodthirst": 3, "Retaliate": 1, "Braced": 1 }, "abilities": [], "classes": ["Defender"]
     },
     "Mauler": {
       "race": "Goblins", "cost": 4, "hp": 6, "attack": 3, "defense": 1, "movement": 4,
@@ -91,7 +91,7 @@
     "Shaman": {
       "race": "Goblins", "cost": 5, "hp": 5, "attack": 2, "defense": 0, "movement": 4,
       "minRange": 1, "maxRange": 2, "initiative": 3, "vision": 4, "unique": true,
-      "traits": {}, "abilities": ["CallTheHorde"]
+      "traits": {}, "abilities": ["CallTheHorde"], "classes": ["Mage"]
     }
   },
   "abilities": {

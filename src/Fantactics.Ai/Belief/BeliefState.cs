@@ -40,10 +40,13 @@ public static class BeliefState
             summary => summary.Seat,
             summary => new PlayerState(
                 summary.Seat,
-                summary.Race,
                 summary.Command,
                 summary.DestroyedValue,
-                summary.ObjectivePoints));
+                summary.ObjectivePoints,
+                summary.AllowedRaces,
+                summary.DraftedRaces,
+                summary.DraftBudget,
+                summary.StartingCap));
 
         ImmutableSortedDictionary<Seat, ICommand> pending = view.MyPendingOrders is ICommand mine
             ? ImmutableSortedDictionary<Seat, ICommand>.Empty.Add(view.Seat, mine)

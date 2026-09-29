@@ -5,6 +5,7 @@ using Fantactics.Core.Hosting;
 using Fantactics.Core.Players;
 using Fantactics.Core.Rules;
 using Fantactics.Protocol.Connections;
+using Fantactics.Protocol.Files;
 
 namespace Fantactics.Client.Logic.Session;
 
@@ -19,7 +20,9 @@ public sealed class ClientSession
     private readonly Func<string, int, IPlayerAgent> _botFactory;
     private readonly string? _draftAs;
     private readonly Dictionary<Seat, IGameConnection> _connections;
+    private readonly string? _autosave;
     private int _shown;
+    private int _savedTurn;
 
     /// <summary>Wraps a match.</summary>
     /// <param name="match">The match.</param>
@@ -27,13 +30,17 @@ public sealed class ClientSession
     /// <param name="botFactory">Creates bots from a spec and seed (for the quick start).</param>
     /// <param name="draftAs">Bot profile that drafts and places for human seats, or <c>null</c> to do it by hand.</param>
     /// <param name="shown">The seat to show first; defaults to the first human seat.</param>
+    /// <param name="autosave">File to save the match to at the start of every turn, or <c>null</c>.</param>
     public ClientSession(
         LocalMatch match,
         RulesConfig rules,
         Func<string, int, IPlayerAgent> botFactory,
         string? draftAs,
-        Seat? shown = null)
+        Seat? shown = null,
+        string? autosave = null)
     {
+        _autosave = autosave;
+        _savedTurn = match.State.Turn;
         Match = match;
         Rules = rules;
         _botFactory = botFactory;
@@ -80,6 +87,9 @@ public sealed class ClientSession
         }
     }
 
+    /// <summary>Saves the match (record and snapshot) to <paramref name="path"/>.</summary>
+    public void SaveTo(string path) => MatchFiles.Write(path, Match.ToRecord());
+
     /// <summary>Submits a command for the shown seat.</summary>
     public Task<RuleViolation?> SubmitAsync(ICommand command) => Connection.SubmitAsync(command);
 
@@ -98,6 +108,12 @@ public sealed class ClientSession
     private void OnUpdated(Seat seat, SeatUpdate update)
     {
         QuickStart(seat, update);
+        if (_autosave is not null && update.View.Turn != _savedTurn)
+        {
+            _savedTurn = update.View.Turn;
+            SaveTo(_autosave);
+        }
+
         Seat shown = Shown;
         if (seat == shown)
         {

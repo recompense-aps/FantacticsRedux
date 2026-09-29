@@ -1,5 +1,7 @@
 using Fantactics.Client.Common;
+using Fantactics.Client.Debug;
 using Fantactics.Client.Logic.Board;
+using Fantactics.Client.Logic.Debug;
 using Fantactics.Client.Logic.Input;
 using Fantactics.Client.Logic.Playback;
 using Fantactics.Client.Logic.Session;
@@ -7,11 +9,14 @@ using Fantactics.Client.Logic.Settings;
 using Fantactics.Client.Match.Board;
 using Fantactics.Client.Match.Hud;
 using Fantactics.Client.Match.Playback;
+using Fantactics.Core;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Geometry;
 using Fantactics.Core.Hosting;
+using Fantactics.Core.Records;
 using Fantactics.Core.State;
+using Fantactics.Protocol.Connections;
 using Godot;
 
 namespace Fantactics.Client.Match;
@@ -32,13 +37,18 @@ public partial class MatchScreen : Node
     private static readonly double[] _speeds = [1, 2, 4, 0];
 
     private readonly Queue<SeatUpdate> _pending = new();
+    private OpenMatch _open = null!;
     private ClientSession _session = null!;
+    private SaveLocations _saves = null!;
+    private IReadOnlyList<string> _seatOptions = [];
     private ClientSettings _settings = new();
     private Action<ClientSettings> _saveSettings = _ => { };
     private SeatUpdate? _current;
     private MoveOrderBuilder? _moves;
     private ActionPicker? _actions;
     private bool _pumping;
+    private DateTime? _llmSince;
+    private int _llmSeconds = -1;
     private bool _submitting;
     private string? _message;
 
@@ -54,6 +64,9 @@ public partial class MatchScreen : Node
     [Export]
     private MatchHud _hud = null!;
 
+    [Export]
+    private DebugPanel _debug = null!;
+
     /// <summary>The match ended and its last update has played; <paramref name="result"/> says who won.</summary>
     [Signal]
     public delegate void MatchFinishedEventHandler(string result);
@@ -62,13 +75,35 @@ public partial class MatchScreen : Node
     [Signal]
     public delegate void FailedEventHandler(string message);
 
+    /// <summary>Open this match file instead (quickload, a save from the debug panel).</summary>
+    [Signal]
+    public delegate void LoadRequestedEventHandler(string path);
+
+    /// <summary>Branch this match from right after command <paramref name="seq"/>.</summary>
+    [Signal]
+    public delegate void BranchRequestedEventHandler(int seq);
+
+    /// <summary>Move this match to a shared file (a seat was handed to an LLM).</summary>
+    [Signal]
+    public delegate void ShareRequestedEventHandler();
+
     /// <summary>Gives the screen its match. Call before adding it to the tree.</summary>
-    /// <param name="session">The match as this screen sees it.</param>
+    /// <param name="open">The match.</param>
+    /// <param name="saves">Where quicksaves go and saves are listed from.</param>
     /// <param name="settings">Player settings (speed, auto-skip).</param>
     /// <param name="saveSettings">Called when the player changes a setting.</param>
-    public void Initialize(ClientSession session, ClientSettings settings, Action<ClientSettings> saveSettings)
+    /// <param name="seatOptions">Controllers the debug panel offers for a seat (<c>human</c>, <c>llm</c>, <c>bot:…</c>).</param>
+    public void Initialize(
+        OpenMatch open,
+        SaveLocations saves,
+        ClientSettings settings,
+        Action<ClientSettings> saveSettings,
+        IReadOnlyList<string> seatOptions)
     {
-        _session = session;
+        _open = open;
+        _session = open.Session;
+        _saves = saves;
+        _seatOptions = seatOptions;
         _settings = settings;
         _saveSettings = saveSettings;
     }
@@ -84,10 +119,21 @@ public partial class MatchScreen : Node
         _hud.SpeedPressed += CycleSpeed;
         GetViewport().SizeChanged += FitCamera;
         _session.Updated += OnSessionUpdated;
+        _debug.GodViewToggled += _ => Redraw();
+        _debug.SeatChosen += OnSeatChosen;
+        _debug.QuicksavePressed += Quicksave;
+        _debug.QuickloadPressed += Quickload;
+        _debug.LoadChosen += path => EmitSignal(SignalName.LoadRequested, path);
+        _debug.BranchChosen += seq => EmitSignal(SignalName.BranchRequested, seq);
+        _debug.SetSeatOptions(_seatOptions);
+        _debug.Visible = false;
+
 
         _board.SetMap(_session.Current.View.Map);
         FitCamera();
         _hud.ShowSpeed(_settings.Speed);
+        string where = _open.SharedFile is { } shared ? $"Playing on {shared.Path}" : $"Autosaving to {Path.GetFileName(_saves.Folder)}/{Path.GetFileName(_saves.Autosave)}";
+        _hud.ShowNotice(_session.Match.ResumeWarning is string warning ? $"{warning}\n{where}" : where, 8);
         Show(_session.Current);
         Run(async () =>
         {
@@ -96,10 +142,38 @@ public partial class MatchScreen : Node
         });
     }
 
+    /// <summary>Opens or closes the debug panel.</summary>
+    public void ToggleDebug()
+    {
+        _debug.Visible = !_debug.Visible;
+        RefreshDebug();
+    }
+
+    /// <inheritdoc />
+    public override void _Process(double delta)
+    {
+        if (_llmSince is not DateTime since || _current is not SeatUpdate update || _player.IsPlaying)
+        {
+            return;
+        }
+
+        // Refresh the waiting line once a second, not every frame.
+        int seconds = (int)(DateTime.UtcNow - since).TotalSeconds;
+        if (seconds != _llmSeconds)
+        {
+            _llmSeconds = seconds;
+            _hud.ShowStatus(HudText.Status(update.View, _session.Rules), $"{HudText.Prompt(update, LabelOf)} The LLM is thinking… {seconds}s");
+        }
+    }
+
     /// <inheritdoc />
     public override void _ExitTree()
     {
         _session.Updated -= OnSessionUpdated;
+        if (_open.SharedFile is { } file)
+        {
+            file.Diverged -= OnDiverged;
+        }
         GetViewport().SizeChanged -= FitCamera;
     }
 
@@ -109,6 +183,18 @@ public partial class MatchScreen : Node
         if (@event.IsActionPressed("skip_animation"))
         {
             _player.Skip();
+        }
+        else if (@event.IsActionPressed("toggle_debug"))
+        {
+            ToggleDebug();
+        }
+        else if (@event.IsActionPressed("quicksave"))
+        {
+            Quicksave();
+        }
+        else if (@event.IsActionPressed("quickload"))
+        {
+            Quickload();
         }
         else if (@event.IsActionPressed("submit"))
         {
@@ -188,6 +274,8 @@ public partial class MatchScreen : Node
         }
 
         _current = update;
+        _llmSince = update.Legal is null && update.View.Outcome is null && WaitingOnLlm(update) ? DateTime.UtcNow : null;
+        _llmSeconds = -1;
         _message = null;
         _moves = update.Legal is { Decision: SubmitMoveOrdersDecision, Moves: MoveOptions moves }
             ? new MoveOrderBuilder(update.View, moves)
@@ -196,6 +284,7 @@ public partial class MatchScreen : Node
             ? new ActionPicker(update.View, decision.UnitId, legal.Actions)
             : null;
         Redraw();
+        RefreshDebug();
 
         if (update.View.Outcome is not null && _pending.Count == 0)
         {
@@ -218,7 +307,9 @@ public partial class MatchScreen : Node
             return;
         }
 
-        BoardModel model = BoardModel.Build(update.View, _session.Rules, _moves, _actions, _board.Hovered);
+        BoardModel model = _debug.GodView
+            ? GodView.Build(_session.Match.State, update.View.Seat, _board.Hovered)
+            : BoardModel.Build(update.View, _session.Rules, _moves, _actions, _board.Hovered);
         _board.Render(model);
         _hud.ShowStatus(HudText.Status(update.View, _session.Rules), _message ?? HudText.Prompt(update, LabelOf));
         _hud.ShowHint(model.Hint);
@@ -246,9 +337,70 @@ public partial class MatchScreen : Node
         _hud.ShowSubmit(_moves is not null, _moves is null ? "" : string.Join(" ", _moves.Problems));
     }
 
+    /// <summary>Fills the debug panel, if it is open.</summary>
+    private void RefreshDebug()
+    {
+        if (!_debug.Visible)
+        {
+            return;
+        }
+
+        LocalMatch match = _session.Match;
+        GameState state = match.State;
+        IReadOnlyList<LoggedEvent> events = match.Events;
+        _debug.Show(
+            StateHash.Compute(state)[..12],
+            SeatExtensions.All.ToDictionary(seat => seat, seat => match.ControllerOf(seat).Label),
+            DebugText.Timeline(match.ToRecord(), events),
+            [.. events.Select(DebugText.Line)],
+            DebugText.Hidden(state, _session.Shown));
+        _debug.ShowSaves(Directory.Exists(_saves.Folder)
+            ? Directory.GetFiles(_saves.Folder, "*.json")
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .Select(path => (path, DebugText.Summary(path)))
+            : []);
+    }
+
+    private void Quicksave()
+    {
+        _session.SaveTo(_saves.Quicksave);
+        _hud.ShowNotice($"Saved {_saves.Quicksave}", 3);
+        RefreshDebug();
+    }
+
+    private void Quickload()
+    {
+        if (File.Exists(_saves.Quicksave))
+        {
+            EmitSignal(SignalName.LoadRequested, _saves.Quicksave);
+        }
+        else
+        {
+            _hud.ShowNotice("No quicksave yet (F5 makes one).", 3);
+        }
+    }
+
+    /// <summary>Hands a seat to another controller; an LLM needs the match on a shared file first.</summary>
+    private void OnSeatChosen(int seat, string label)
+    {
+        SeatController controller = SeatController.Parse(label);
+        Run(async () =>
+        {
+            await _session.Match.SetControllerAsync((Seat)seat, controller);
+            if (controller.Kind == SeatControllerKind.Llm && _open.SharedFile is null)
+            {
+                MainThread.Post(() => EmitSignal(SignalName.ShareRequested));
+            }
+            else
+            {
+                MainThread.Post(RefreshDebug);
+            }
+        });
+    }
+
     private void OnTileClicked(Vector2I cell, bool secondary)
     {
-        if (_current is not SeatUpdate update || _player.IsPlaying || _submitting)
+        if (_current is not SeatUpdate update || _player.IsPlaying || _submitting || _debug.GodView)
         {
             return;
         }
@@ -381,7 +533,37 @@ public partial class MatchScreen : Node
         _camera.Position = board / 2 - new Vector2(0, (HudTop - HudBottom) / 2 / zoom);
     }
 
-    private string LabelOf(Fantactics.Core.Seat seat) => _session.Match.ControllerOf(seat).Label;
+    /// <summary>Where the match is saved, any resume warning, and how to hand an LLM seat to Claude.</summary>
+    private string StartNotice()
+    {
+        List<string> lines = [];
+        if (_session.Match.ResumeWarning is string warning)
+        {
+            lines.Add(warning);
+        }
+
+        if (_open.SharedFile is { } file)
+        {
+            string relative = $"{Path.GetFileName(Path.GetDirectoryName(file.Path))}/{Path.GetFileName(file.Path)}";
+            IEnumerable<Seat> llms = SeatExtensions.All.Where(seat => _session.Match.ControllerOf(seat).Kind == SeatControllerKind.Llm);
+            lines.Add(llms.Any()
+                ? $"Ask Claude to play {string.Join(" and ", llms)} in {relative} (play-fantactics skill)."
+                : $"Playing on {relative}.");
+        }
+        else
+        {
+            lines.Add($"Autosaving to {Path.GetFileName(_saves.Folder)}/{Path.GetFileName(_saves.Autosave)}.");
+        }
+
+        return string.Join('\n', lines);
+    }
+
+    private bool WaitingOnLlm(SeatUpdate update) =>
+        update.View.PendingDecisions.Any(d => _session.Match.ControllerOf(d.Seat).Kind == SeatControllerKind.Llm);
+
+    private void OnDiverged(string reason) => MainThread.Post(() => _hud.ShowNotice($"{reason} Syncing stopped; the match continues here only.", 20));
+
+    private string LabelOf(Seat seat) => _session.Match.ControllerOf(seat).Label;
 
     /// <summary>Runs match work off the main thread, reporting failures through <see cref="Failed"/>.</summary>
     private void Run(Func<Task> work) => Task.Run(async () =>

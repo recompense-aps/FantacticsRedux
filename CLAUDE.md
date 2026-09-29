@@ -34,7 +34,9 @@ Core's rules data (unit stats, tunable numbers) is `src/Fantactics.Core/Rules/Da
 - Re-import Godot assets headlessly: `<console binary> --headless --path src/Fantactics.Client --import`
 - Run the game: `<console binary> --path src/Fantactics.Client`, with launch options after `--` (TechnicalDesign §2.5), e.g. `-- --p2 bot:captain@easy`, `-- --load playtests/x.json --as P1`, `-- --p2 llm --out playtests/x.json`.
 - Godot smoke test (bots play a match through the real scenes, exit 0): `<console binary> --headless --path src/Fantactics.Client -- --autoplay`
-- Check layout without looking: `<console binary> --path src/Fantactics.Client -- --p2 bot:captain --seed 3 --screenshot <png>`, then view the PNG.
+- Cross-process check (Godot plus a CLI player on one file): `<console binary> --headless --path src/Fantactics.Client -- --autoplay --p1 bot:captain@easy --p2 llm --out <file>`, then play P2 through `fantactics-sim` on `<file>`; Godot exits 0 when the match ends.
+- Check layout without looking: `<console binary> --path src/Fantactics.Client -- --p2 bot:captain --seed 3 --screenshot <png>` (add `--debug` to include the debug panel), then view the PNG.
+- Set up a test position: play or load a match, quicksave (F5) or take `autosave.json`, edit its `snapshot` by hand, and `--load` it (TechnicalDesign §4).
 
 ## C# Conventions
 

@@ -27,14 +27,18 @@ dotnet build src/Fantactics.Sim
 SIM="dotnet src/Fantactics.Sim/bin/Debug/net8.0/fantactics-sim.dll"
 ```
 
-Create a match if you weren't given one (defaults: P1 llm Elves, P2 bot:random Goblins, map riverford):
+Create a match if you weren't given one (defaults: P1 llm, P2 bot:random, map riverford). Both seats draft from
+every race's units; the draft table shows each unit's race and classes. Race auras and abilities (War Cry, Mend) only
+reach units of the same race. Limit a seat with `--p1-races Elves` (comma-separated). After both drafts, your view
+shows how many units of each race the enemy drafted.
 
 ```sh
 $SIM new --out playtests/match-1.json --p1 llm --p2 bot:random --seed 7
 ```
 
 If you're playing against a person in the Godot client, they start the game with `-- --p2 llm --out playtests/<name>.json`
-(or load a file with an `llm` seat) and give you the file; their seat is labeled `human`. Play exactly as below:
+(or load a file with an `llm` seat, or switch a seat to `llm` in the debug panel, F1) and give you the file; the game shows
+the path in its top-right notice. Their seat is labeled `human`. Play exactly as below:
 `status --wait-for <your seat>` blocks while they think, and the client animates your moves as they land.
 
 For a real opponent, use a bot profile instead of `bot:random`, optionally with a difficulty: `--p2 bot:captain` or `--p2 bot:captain@hard` (difficulties: novice, easy, normal, hard, expert, master). Personalities: `captain` (balanced), `warden` (defensive), `berserker` (aggressive), `trickster` (baits, unpredictable), `bumble` (very weak).
@@ -56,7 +60,7 @@ Always pass `--format toon` (compact tables; about half the tokens of JSON).
 
 | Decision | Form | Example |
 |---|---|---|
-| Draft | `--draft "starting types \| reserve types"` | `--draft "Druid Archer Archer Ranger Herbalist Scout \| Ranger Herbalist"` |
+| Draft | `--draft "starting types \| reserve types"`, from any race | `--draft "Druid Archer Archer Tank Grunt Scout \| Ranger Herbalist"` |
 | Placement | `--orders` with `@` for every listed unit | `--orders "A@1,6 B@2,5 C@2,8"` |
 | Moves | `--orders`: `X>x,y` move, `X>a,b>x,y` via waypoints, `X=hold`, `X@x,y` deploy a reserve unit | `--orders "D>7,2 F>3,9>5,8 G@0,4"` |
 | Action | `--pick N` from the numbered options | `--pick 2` |

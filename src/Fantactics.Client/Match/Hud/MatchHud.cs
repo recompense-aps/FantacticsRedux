@@ -35,6 +35,9 @@ public partial class MatchHud : Control
     [Export]
     private Label _banner = null!;
 
+    [Export]
+    private Label _notice = null!;
+
     /// <summary>Submit was pressed.</summary>
     [Signal]
     public delegate void SubmitPressedEventHandler();
@@ -109,6 +112,16 @@ public partial class MatchHud : Control
         tween.TweenProperty(_banner, "modulate:a", 0f, seconds * 0.4f);
         tween.TweenCallback(Callable.From(() => _banner.Visible = false));
         return tween;
+    }
+
+    /// <summary>Shows a notice in the top right (e.g. a resume warning or where a file was saved) that fades out.</summary>
+    public void ShowNotice(string text, float seconds = 6)
+    {
+        _notice.Text = text;
+        _notice.Modulate = _notice.Modulate with { A = 1 };
+        Tween tween = CreateTween();
+        tween.TweenInterval(seconds);
+        tween.TweenProperty(_notice, "modulate:a", 0f, 1);
     }
 
     private static void Refill(HBoxContainer box, IEnumerable<(string Label, Action Pressed, bool Chosen)> buttons)

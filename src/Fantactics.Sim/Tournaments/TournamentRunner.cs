@@ -9,6 +9,7 @@ using Fantactics.Core.Records;
 using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 using Fantactics.Sim.Matches;
+using Fantactics.Sim.Views;
 
 namespace Fantactics.Sim.Tournaments;
 
@@ -21,6 +22,9 @@ namespace Fantactics.Sim.Tournaments;
 public sealed class TournamentRunner(RulesConfig rules)
 {
     private const double Z95 = 1.96;
+
+    /// <summary>The rules tournaments play unless a variant is given.</summary>
+    public RulesConfig Rules => rules;
 
     /// <summary>Plays the tournament.</summary>
     /// <param name="options">What to play.</param>
@@ -86,11 +90,20 @@ public sealed class TournamentRunner(RulesConfig rules)
             });
         (double low, double high) = WilsonInterval(score, games.Length);
 
+        string p1Label = Label(options.P1Bot, options.P1Races, options.DraftBudgets, Seat.P1);
+        string p2Label = Label(options.P2Bot, options.P2Races, options.DraftBudgets, Seat.P2);
+        List<(string Races, double Score)> armies = games
+            .SelectMany(g => new[]
+            {
+                (Races: g.P1Races, Score: Outcome(g.Winner, "P1")),
+                (Races: g.P2Races, Score: Outcome(g.Winner, "P2")),
+            })
+            .ToList();
         return new TournamentSummary(
             rules.Hash[..12],
             games.Length,
-            $"bot:{options.P1Bot} {options.P1Race}",
-            $"bot:{options.P2Bot} {options.P2Race}",
+            p1Label,
+            p2Label,
             games.Count(g => g.Winner == "P1"),
             games.Count(g => g.Winner == "P2"),
             games.Count(g => g.Winner == "draw"),
@@ -101,11 +114,53 @@ public sealed class TournamentRunner(RulesConfig rules)
             games.IsEmpty ? 0 : Math.Round(games.Average(g => g.Turns), 2),
             endReasons,
             [
-                Fingerprint(games, "P1", $"bot:{options.P1Bot} {options.P1Race}"),
-                Fingerprint(games, "P2", $"bot:{options.P2Bot} {options.P2Race}"),
+                Fingerprint(games, "P1", p1Label),
+                Fingerprint(games, "P2", p2Label),
             ],
-            unitStats);
+            unitStats,
+            Group(armies, army => Shape(army.Races)),
+            Group(armies, army => army.Races));
     }
+
+    /// <summary>The bot, plus its allowed races and draft budget when the tournament sets them.</summary>
+    private static string Label(
+        string bot,
+        ImmutableSortedSet<string>? races,
+        ImmutableSortedDictionary<Seat, int>? budgets,
+        Seat seat)
+    {
+        string label = races is null ? $"bot:{bot}" : $"bot:{bot} {string.Join('+', races)}";
+        return budgets?.TryGetValue(seat, out int budget) == true ? $"{label} {budget}pt" : label;
+    }
+
+    /// <summary>1 for a win, 0.5 for a draw, 0 for a loss.</summary>
+    private static double Outcome(string winner, string seat) => winner switch
+    {
+        "draw" => 0.5,
+        _ when winner == seat => 1.0,
+        _ => 0.0,
+    };
+
+    /// <summary>An army's shape by how many races it drafted (RacesAndUnits §2.4).</summary>
+    private static string Shape(string races) => races.Split('+').Length switch
+    {
+        1 => "mono",
+        2 => "two-race",
+        _ => "three+",
+    };
+
+    private static ImmutableArray<ArmyGroupStats> Group(
+        List<(string Races, double Score)> armies,
+        Func<(string Races, double Score), string> key) =>
+        armies
+            .GroupBy(key)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => new ArmyGroupStats(
+                group.Key,
+                group.Count(),
+                group.Count(army => army.Score == 1.0),
+                group.Count(army => army.Score == 0.5)))
+            .ToImmutableArray();
 
     private static StyleFingerprint Fingerprint(ImmutableArray<GameResult> games, string seat, string bot)
     {
@@ -157,6 +212,8 @@ public sealed class TournamentRunner(RulesConfig rules)
             Damage = total.Damage + delta.Damage,
             Kills = total.Kills + delta.Kills,
             Deaths = total.Deaths + delta.Deaths,
+            Picked = total.Picked + delta.Picked,
+            PickedWins = total.PickedWins + delta.PickedWins,
         };
 
     private static IPlayerAgent CreateBot(string name, BotProfile? profile, RulesConfig rules, int seed) =>
@@ -171,11 +228,12 @@ public sealed class TournamentRunner(RulesConfig rules)
         ulong seed = options.Seed + (ulong)game;
         MatchSetup setup = new(
             options.Map,
-            new Dictionary<Seat, string> { [Seat.P1] = options.P1Race, [Seat.P2] = options.P2Race }
-                .ToImmutableSortedDictionary(),
             seed,
             new Dictionary<Seat, string> { [Seat.P1] = $"bot:{options.P1Bot}", [Seat.P2] = $"bot:{options.P2Bot}" }
-                .ToImmutableSortedDictionary());
+                .ToImmutableSortedDictionary(),
+            RaceText.BySeat(options.P1Races, options.P2Races),
+            options.DraftBudgets,
+            options.StartingCaps);
         Dictionary<Seat, IPlayerAgent> agents = new()
         {
             [Seat.P1] = CreateBot(options.P1Bot, options.P1Profile, rules, unchecked((int)(seed * 2))),
@@ -196,12 +254,19 @@ public sealed class TournamentRunner(RulesConfig rules)
             }
         }
 
+        ImmutableArray<(Seat Seat, string Type)>? drafted = null;
         MatchResult result = MatchRunner.Run(
             rules,
             setup,
             agents,
-            (_, events) =>
+            (state, events) =>
             {
+                // Every drafted unit exists, unplaced or in reserve, when placement starts.
+                if (drafted is null && state.Phase == Phase.Placement)
+                {
+                    drafted = [.. state.Units.Values.Select(unit => (unit.Owner, unit.Type)).Distinct()];
+                }
+
                 foreach (GameEvent gameEvent in events)
                 {
                     switch (gameEvent)
@@ -240,6 +305,20 @@ public sealed class TournamentRunner(RulesConfig rules)
             },
             keepRecord: false);
 
+        foreach ((Seat Seat, string Type) pick in drafted ?? [])
+        {
+            UnitTypeStats delta = new(
+                pick.Seat.ToString(),
+                pick.Type,
+                0,
+                0,
+                0,
+                0,
+                Picked: 1,
+                PickedWins: result.Outcome.Winner == pick.Seat ? 1 : 0);
+            totals[pick] = Add(totals.GetValueOrDefault(pick), delta);
+        }
+
         GameState final = result.FinalState;
         return new GameResult(
             game,
@@ -258,6 +337,10 @@ public sealed class TournamentRunner(RulesConfig rules)
             firstArrival.GetValueOrDefault(Seat.P1),
             firstArrival.GetValueOrDefault(Seat.P2),
             damage[Seat.P1],
-            damage[Seat.P2]);
+            damage[Seat.P2],
+            RaceMix(final.Players[Seat.P1]),
+            RaceMix(final.Players[Seat.P2]));
     }
+
+    private static string RaceMix(PlayerState player) => string.Join('+', player.DraftedRaces?.Keys ?? []);
 }

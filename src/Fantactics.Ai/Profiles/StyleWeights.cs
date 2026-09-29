@@ -75,4 +75,10 @@ public sealed record StyleWeights
     /// Softmax temperature for draft picks; 0 uses the skill's temperature. High values draft at random.
     /// </summary>
     public double DraftTemperature { get; init; }
+
+    /// <summary>
+    /// How much the draft builds around one race (RacesAndUnits §2.4): each pick's score is multiplied by
+    /// <c>1 + RaceFocus × the share of units picked so far from its race</c>. 0 ignores race.
+    /// </summary>
+    public double RaceFocus { get; init; }
 }

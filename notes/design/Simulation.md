@@ -99,7 +99,7 @@ A `MatchRecord` is a JSON file:
   "rulesVersion": "0.1.0",
   "rulesConfigHash": "a41e…",
   "seed": 1234,
-  "setup": { "scenario": "mvp-riverford", "races": { "P1": "Elves", "P2": "Goblins" },
+  "setup": { "scenario": "mvp-riverford", "allowedRaces": { "P1": ["Elves"] },
              "seats": { "P1": "llm", "P2": "bot:random" } },
   "commands": [
     { "seq": 1, "seat": "P1", "command": { "$type": "SubmitMoveOrders", "...": "Core command" }, "stateHashAfter": "9f3c…", "note": "screen the forest" }
@@ -125,7 +125,7 @@ A `MatchRecord` is a JSON file:
 
 | Command | Purpose |
 |---|---|
-| `new --out match.json [--map riverford] [--p1 llm] [--p2 bot:random] [--p1-race Elves] [--p2-race Goblins] [--seed N] [--force]` | Create a match. Seats are `llm`, `human`, or `bot:<name>`. Scenario files beyond built-in maps come later. |
+| `new --out match.json [--map riverford] [--p1 llm] [--p2 bot:random] [--p1-races Elves,Goblins] [--p2-races any] [--budget 60] [--p1-budget N] [--p2-budget N] [--starting-cap 45] [--p1-starting-cap N] [--p2-starting-cap N] [--seed N] [--force]` | Create a match. Seats are `llm`, `human`, or `bot:<name>`. Both seats draft from every race unless `--p1-races`/`--p2-races` limit them (GameDesign §4.4). `--budget` and `--starting-cap` override the rules' 40 and 30 for both seats, and the `--p1-`/`--p2-` forms for one seat; `status` shows each seat's budget/cap. `run` takes the same options. Scenario files beyond built-in maps come later. |
 | `status match.json [--wait-for P1 [--timeout 600]]` | Phase, turn, and which seats owe a decision. Contains no hidden information. `--wait-for` blocks until that seat owes a decision or the match ends (for autonomous self-play agents). |
 | `view match.json --as P1` | That seat's `PlayerView`: header, map, unit table, reserve, pending decision, events since the seat last acted |
 | `legal match.json --as P1 [--unit <id>]` | Numbered action options with attack previews (damage, kills), reachable tiles with costs, deploy tiles, draft or placement options, and a usage line |
@@ -186,7 +186,7 @@ Coordinates are `(x,y)` with the origin at the top left. Terrain uses only non-l
 turn: 3
 phase: action
 you: P1
-race: Elves
+races: Elves 5, Goblins 2
 command: 4
 armyValue:
   you: 36
@@ -246,7 +246,7 @@ The same pattern covers LLM vs. bot (only one subagent is needed, or the session
 | 3 | **Invariant fuzzing** | Ai.Tests | `RandomAgent` vs. `RandomAgent` over N seeded games, with `Invariants.Check` after every step (below). A failing seed prints its `MatchRecord`. |
 | 4 | **Determinism** | Ai.Tests | The same seed produces an identical final `StateHash`, including when games run in parallel threads |
 | 5 | **Golden replays** | `src/tests/…/Replays/` | Interesting records (including promoted LLM playtests) must replay with matching hashes. When a rule changes on purpose, re-bless them with a CLI flag. |
-| 6 | **Balance tournaments** | `fantactics-sim run` | Win rate per race and seat, end-reason mix, average turns, damage and kills per unit type. Manual; a tiny smoke run can go in CI. |
+| 6 | **Balance tournaments** | `fantactics-sim run` | Win rate per race and seat (with the open draft, RacesAndUnits §2.4: per army shape — mono, two-race, three or more — and per unit), end-reason mix, average turns, damage and kills per unit type. Manual; a tiny smoke run can go in CI. |
 | 7 | **LLM playtests** | `playtests/` (gitignored unless promoted) | Degenerate strategies, confusing rules, unclear views |
 
 Invariants checked in layer 3:
@@ -343,3 +343,18 @@ Measured as the Elves' score rate in Captain-vs-Captain games, averaged over bot
 | **Wolf Rider (Cost 4, HP 7, Atk 4, Mv 7, Init 6, Bloodthirst 1, Reckless)** | **0.48** |
 
 Closing the gap before the Archers' second volley mattered more than shooting back or armoring up. The Wolf Rider went into rules 0.4.0. With it, Captain as Elves scores 0.48 as P1 and 0.48 as P2, the bots field about 2.4 per Goblin game, and every normal personality still beats `bot:random` as Goblins (192–199 of 200). Objective-rule variants tested in the same session (entrenched objectives, per-tile scoring, hills at the ford) did not help cautious play and are not adopted.
+
+### 2026-09-28 · Open draft: first tournaments (rules 0.6.0)
+
+Captain vs Captain on Riverford, 300 games per row. Score is P1's rate (0.50 is even).
+
+| P1 may draft | P2 may draft | P1 score |
+|---|---|---|
+| Elves | Goblins | 0.477 |
+| Goblins | Elves | 0.493 |
+| any | any | 0.495 |
+| Elves | any | 0.345 |
+| Goblins | any | 0.467 |
+
+- Race-locked play is unchanged: Elves average about 0.49 over both seats, as before (the own-race scope can't trigger in a mono army).
+- **`RULES?` The open-draft Captain always drafts the same army: four Archers, three Rangers, and one filler Grunt.** Its power-per-cost rating favours Elf shooters, and `raceFocus` 1.0 doesn't stop the last 2 points going to a Grunt. That army beats a mono-Elf draft (0.655 for the open side) and edges mono-Goblins. Every army came out two-race, so the "each race's best units" failure mode (RacesAndUnits §2.4) shows up at once. Next steps: an Elf same-race aura (RacesAndUnits §7, question 10), a draft rating that values auras, and more draft variety in the personalities.

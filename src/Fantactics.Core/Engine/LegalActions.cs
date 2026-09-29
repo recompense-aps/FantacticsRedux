@@ -45,12 +45,17 @@ public sealed record LegalActions(
 
     private static DraftOptions DraftOptionsFor(GameState state, Seat seat)
     {
-        string race = state.Players[seat].Race;
+        PlayerState player = state.Players[seat];
         ImmutableArray<DraftUnitOption> units = state.Rules.Units
-            .Where(pair => pair.Value.Race == race)
-            .Select(pair => new DraftUnitOption(pair.Key, pair.Value.Cost, pair.Value.Unique))
+            .Where(pair => player.MayDraft(pair.Value.Race))
+            .Select(pair => new DraftUnitOption(
+                pair.Key,
+                pair.Value.Cost,
+                pair.Value.Unique,
+                pair.Value.Race,
+                pair.Value.Classes ?? []))
             .ToImmutableArray();
-        return new DraftOptions(units, state.Rules.DraftBudget, state.Rules.StartingCap);
+        return new DraftOptions(units, player.BudgetUnder(state.Rules), player.StartingCapUnder(state.Rules));
     }
 
     private static PlacementOptions PlacementOptionsFor(GameState state, Seat seat)

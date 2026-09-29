@@ -97,7 +97,8 @@ The Godot project is a thin presentation layer. Everything about playing a match
 | `Input/` | `MoveOrderBuilder` (click a unit, then a highlighted destination; the engine's cheapest path; arrivals for reserve units; joint problems before Submit) and `ActionPicker` (click an enemy to attack, 1–9 for abilities, Wait/Delay). Both build only from `LegalActions`, so they can only produce legal commands. |
 | `Playback/` | `TimelineBuilder`: an update's events → `Beat`s of `Step`s (one movement tick's steps play together). Every event type maps to a step or is explicitly ignored, and a test enforces that. |
 | `Board/` | `BoardModel` (tokens, tile highlights, order arrows, hover hint: a pure function of the view and input state) and `HudText`. |
-| `Session/` | `ClientSession` (a connection per seat, which seat is shown, hotseat switching, and the quick start where a bot drafts and places for human seats until the draft screens exist) and `SaveLocations`. |
+| `Session/` | `ClientSession` (a connection per seat, which seat is shown, hotseat switching, autosave, and the quick start where a bot drafts and places for human seats until the draft screens exist), `MatchOpener` (new, load, branch, share; see §4) and `SaveLocations`. |
+| `Debug/` | `DebugText` (timeline, event log lines, hidden information, save summaries) and `GodView` (a board model from the full state). |
 | `Launch/`, `Settings/` | `LaunchArgs` (below) and `ClientSettings` (speed, auto-skip, curtain; JSON under `user://`). |
 
 **Godot side** (`src/Fantactics.Client`, folders by feature, scene and script side by side):
@@ -109,11 +110,12 @@ Match/MatchScreen.tscn   one match: queues updates, plays them, then snaps board
 Match/Board/             BoardView (TileMapLayer + BoardOverlay + tokens), UnitToken, PlaceholderTiles
 Match/Hud/               MatchHud (status, prompt, hint, action bar, reserve, Submit, speed, banner)
 Match/Playback/          EventPlayer (tweens per beat, speed-scaled, Space skips)
+Debug/DebugPanel.tscn     F1: state hash, god view, seat controllers, quicksave/quickload, saves, timeline, events, hidden info
 ```
 
 - **Playback never has the final word.** After an update's beats play, the board snaps to the update's `PlayerView`, so a wrong or missing animation can't leave the board in a wrong state. Skipping just stops early.
 - **Placeholder art:** terrain is a runtime-built `TileSet` (one flat color per `Terrain`, atlas tile = terrain index), and units are drawn discs. Real art swaps the `TileSet` and token scene without changing code that uses them.
-- **Launch options** (after `--` on the Godot command line) skip the menu: `--new`/`--p1`/`--p2 <human|llm|bot:spec>`, `--p1-race`, `--p2-race`, `--map`, `--seed`, `--draft-as <profile|none>`, `--load <file> [--as P1]`, `--out <file>`, `--saves <dir>`, `--speed <n>`, `--autoplay` (bots play to the end, then quit with 0; 1 on failure, 2 on timeout: the headless smoke test), and `--screenshot <png>` (save the screen after a few seconds and quit, for checking layout without looking).
+- **Launch options** (after `--` on the Godot command line) skip the menu: `--new`/`--p1`/`--p2 <human|llm|bot:spec>`, `--p1-races`/`--p2-races <Elves,Goblins|any>` (races a seat may draft; default any), `--budget`, `--p1-budget`, `--p2-budget`, `--starting-cap`, `--p1-starting-cap`, `--p2-starting-cap` (per-seat draft points; default the rules'), `--map`, `--seed`, `--draft-as <profile|none>`, `--load <file> [--as P1]`, `--out <file>`, `--saves <dir>`, `--speed <n>`, `--debug` (open the debug panel), `--autoplay` (human seats become bots and `llm` seats stay, so a CLI player can join; play to the end, then quit with 0; 1 on failure, 2 on timeout: the headless smoke test), and `--screenshot <png>` (save the screen after a few seconds and quit, for checking layout without looking).
 - **LLM seats:** when a seat is `llm` (or `--out` is given), the match runs on a shared file (`SharedMatchFile`, Protocol): every local operation takes the file's lock, catches up on commands the CLI appended (`MatchHost.CatchUp`, which publishes them so they animate), and saves; a 500 ms poll picks up the LLM's moves in between. If the file stops extending the match, syncing stops with a warning instead of guessing.
 
 ## 3. Networking
@@ -157,7 +159,9 @@ Match/Playback/          EventPlayer (tweens per beat, speed-scaled, Space skips
 - **The save file is the match record** (Simulation §5, format 2): setup + command log, plus a `snapshot` of the whole `GameState` after the last command, and a `start` state when the match continued from a saved position. Godot saves and Sim match files are the same format, so either tool opens the other's files.
 - **Resuming** (`MatchResume`, `MatchHost.Resume`): keep the history when it replays with matching hashes and ends at the snapshot. Otherwise continue from the snapshot without the history and show a warning: after a rules change (the history no longer replays), or after the snapshot was edited by hand, which is how test positions are set up (save, edit HP/units/Command in the JSON, load). With no snapshot and a broken history, loading fails, as before.
 - **Rewind and branch:** `MatchRecord.Truncated(seq)` resumes from any earlier command; the client saves branches as `<name>.b<seq>.json`.
-- **Where:** in development the repo's `playtests/` folder (where the Sim and the LLM skill look), in exported builds `user://saves`, `--saves <dir>` overrides. Autosave each turn (planned for M2).
+- **Where:** in development the repo's `playtests/` folder (where the Sim and the LLM skill look), in exported builds `user://saves`, `--saves <dir>` overrides.
+- **Which file a match lives in** (`MatchOpener`): a match is bound to its file only when it must be, that is when a seat is `llm` or `--out` was given; then every move is written to it and the CLI can play on it. Every other match (new, or loaded from a save) plays in memory and autosaves to `autosave.json` at the start of every turn, so loading a quicksave or a branch never overwrites it. Handing a seat to `llm` mid-match moves the match to a new shared file (`match-<time>.json`, shown in the HUD).
+- **Debug panel (F1):** F5/F9 quicksave to and load from `quick.json`; double-click a save to load it, or a timeline command to branch after it (`<name>.b<seq>.json`); switch any seat between `human`, `llm`, and bots mid-match; god view shows the full state with engine ids and both seats' locked-in orders. For testing only.
 - Online accounts/stats: out of scope until online play.
 
 ## 5. Open Technical Questions

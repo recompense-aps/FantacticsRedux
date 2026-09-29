@@ -13,7 +13,7 @@ public sealed class TournamentTests
     {
         TournamentRunner runner = new(RulesConfig.Default);
         TournamentOptions options = new(
-            "riverford", "Elves", "Goblins", "captain@easy", "random", Games: 6, Seed: 3, Threads: 1);
+            "riverford", ["Elves"], ["Goblins"], "captain@easy", "random", Games: 6, Seed: 3, Threads: 1);
 
         (TournamentSummary oneSummary, ImmutableArray<GameResult> one) = runner.Run(options);
         (TournamentSummary manySummary, ImmutableArray<GameResult> many) = runner.Run(options with { Threads = 4 });
@@ -22,9 +22,40 @@ public sealed class TournamentTests
         Assert.Equal(oneSummary.UnitStats.AsEnumerable(), manySummary.UnitStats.AsEnumerable());
         Assert.Equal(oneSummary.EndReasons.AsEnumerable(), manySummary.EndReasons.AsEnumerable());
         Assert.Equal(oneSummary.Fingerprints.AsEnumerable(), manySummary.Fingerprints.AsEnumerable());
+        Assert.Equal(oneSummary.ArmyShapes.AsEnumerable(), manySummary.ArmyShapes.AsEnumerable());
+        Assert.Equal(oneSummary.RaceMixes.AsEnumerable(), manySummary.RaceMixes.AsEnumerable());
         Assert.Equal(
-            oneSummary with { UnitStats = [], EndReasons = [], Fingerprints = [] },
-            manySummary with { UnitStats = [], EndReasons = [], Fingerprints = [] });
+            oneSummary with { UnitStats = [], EndReasons = [], Fingerprints = [], ArmyShapes = [], RaceMixes = [] },
+            manySummary with { UnitStats = [], EndReasons = [], Fingerprints = [], ArmyShapes = [], RaceMixes = [] });
+    }
+
+    [Fact]
+    public void ArmiesAreCountedByShapeAndRaceMix()
+    {
+        TournamentRunner runner = new(RulesConfig.Default);
+        TournamentOptions options = new(
+            "riverford", ["Elves"], null, "captain@easy", "random", Games: 4, Seed: 1, Threads: 1);
+
+        (TournamentSummary summary, ImmutableArray<GameResult> games) = runner.Run(options);
+
+        Assert.Equal(8, summary.ArmyShapes.Sum(group => group.Armies));
+        Assert.Equal(8, summary.RaceMixes.Sum(group => group.Armies));
+        Assert.All(games, game => Assert.Equal("Elves", game.P1Races));
+        Assert.Equal(4, Assert.Single(summary.RaceMixes, group => group.Group == "Elves").Armies);
+        Assert.All(
+            summary.UnitStats.Where(stats => stats.Seat == "P1" && stats.Picked > 0),
+            stats => Assert.Equal("Elves", RulesConfig.Default.Units[stats.Type].Race));
+    }
+
+    [Fact]
+    public void UnknownRacesAreRejected()
+    {
+        TestConsole console = new();
+
+        int exit = CliHost.Run(["run", "--p1-races", "Elves,Dragons", "--games", "1", "--format", "json"], console);
+
+        Assert.NotEqual(ExitCodes.Ok, exit);
+        Assert.Contains("Unknown race 'Dragons'", console.Output);
     }
 
     [Fact]

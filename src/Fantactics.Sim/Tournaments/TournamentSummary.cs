@@ -8,8 +8,8 @@ namespace Fantactics.Sim.Tournaments;
 /// </summary>
 /// <param name="Rules">Short hash of the rules config played.</param>
 /// <param name="Games">Matches played.</param>
-/// <param name="P1">P1's bot and race.</param>
-/// <param name="P2">P2's bot and race.</param>
+/// <param name="P1">P1's bot, and its allowed races if limited.</param>
+/// <param name="P2">P2's bot, and its allowed races if limited.</param>
 /// <param name="P1Wins">Matches P1 won.</param>
 /// <param name="P2Wins">Matches P2 won.</param>
 /// <param name="Draws">Drawn matches.</param>
@@ -21,6 +21,8 @@ namespace Fantactics.Sim.Tournaments;
 /// <param name="EndReasons">How matches ended.</param>
 /// <param name="Fingerprints">How each side played, per game.</param>
 /// <param name="UnitStats">Totals per seat and unit type.</param>
+/// <param name="ArmyShapes">Results by army shape: mono, two-race, or three+ races (RacesAndUnits §2.4).</param>
+/// <param name="RaceMixes">Results by the exact races drafted, e.g. Elves+Goblins.</param>
 public sealed record TournamentSummary(
     string Rules,
     int Games,
@@ -36,4 +38,6 @@ public sealed record TournamentSummary(
     double AverageTurns,
     ImmutableArray<EndReasonCount> EndReasons,
     ImmutableArray<StyleFingerprint> Fingerprints,
-    ImmutableArray<UnitTypeStats> UnitStats);
+    ImmutableArray<UnitTypeStats> UnitStats,
+    ImmutableArray<ArmyGroupStats> ArmyShapes,
+    ImmutableArray<ArmyGroupStats> RaceMixes);

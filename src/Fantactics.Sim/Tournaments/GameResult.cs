@@ -18,6 +18,8 @@ namespace Fantactics.Sim.Tournaments;
 /// <param name="P2FirstArrival">Turn P2's first reserve arrived; 0 if never.</param>
 /// <param name="P1Damage">Damage P1's units dealt.</param>
 /// <param name="P2Damage">Damage P2's units dealt.</param>
+/// <param name="P1Races">The races P1 drafted, joined with +, e.g. <c>Elves+Goblins</c>.</param>
+/// <param name="P2Races">The races P2 drafted.</param>
 public sealed record GameResult(
     int Game,
     ulong Seed,
@@ -35,16 +37,19 @@ public sealed record GameResult(
     int P1FirstArrival,
     int P2FirstArrival,
     int P1Damage,
-    int P2Damage)
+    int P2Damage,
+    string P1Races,
+    string P2Races)
 {
     /// <summary>The CSV header matching <see cref="ToCsv"/>.</summary>
     public const string CsvHeader =
         "game,seed,winner,reason,turns,p1_army,p2_army,p1_destroyed,p2_destroyed,p1_objective,p2_objective,"
-        + "p1_first_contact,p2_first_contact,p1_first_arrival,p2_first_arrival,p1_damage,p2_damage";
+        + "p1_first_contact,p2_first_contact,p1_first_arrival,p2_first_arrival,p1_damage,p2_damage,"
+        + "p1_races,p2_races";
 
     /// <summary>One CSV line.</summary>
     public string ToCsv() =>
         $"{Game},{Seed},{Winner},{Reason},{Turns},{P1Army},{P2Army},{P1Destroyed},{P2Destroyed},"
         + $"{P1Objective},{P2Objective},{P1FirstContact},{P2FirstContact},{P1FirstArrival},{P2FirstArrival},"
-        + $"{P1Damage},{P2Damage}";
+        + $"{P1Damage},{P2Damage},{P1Races},{P2Races}";
 }

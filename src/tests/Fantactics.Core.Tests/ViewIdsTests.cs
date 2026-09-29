@@ -60,7 +60,7 @@ public class ViewIdsTests
     /// <summary>Elves (P1) with the given draft against a fixed Goblin draft, placed and at the start of turn 1.</summary>
     private static GameState PlacedMatch(ImmutableArray<string> p1Starting, ImmutableArray<string> p1Reserve)
     {
-        GameState state = GameEngine.NewMatch(RulesConfig.Default, MapLibrary.Load("riverford"), "Elves", "Goblins", 1);
+        GameState state = GameEngine.NewMatch(RulesConfig.Default, MapLibrary.Load("riverford"), 1);
         state = Apply(state, Seat.P1, new SubmitDraft(p1Starting, p1Reserve)).State;
         state = Apply(state, Seat.P2, new SubmitDraft(["Grunt", "Grunt", "Tank"], ["Rusher"])).State;
         return SeatExtensions.All.Aggregate(state, (current, seat) =>

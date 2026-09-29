@@ -14,6 +14,9 @@ namespace Fantactics.Core.State;
 /// <param name="AbilityReadyTurn">First turn each used ability is available again.</param>
 /// <param name="IsSummoned">Created by an ability; worth no points (RacesAndUnits §2.1).</param>
 /// <param name="CannotActOnTurn">A turn on which the unit gets no action (summoned, or arrived outside its zone).</param>
+/// <param name="ExtraRaces">
+/// Races the unit has on top of its type's race, such as a raised Undead unit (RacesAndUnits §2.4); <c>null</c> for none.
+/// </param>
 public sealed record Unit(
     int Id,
     Seat Owner,
@@ -24,7 +27,8 @@ public sealed record Unit(
     ImmutableSortedDictionary<StatusKind, int> Statuses,
     ImmutableSortedDictionary<string, int> AbilityReadyTurn,
     bool IsSummoned,
-    int CannotActOnTurn)
+    int CannotActOnTurn,
+    ImmutableSortedSet<string>? ExtraRaces = null)
 {
     /// <summary>Creates a fresh unit with no statuses or cooldowns.</summary>
     public static Unit Create(int id, Seat owner, string type, UnitLocation location, Point position, int hp) =>

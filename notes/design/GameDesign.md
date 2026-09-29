@@ -6,7 +6,7 @@
 
 ## 1. Overview
 
-**Fantactics** is a fantasy-themed, grid-based, turn-based strategy game in pixel art. Players field armies from asymmetric races, each with its own playstyle, unique mechanic, and a "mage" unit whose abilities tie into that race's identity (often by reshaping the terrain).
+**Fantactics** is a fantasy-themed, grid-based, turn-based strategy game in pixel art. Players draft armies from a shared pool of units. Every unit belongs to an asymmetric race with its own playstyle, unique mechanic, and "mage" units whose abilities tie into that race's identity (often by reshaping the terrain). Races reward being fielded together, so an army's race mix is its identity (§4.4, RacesAndUnits §2.4).
 
 - **Genre:** turn-based tactics / strategy
 - **Engine:** Godot 4.7.2 (.NET / C#)
@@ -15,7 +15,7 @@
 
 ## 2. Design Pillars (proposed)
 
-1. **Asymmetry with identity.** Each race plays differently, not just with different stats. Knowing a race's mechanic should change how you play against it.
+1. **Asymmetry with identity.** Each race plays differently, not just with different stats. Knowing a race's mechanic should change how you play against it. With the open draft (§4.4), identity comes from the races an army leans on: race unity is rewarded on the board (auras and race-scoped abilities), so a focused army beats a pile of each race's best units.
 2. **Terrain is a weapon.** Terrain affects movement, vision, and combat, and some races can reshape it.
 3. **Readable at a glance.** Pixel art and UI make unit roles, threats, and terrain obvious without reading tooltips.
 4. **Mind games.** Hidden information (fog of war, traps, invisibility) rewards scouting and bluffing.
@@ -26,7 +26,7 @@
 
 - A single hand-made map on a square grid
 - 1v1, **Deathmatch** only
-- 2 races: **Elves vs Goblins** (see [MVP Matchup](#61-mvp-matchup-elves-vs-goblins))
+- 2 races: **Elves and Goblins** (see [MVP Matchup](#61-mvp-matchup-elves-vs-goblins)). With the open draft (§4.4) both races share one pool, so mixed Elf/Goblin armies are possible.
 - Core terrain set (plains, forest, hills, mountains, water)
 - Local hotseat play first, then LAN, using the same command pipeline (see TechnicalDesign)
 
@@ -153,7 +153,7 @@ A unit takes exactly **one** of:
 | Initiative | Action order (§4.1). |
 | Vision | Sight radius. Unused until fog of war arrives (§7). |
 
-Units also carry **traits**, named rules that bend the defaults (Braced from §4.1 is the first). Traits keep races asymmetric without adding stats every unit has to care about.
+Units also carry **traits**, named rules that bend the defaults (Braced from §4.1 is the first). Traits keep races asymmetric without adding stats every unit has to care about. Every unit is also tagged with a **race** and zero or more **classes** (Mage, Ranged, Beast/Mounted, Defender), and abilities and auras can target by tag (RacesAndUnits §2.4).
 
 **Damage:**
 
@@ -203,9 +203,12 @@ damage = max(1, Attack + Support − (Defense + terrain Defense))
 
 **Draft** (before the match, hidden from the opponent):
 
-- Each player spends a **draft budget** (first pass: **40 points**) on units at their Cost (RacesAndUnits §3.2, §4.2). Unique limits apply to the whole draft.
+- **Open pool** (decided 2026-09-28, rules 0.6.0): players draft from **every race's units**. There's no race pick. A mono-race army is one strategy among others, rewarded by race auras and race-scoped abilities (RacesAndUnits §2.4). This replaces race-locked drafting.
+- **The map is known before the draft**, so drafting for terrain (Elves on forest-heavy maps, Goblins on mountains) is part of the strategy.
+- Each player spends a **draft budget** (first pass: **40 points**) on units at their Cost (RacesAndUnits §3.2, §4.2). A match setup can override the budget and the starting cap for each seat separately (handicaps, asymmetric modes such as Helm's Deep); each seat's Rout threshold (§4.5) follows its own budget. Unique limits apply to the whole draft. There's no cap on Mage-class units beyond each mage being Unique.
 - Up to the **starting cap** (first pass: **30 points**) is deployed on the map at the start. Everything else goes into the **reserve**, off the map.
 - A player doesn't have to fill the cap. Starting lighter means a larger reserve.
+- **Draft reveal:** after both drafts lock in and before placement, each player sees the other's **races and unit count per race** for the whole draft (e.g. "Goblins ×5, Elves ×2"), but not the unit types or the split between starting army and reserve.
 - **What the opponent sees:** once the match starts, the reserve's *composition* stays hidden. Only its total value is visible (it's part of army value in the HUD, §4.5). Units become visible when they arrive.
 
 **Deploy zones:**
@@ -230,15 +233,15 @@ damage = max(1, Attack + Support − (Defense + terrain Defense))
 
 At +2 Command per turn from turn 2, a 10-point reserve is fully deployed around turn 6, so the early fight is the starting army and reinforcements shape the midgame.
 
-**Race arrival rules.** The core rules are the same for everyone. Each race bends *how or where* its reserves arrive:
+**Race arrival rules.** The core rules are the same for everyone. Each race bends *how or where* its reserves arrive. In an open-draft army a rule applies to **units of that race only**: an Elf may arrive from the forest, but a Goblin in the same army may not.
 
 | Race | Arrival rule (draft) |
 |---|---|
 | Elves | May also arrive on any forest tile with no enemy within 2 tiles. |
-| Goblins | Deploying a unit of Cost 3 or more costs 1 less Command. May also arrive on mountain tiles in or next to the deploy zone. |
+| Goblins | Deploying a Goblin of Cost 3 or more costs 1 less Command. May also arrive on mountain tiles in or next to the deploy zone. |
 | Dwarves | May arrive at any tunnel the Runesmith has made. |
 | Merfolk | May arrive on any water tile. |
-| Undead | Dead units return to the reserve after N turns (their race mechanic). |
+| Undead | Dead Undead units return to the reserve after N turns (their race mechanic). Raised units (RacesAndUnits §5.3) are Summoned; whether they return too is open. |
 | Demons | Sacrifice a unit on the field to cut a deploy's cost. |
 | Humans | Arrivals on road tiles may move on their arrival turn. |
 
@@ -354,17 +357,19 @@ Terrain: `.` plains, `=` road, `%` forest, `+` hills, `^` mountains, `#` bridge,
 
 Race traits, unit stats, and abilities are in [RacesAndUnits](RacesAndUnits.md). The original brainstorm is in [UnitIdeas](../og/UnitIdeas.md).
 
+Races are unit tags, not army choices: armies are drafted from a shared pool (§4.4). Race mechanics apply to units of that race, and race unity is rewarded by auras and race-scoped abilities (RacesAndUnits §2.4).
+
 | Race | Identity | Race mechanic (draft) | Mage ability (draft) |
 |---|---|---|---|
 | Humans | Well-rounded, mechanical | Workers reshape land; healing | Heal / "light" magic |
-| Elves | Ranged, mobile, fragile | Forest mobility / invisibility | TBD |
+| Elves | Ranged, mobile, fragile | Forest mobility / invisibility | Druid: grow forest, entangle |
 | Dwarves | Defensive, siege | Fortify over time; tunnels | Create/remove mountains, dwarf-only tunnels |
 | Goblins | Swarm, cheap | Mountain movement; health gain on attack | Spawn two basic goblins |
-| Undead | Attrition | Units return after N turns | Revive-on-death curse |
+| Undead | Attrition | Units return after N turns; raised units become Undead hybrids | Necromancer: raise fallen units |
 | Merfolk | Water control | Must return to water every N turns | Summon water nearby |
 | Demons | High cost, sacrifice | Sacrifice to reduce cost / buff | Low-chance mind control |
-| Wizards | Technical spellcasters | TBD | Grand Wizard elemental spells |
-| Holy/Light? | TBD | TBD | TBD |
+
+Wizards are no longer a race (decided 2026-09-28): **Mage** is a class any race can have, and the Wizard unit ideas move to other races' mages (RacesAndUnits §5.6). Holy/Light folds into Humans.
 
 ### 6.1 MVP Matchup: Elves vs Goblins
 
@@ -385,7 +390,7 @@ A strong contrast to prove out the core systems: **few, fragile, ranged units th
 - **Elves:** Archer, Ranger, Herbalist, Scout, plus a movement-limiting specialist
 - **Goblins:** Rusher, Wolf Rider, Bruiser, Tank, Mauler, War Lord
 
-**What this matchup tests:** terrain move costs and defense, ranged vs melee and counterattacks, healing, movement-control effects, and (if forest invisibility makes the cut) the first bit of hidden information.
+**What this matchup tests:** terrain move costs and defense, ranged vs melee and counterattacks, healing, movement-control effects, and (if forest invisibility makes the cut) the first bit of hidden information. Under the open draft it also tests the first mixed armies: mono-Elf, mono-Goblin, and Elf/Goblin mixes should all be viable (Simulation §7).
 
 **Open for this matchup:**
 
@@ -434,6 +439,7 @@ Answer inline or move decisions into the [Decision Log](#decision-log).
 7. **Single player:** is there an AI opponent or campaign, or is it multiplayer-only? (Bots for testing are planned either way; see [Simulation](Simulation.md).)
 8. **Platforms and distribution:** Windows-only to start? Steam?
 9. **Team size:** solo dev? Is someone else doing the art?
+10. **Open draft follow-ups** (§4.4, RacesAndUnits §2.4, §7): the Undead race traits, whether Necromancers can raise enemies, where the Wizard units go, what classes do beyond being tags, and whether the 40-point budget changes.
 
 ## Decision Log
 
@@ -460,3 +466,6 @@ Answer inline or move decisions into the [Decision Log](#decision-log).
 | 2026-09-27 | Headless simulation and LLM play: matches run in memory on a deterministic Core engine; bots in `Fantactics.Ai`; LLMs play through a file-backed `fantactics-sim` CLI | Bots only see a player view; match records are JSON (seed + command log + state hashes); the CLI prints TOON for LLM seats to save tokens; see [Simulation](Simulation.md) |
 | 2026-09-28 | Goblins get the Wolf Rider (Cost 4, HP 7, Atk 4, Mv 7, Init 6, Bloodthirst 1, Reckless) | Bot tournaments showed Elves winning 78% of Captain mirrors. Goblin buffs beat an Archer nerf, and closing the gap beat shooting back or armoring up; the Wolf Rider brought Elves to 48% (Simulation §10). Rules 0.4.0 |
 | 2026-09-28 | Before the Godot client: action-phase auto-skip plus queued actions; no forest invisibility in the MVP; the Mauler keeps its name | Auto-skip and queuing are host features, not rules; see §4.2, §6.1, and TechnicalDesign §2.4 |
+| 2026-09-28 | Open draft: armies draft from every race's units; race becomes a unit tag alongside classes (Mage, Ranged, Beast/Mounted, Defender); race unity is rewarded by positional auras and race-scoped abilities | Replaces race-locked drafting. Race mechanics affect their own race unless an ability says otherwise; the map is known before the draft; after the draft each side sees the other's races and unit counts; no Mage cap beyond Unique; multi-race units come from the Necromancer raising fallen units (worth 0, Summoned, both races' traits in full); Wizards dissolve into the Mage class. Balance target: mono and mixed armies both viable, two-race armies the most common winners. See §4.4, §6, RacesAndUnits §2.4 |
+| 2026-09-28 | Draft budget and starting cap configurable per seat by the match setup | The rules' 40 / 30 stay the defaults; each seat routs against its own budget; set with `--budget`/`--p1-budget`/`--starting-cap` and similar in the CLI and client (Simulation §6.1, TechnicalDesign §2.5). No rules-version bump: default matches play exactly as before |
+| 2026-09-28 | Open draft implemented (rules 0.6.0) | Setups keep an optional per-seat race filter (`race-not-allowed`) for mono-race tournaments and old records; Mend and War Cry now reach only their own race; tournaments report results by army shape and race mix. The first runs show the open-draft Captain always drafting Elf shooters plus a Grunt (Simulation §10) |

@@ -12,14 +12,19 @@ internal static class DraftRules
     /// <summary>Throws a <see cref="RuleViolationException"/> unless the draft is legal for the seat.</summary>
     public static void Validate(GameState state, Seat seat, SubmitDraft draft)
     {
-        string race = state.Players[seat].Race;
+        PlayerState player = state.Players[seat];
         List<string> all = [.. draft.Starting, .. draft.Reserve];
         foreach (string type in all)
         {
             RuleViolationException.ThrowUnless(
-                state.Rules.Units.TryGetValue(type, out UnitDefinition? definition) && definition.Race == race,
+                state.Rules.Units.TryGetValue(type, out UnitDefinition? definition),
                 "unknown-unit",
-                $"'{type}' is not a {race} unit.");
+                $"'{type}' is not a unit type.");
+            RuleViolationException.ThrowUnless(
+                player.MayDraft(definition.Race),
+                "race-not-allowed",
+                $"'{type}' is a {definition.Race} unit; this army may only draft "
+                    + $"{string.Join(", ", player.AllowedRaces ?? [])}.");
         }
 
         RuleViolationException.ThrowUnless(
@@ -29,15 +34,15 @@ internal static class DraftRules
 
         int startingCost = draft.Starting.Sum(type => state.Rules.Units[type].Cost);
         RuleViolationException.ThrowUnless(
-            startingCost <= state.Rules.StartingCap,
+            startingCost <= player.StartingCapUnder(state.Rules),
             "over-starting-cap",
-            $"The starting army costs {startingCost}; the cap is {state.Rules.StartingCap}.");
+            $"The starting army costs {startingCost}; the cap is {player.StartingCapUnder(state.Rules)}.");
 
         int totalCost = all.Sum(type => state.Rules.Units[type].Cost);
         RuleViolationException.ThrowUnless(
-            totalCost <= state.Rules.DraftBudget,
+            totalCost <= player.BudgetUnder(state.Rules),
             "over-budget",
-            $"The draft costs {totalCost}; the budget is {state.Rules.DraftBudget}.");
+            $"The draft costs {totalCost}; the budget is {player.BudgetUnder(state.Rules)}.");
 
         string? duplicateUnique = all
             .Where(type => state.Rules.Units[type].Unique)
@@ -68,13 +73,27 @@ internal static class DraftRules
         }
 
         ImmutableSortedDictionary<int, Unit> created = units.ToImmutable();
+        ImmutableSortedDictionary<Seat, PlayerState> players = state.Players.Values.ToImmutableSortedDictionary(
+            player => player.Seat,
+            player =>
+            {
+                var draft = (SubmitDraft)state.PendingOrders[player.Seat];
+                return player with { DraftedRaces = CountRaces(state.Rules, [.. draft.Starting, .. draft.Reserve]) };
+            });
         return state with
         {
             Units = created,
+            Players = players,
             Owners = state.Owners.SetItems(created.Select(pair => KeyValuePair.Create(pair.Key, pair.Value.Owner))),
             NextUnitId = nextId,
             PendingOrders = ImmutableSortedDictionary<Seat, ICommand>.Empty,
             Phase = Phase.Placement,
         };
     }
+
+    /// <summary>Counts <paramref name="unitTypes"/> per race (the draft reveal, GameDesign §4.4).</summary>
+    public static ImmutableSortedDictionary<string, int> CountRaces(RulesConfig rules, IEnumerable<string> unitTypes) =>
+        unitTypes
+            .GroupBy(type => rules.Units[type].Race)
+            .ToImmutableSortedDictionary(group => group.Key, group => group.Count());
 }

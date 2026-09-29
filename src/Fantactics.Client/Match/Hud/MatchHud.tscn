@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://Match/Hud/MatchHud.cs" id="1_hud"]
 
-[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_hint", "_actions", "_reserve", "_problems", "_submit", "_speed", "_banner")]
+[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_hint", "_actions", "_reserve", "_problems", "_submit", "_speed", "_banner", "_notice")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -20,6 +20,7 @@ _problems = NodePath("Bottom/Problems")
 _submit = NodePath("Bottom/Submit")
 _speed = NodePath("Bottom/Speed")
 _banner = NodePath("Banner")
+_notice = NodePath("Notice")
 
 [node name="Top" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -97,3 +98,17 @@ grow_vertical = 2
 theme_override_font_sizes/font_size = 32
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="Notice" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -520.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = 48.0
+grow_horizontal = 0
+modulate = Color(1, 0.85, 0.4, 1)
+horizontal_alignment = 2
+autowrap_mode = 3

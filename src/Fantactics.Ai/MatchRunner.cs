@@ -21,7 +21,7 @@ public static class MatchRunner
 
     /// <summary>Plays a match from <paramref name="setup"/>.</summary>
     /// <param name="rules">Rules config.</param>
-    /// <param name="setup">Map, races, and seed.</param>
+    /// <param name="setup">Map, seed, and allowed races.</param>
     /// <param name="agents">An agent per seat.</param>
     /// <param name="observer">Called after every accepted command, e.g. to check invariants.</param>
     /// <param name="maxCommands">Commands allowed before giving up.</param>

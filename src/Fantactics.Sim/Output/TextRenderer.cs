@@ -24,7 +24,9 @@ public static class TextRenderer
     {
         StringBuilder text = new();
         text.AppendLine(
-            $"Turn {view.Turn} · {view.Phase} · You: {view.You} ({view.Me.Race}) · Command {view.Me.Command} · "
+            $"Turn {view.Turn} · {view.Phase} · You: {view.You}{Races(view.Me.Races)} · "
+            + (view.Enemy.Races is "" ? "" : $"Enemy drafted {view.Enemy.Races} · ")
+            + $"Command {view.Me.Command} · "
             + $"Army {view.Me.Army} vs {view.Enemy.Army} · Destroyed {view.Me.Destroyed} vs {view.Enemy.Destroyed} · "
             + $"Objective {view.Me.Objective} vs {view.Enemy.Objective} · "
             + $"Tie priority {view.TiePriority}");
@@ -105,11 +107,11 @@ public static class TextRenderer
         {
             text.AppendLine($"Budget {legal.Budget}, starting cap {legal.StartingCap}.");
             text.Append(Table(
-                ["Type", "Cost", "HP", "Atk", "Def", "Mov", "Rng", "Init", "Unique", "Traits"],
+                ["Type", "Race", "Cost", "HP", "Atk", "Def", "Mov", "Rng", "Init", "Unique", "Classes", "Traits"],
                 draftable.Select(d => new[]
                 {
-                    d.Type, $"{d.Cost}", $"{d.Hp}", $"{d.Atk}", $"{d.Def}", $"{d.Mov}", d.Rng, $"{d.Init}",
-                    d.Unique ? "yes" : "", d.Traits,
+                    d.Type, d.Race, $"{d.Cost}", $"{d.Hp}", $"{d.Atk}", $"{d.Def}", $"{d.Mov}", d.Rng, $"{d.Init}",
+                    d.Unique ? "yes" : "", d.Classes, d.Traits,
                 })));
         }
 
@@ -153,8 +155,8 @@ public static class TextRenderer
             ? $"Match over after turn {status.Turn}: {outcome}"
             : $"Turn {status.Turn} · {status.Phase} · {status.Commands} commands");
         text.Append(Table(
-            ["Seat", "Player", "Race", "Owes"],
-            status.Seats.Select(s => new[] { s.Seat, s.Player, s.Race, s.Owes })));
+            ["Seat", "Player", "Races", "Budget", "Owes"],
+            status.Seats.Select(s => new[] { s.Seat, s.Player, s.Races, s.Budget, s.Owes })));
         return text.ToString().TrimEnd();
     }
 
@@ -180,13 +182,22 @@ public static class TextRenderer
             })));
         text.AppendLine();
         text.Append(Table(
-            ["Seat", "Type", "Fielded", "Damage", "Kills", "Deaths"],
+            ["Seat", "Type", "Picked", "Won", "Fielded", "Damage", "Kills", "Deaths"],
             summary.UnitStats.Select(u => new[]
             {
-                u.Seat, u.Type, $"{u.Fielded}", $"{u.Damage}", $"{u.Kills}", $"{u.Deaths}",
+                u.Seat, u.Type, $"{u.Picked}", u.Picked == 0 ? "" : $"{(double)u.PickedWins / u.Picked:P0}",
+                $"{u.Fielded}", $"{u.Damage}", $"{u.Kills}", $"{u.Deaths}",
             })));
+        text.AppendLine();
+        text.Append(Table(
+            ["Army", "Armies", "Wins", "Draws", "Score"],
+            summary.ArmyShapes
+                .Concat(summary.RaceMixes)
+                .Select(a => new[] { a.Group, $"{a.Armies}", $"{a.Wins}", $"{a.Draws}", $"{a.Score:F3}" })));
         return text.ToString().TrimEnd();
     }
+
+    private static string Races(string races) => races is "" ? "" : $" ({races})";
 
     private static string Events(IEnumerable<EventLine> events) =>
         Table(

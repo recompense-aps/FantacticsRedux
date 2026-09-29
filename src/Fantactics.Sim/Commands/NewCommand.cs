@@ -14,7 +14,7 @@ namespace Fantactics.Sim.Commands;
 /// <param name="store">Match file store.</param>
 /// <param name="output">Where results are printed.</param>
 [Command("new", Description = "Create a match file.")]
-public sealed class NewCommand(MatchStore store, OutputWriter output) : SimCommand(output)
+public sealed class NewCommand(MatchStore store, OutputWriter output) : DraftSetupCommand(output)
 {
     /// <summary>Where to write the match.</summary>
     [Option("--out", Description = "Match file to create.")]
@@ -32,14 +32,6 @@ public sealed class NewCommand(MatchStore store, OutputWriter output) : SimComma
     /// <summary>Who plays P2.</summary>
     [Option("--p2", Description = "Who plays P2: llm, human, or bot:random (default bot:random).")]
     public string P2 { get; set; } = "bot:random";
-
-    /// <summary>P1's race.</summary>
-    [Option("--p1-race", Description = "P1's race (default Elves).")]
-    public string P1Race { get; set; } = "Elves";
-
-    /// <summary>P2's race.</summary>
-    [Option("--p2-race", Description = "P2's race (default Goblins).")]
-    public string P2Race { get; set; } = "Goblins";
 
     /// <summary>Match seed.</summary>
     [Option("--seed", Description = "Seed for rule randomness and bots (default 1).")]
@@ -62,20 +54,17 @@ public sealed class NewCommand(MatchStore store, OutputWriter output) : SimComma
             throw new SimException($"Unknown map '{Map}'. Built-in maps: {string.Join(", ", MapLibrary.Names)}.");
         }
 
-        foreach (string race in new[] { P1Race, P2Race }.Where(race => !store.Rules.Races.ContainsKey(race)))
-        {
-            throw new SimException($"Unknown race '{race}'. Races: {string.Join(", ", store.Rules.Races.Keys)}.");
-        }
-
         MatchSetup setup = new(
             Map,
-            new Dictionary<Seat, string> { [Seat.P1] = P1Race, [Seat.P2] = P2Race }.ToImmutableSortedDictionary(),
             Seed,
             new Dictionary<Seat, string>
             {
                 [Seat.P1] = SeatKind.Parse(P1).Value,
                 [Seat.P2] = SeatKind.Parse(P2).Value,
-            }.ToImmutableSortedDictionary());
+            }.ToImmutableSortedDictionary(),
+            AllowedRaces(store.Rules),
+            DraftBudgets(),
+            StartingCaps());
 
         using IDisposable fileLock = store.Lock(Out);
         MatchSession session = MatchSession.Create(store.Rules, setup);

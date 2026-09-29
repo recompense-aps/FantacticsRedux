@@ -2,11 +2,13 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Text.Json;
 using Fantactics.Ai.Profiles;
+using Fantactics.Core;
 using Fantactics.Core.Maps;
 using Fantactics.Core.Rules;
 using Fantactics.Sim.Matches;
 using Fantactics.Sim.Output;
 using Fantactics.Sim.Tournaments;
+using Fantactics.Sim.Views;
 using McMaster.Extensions.CommandLineUtils;
 
 namespace Fantactics.Sim.Commands;
@@ -15,7 +17,7 @@ namespace Fantactics.Sim.Commands;
 /// <param name="runner">Tournament runner.</param>
 /// <param name="output">Where results are printed.</param>
 [Command("run", Description = "Play a bot-vs-bot tournament and print stats.")]
-public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : SimCommand(output)
+public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : DraftSetupCommand(output)
 {
     /// <summary>P1's bot.</summary>
     [Option("--p1", Description = "P1's bot (default bot:random).")]
@@ -24,14 +26,6 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : S
     /// <summary>P2's bot.</summary>
     [Option("--p2", Description = "P2's bot (default bot:random).")]
     public string P2 { get; set; } = "bot:random";
-
-    /// <summary>P1's race.</summary>
-    [Option("--p1-race", Description = "P1's race (default Elves).")]
-    public string P1Race { get; set; } = "Elves";
-
-    /// <summary>P2's race.</summary>
-    [Option("--p2-race", Description = "P2's race (default Goblins).")]
-    public string P2Race { get; set; } = "Goblins";
 
     /// <summary>Built-in map.</summary>
     [Option("--map", Description = "Built-in map (default riverford).")]
@@ -92,18 +86,22 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : S
         int threads = Threads ?? (Parallel ? 0 : 1);
         BotProfile? p1Profile = LoadProfile(P1Profile);
         BotProfile? p2Profile = LoadProfile(P2Profile);
+        RulesConfig? variant = LoadVariant();
+        ImmutableSortedDictionary<Seat, ImmutableSortedSet<string>>? allowed = AllowedRaces(variant ?? runner.Rules);
         TournamentOptions options = new(
             Map,
-            P1Race,
-            P2Race,
+            allowed?.GetValueOrDefault(Seat.P1),
+            allowed?.GetValueOrDefault(Seat.P2),
             p1Profile is null ? p1Bot : $"{p1Profile.Name}(file)",
             p2Profile is null ? p2Bot : $"{p2Profile.Name}(file)",
             Games,
             Seed,
             threads,
             p1Profile,
-            p2Profile);
-        (TournamentSummary summary, ImmutableArray<GameResult> games) = runner.Run(options, LoadVariant());
+            p2Profile,
+            DraftBudgets(),
+            StartingCaps());
+        (TournamentSummary summary, ImmutableArray<GameResult> games) = runner.Run(options, variant);
         if (Csv is string csv)
         {
             File.WriteAllLines(csv, [GameResult.CsvHeader, .. games.Select(game => game.ToCsv())]);
@@ -128,8 +126,9 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : S
         File.WriteAllLines(
             Path.Combine(directory, "units.csv"),
             [
-                "seat,type,fielded,damage,kills,deaths",
-                .. summary.UnitStats.Select(u => $"{u.Seat},{u.Type},{u.Fielded},{u.Damage},{u.Kills},{u.Deaths}"),
+                "seat,type,fielded,damage,kills,deaths,picked,picked_wins",
+                .. summary.UnitStats.Select(u =>
+                    $"{u.Seat},{u.Type},{u.Fielded},{u.Damage},{u.Kills},{u.Deaths},{u.Picked},{u.PickedWins}"),
             ]);
         File.WriteAllLines(
             Path.Combine(directory, "bots.csv"),

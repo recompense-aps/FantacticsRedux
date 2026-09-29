@@ -85,6 +85,22 @@ public sealed record RulesConfig(
         return Races[unit.Race].Traits.SetItems(unit.Traits);
     }
 
+    /// <summary>
+    /// Returns a unit type's traits merged with the traits of its race and of <paramref name="extraRaces"/>
+    /// (RacesAndUnits §2.4). Race traits combine by taking the higher value; the unit's own traits override them.
+    /// </summary>
+    public ImmutableSortedDictionary<string, int> TraitsOf(string unitType, IEnumerable<string> extraRaces)
+    {
+        UnitDefinition unit = Units[unitType];
+        ImmutableSortedDictionary<string, int> raceTraits = extraRaces
+            .Prepend(unit.Race)
+            .Distinct()
+            .SelectMany(race => Races[race].Traits)
+            .GroupBy(trait => trait.Key)
+            .ToImmutableSortedDictionary(group => group.Key, group => group.Max(trait => trait.Value));
+        return raceTraits.SetItems(unit.Traits);
+    }
+
     private static RulesConfig LoadDefault()
     {
         using Stream stream = typeof(RulesConfig).Assembly.GetManifestResourceStream(DefaultResource)

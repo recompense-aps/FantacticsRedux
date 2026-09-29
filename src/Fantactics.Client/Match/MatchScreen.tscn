@@ -1,16 +1,18 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://Match/MatchScreen.cs" id="1_screen"]
 [ext_resource type="PackedScene" path="res://Match/Board/BoardView.tscn" id="2_board"]
 [ext_resource type="Script" path="res://Match/Playback/EventPlayer.cs" id="3_player"]
 [ext_resource type="PackedScene" path="res://Match/Hud/MatchHud.tscn" id="4_hud"]
+[ext_resource type="PackedScene" path="res://Debug/DebugPanel.tscn" id="5_debug"]
 
-[node name="MatchScreen" type="Node" node_paths=PackedStringArray("_board", "_camera", "_player", "_hud")]
+[node name="MatchScreen" type="Node" node_paths=PackedStringArray("_board", "_camera", "_player", "_hud", "_debug")]
 script = ExtResource("1_screen")
 _board = NodePath("BoardView")
 _camera = NodePath("Camera2D")
 _player = NodePath("EventPlayer")
 _hud = NodePath("HudLayer/MatchHud")
+_debug = NodePath("HudLayer/DebugPanel")
 
 [node name="BoardView" parent="." instance=ExtResource("2_board")]
 
@@ -22,3 +24,5 @@ script = ExtResource("3_player")
 [node name="HudLayer" type="CanvasLayer" parent="."]
 
 [node name="MatchHud" parent="HudLayer" instance=ExtResource("4_hud")]
+
+[node name="DebugPanel" parent="HudLayer" instance=ExtResource("5_debug")]

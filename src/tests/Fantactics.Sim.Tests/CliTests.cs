@@ -57,6 +57,20 @@ public sealed class CliTests : IDisposable
     }
 
     [Fact]
+    public void BudgetsCanBeSetPerSeat()
+    {
+        Run(out _, "new", "--out", MatchPath, "--p2", "llm", "--budget", "60", "--p2-budget", "30", "--starting-cap", "45");
+
+        Assert.Equal(ExitCodes.Ok, Run(out JsonElement status, "status", MatchPath, "--format", "json"));
+        Assert.Equal(
+            ["60/45", "30/45"],
+            status.GetProperty("seats").EnumerateArray().Select(seat => seat.GetProperty("budget").GetString()));
+        Assert.Equal(ExitCodes.Ok, Run(out JsonElement legal, "legal", MatchPath, "--as", "P2", "--format", "json"));
+        Assert.Equal(30, legal.GetProperty("budget").GetInt32());
+        Assert.NotEqual(ExitCodes.Ok, Run(out _, "new", "--out", MatchPath, "--force", "--budget", "-1"));
+    }
+
+    [Fact]
     public void WaitForReturnsWhenTheSeatOwesAndTimesOutWhenItDoesNot()
     {
         Run(out _, "new", "--out", MatchPath, "--p1", "llm", "--p2", "llm");

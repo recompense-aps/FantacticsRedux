@@ -209,7 +209,6 @@ public class MovementTests
         // Each Tank deals 1 per strike. With Bloodthirst 3 they'd heal forever; clashes are pure fighting.
         GameState state = new ScenarioBuilder()
             .WithMap(OpenField)
-            .WithRaces("Goblins", "Goblins")
             .AddUnit(Seat.P1, "Tank", 0, 2, out int tankA)
             .AddUnit(Seat.P2, "Tank", 4, 2, out int tankB)
             .WithTiePriority(Seat.P1)

@@ -17,7 +17,7 @@ public class FuzzTests
 
         MatchResult result = MatchRunner.Run(
             RulesConfig.Default,
-            TestMatches.Riverford((ulong)seed),
+            TestMatches.Alternating((ulong)seed),
             TestMatches.RandomAgents(seed),
             (state, _) =>
             {

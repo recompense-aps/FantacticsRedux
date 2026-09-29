@@ -21,7 +21,7 @@ public static class TraitIds
     /// <summary>Attacks apply Slowed for the trait value in turns.</summary>
     public const string Hamstring = "Hamstring";
 
-    /// <summary>Aura: other friendly units within the trait value in tiles get +1 Bloodthirst.</summary>
+    /// <summary>Aura: other friendly units of the same race within the trait value in tiles get +1 Bloodthirst.</summary>
     public const string WarCry = "WarCry";
 
     /// <summary>Forest costs 1 Movement.</summary>

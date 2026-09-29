@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Fantactics.Core.Rules;
 
 /// <summary>Tunable numbers for an ability. Its behavior is implemented in code, keyed by <see cref="AbilityIds"/>.</summary>
@@ -9,6 +11,7 @@ namespace Fantactics.Core.Rules;
 /// <param name="Limit">A cap, such as the number of summoned units alive at once.</param>
 /// <param name="UsesAttackRange">Target within the unit's attack range instead of <paramref name="MinRange"/>–<paramref name="MaxRange"/>.</param>
 /// <param name="NeedsLineOfSight">Whether the target must be in line of sight.</param>
+/// <param name="AllyScope">Which friendly units it may affect, for abilities that target allies.</param>
 public sealed record AbilityDefinition(
     int MinRange,
     int MaxRange,
@@ -17,4 +20,6 @@ public sealed record AbilityDefinition(
     int Duration,
     int Limit,
     bool UsesAttackRange,
-    bool NeedsLineOfSight);
+    bool NeedsLineOfSight,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    AllyScope AllyScope = AllyScope.OwnRace);

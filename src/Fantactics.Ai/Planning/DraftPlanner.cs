@@ -8,7 +8,8 @@ namespace Fantactics.Ai.Planning;
 
 /// <summary>
 /// Drafts an army (GameDesign §4.4): picks unit types by a rough power-per-cost rating times the style's
-/// <see cref="StyleWeights.DraftBias"/>, with diminishing returns for repeats so armies stay mixed. Eager styles
+/// <see cref="StyleWeights.DraftBias"/>, with diminishing returns for repeats so armies stay mixed. A race focus
+/// (<see cref="StyleWeights.RaceFocus"/>) pulls later picks toward the races already drafted. Eager styles
 /// fill the starting cap; patient ones (reserve eagerness below 0.5) start lighter and keep a bigger reserve.
 /// </summary>
 public static class DraftPlanner
@@ -32,6 +33,7 @@ public static class DraftPlanner
         List<string> starting = [];
         List<string> reserve = [];
         Dictionary<string, int> copies = [];
+        Dictionary<string, int> races = [];
         int spent = 0;
         int startingCost = 0;
         while (true)
@@ -45,10 +47,12 @@ public static class DraftPlanner
                 break;
             }
 
+            int picked = starting.Count + reserve.Count;
             List<double> scores = affordable
                 .Select(unit => Power(rules.Units[unit.Type])
                     * style.DraftBias.GetValueOrDefault(unit.Type, 1.0)
-                    * Math.Pow(RepeatFalloff, copies.GetValueOrDefault(unit.Type)))
+                    * Math.Pow(RepeatFalloff, copies.GetValueOrDefault(unit.Type))
+                    * (1 + style.RaceFocus * RaceShare(unit.Race, picked, races)))
                 .ToList();
             DraftUnitOption pick = affordable[chooser.Choose(scores)];
             bool toStarting = starting.Count == 0 || startingCost + pick.Cost <= startingTarget;
@@ -57,10 +61,15 @@ public static class DraftPlanner
             startingCost += toStarting ? pick.Cost : 0;
             spent += pick.Cost;
             copies[pick.Type] = copies.GetValueOrDefault(pick.Type) + 1;
+            races[pick.Race] = races.GetValueOrDefault(pick.Race) + 1;
         }
 
         return new SubmitDraft([.. starting], [.. reserve]);
     }
+
+    /// <summary>The share of the <paramref name="picked"/> units so far that are of <paramref name="race"/>.</summary>
+    private static double RaceShare(string race, int picked, Dictionary<string, int> races) =>
+        picked == 0 ? 0 : (double)races.GetValueOrDefault(race) / picked;
 
     /// <summary>Durability times damage, with a little credit for mobility and abilities, per point of Cost.</summary>
     private static double Power(UnitDefinition unit)

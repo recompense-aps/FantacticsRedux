@@ -10,13 +10,25 @@ namespace Fantactics.Ai.Tests;
 /// <summary>Shared setups for simulated matches.</summary>
 internal static class TestMatches
 {
-    /// <summary>Elves (P1) vs Goblins (P2) on Riverford.</summary>
+    /// <summary>Elves (P1) vs Goblins (P2) on Riverford: each seat limited to one race.</summary>
     public static MatchSetup Riverford(ulong seed) => Riverford(seed, "Elves", "Goblins");
 
-    /// <summary>A Riverford match with the given races.</summary>
-    public static MatchSetup Riverford(ulong seed, string p1Race, string p2Race) => new(
+    /// <summary>A Riverford match with each seat limited to one race.</summary>
+    public static MatchSetup Riverford(ulong seed, string p1Race, string p2Race) => Open(seed) with
+    {
+        AllowedRaces = new Dictionary<Seat, ImmutableSortedSet<string>>
+        {
+            [Seat.P1] = [p1Race],
+            [Seat.P2] = [p2Race],
+        }.ToImmutableSortedDictionary(),
+    };
+
+    /// <summary>Alternates by seed: odd seeds are Elves vs Goblins, even seeds use the open draft.</summary>
+    public static MatchSetup Alternating(ulong seed) => seed % 2 == 0 ? Open(seed) : Riverford(seed);
+
+    /// <summary>A Riverford match where both seats may draft every race (the open draft, GameDesign §4.4).</summary>
+    public static MatchSetup Open(ulong seed) => new(
         "riverford",
-        new Dictionary<Seat, string> { [Seat.P1] = p1Race, [Seat.P2] = p2Race }.ToImmutableSortedDictionary(),
         seed,
         new Dictionary<Seat, string> { [Seat.P1] = "bot", [Seat.P2] = "bot" }.ToImmutableSortedDictionary());
 

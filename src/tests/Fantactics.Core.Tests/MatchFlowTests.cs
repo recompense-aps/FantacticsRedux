@@ -42,7 +42,7 @@ public class MatchFlowTests
 
     [Theory]
     [InlineData(new[] { "Druid", "Druid" }, new string[0], "duplicate-unique")]
-    [InlineData(new[] { "Grunt" }, new string[0], "unknown-unit")]
+    [InlineData(new[] { "Dragon" }, new string[0], "unknown-unit")]
     [InlineData(new[] { "Ranger", "Ranger", "Ranger", "Ranger", "Ranger", "Ranger" }, new string[0], "over-starting-cap")]
     [InlineData(new[] { "Ranger" }, new[] { "Ranger", "Ranger", "Ranger", "Ranger", "Ranger", "Ranger" }, "over-budget")]
     [InlineData(new string[0], new[] { "Ranger" }, "empty-starting-army")]
@@ -180,7 +180,7 @@ public class MatchFlowTests
     }
 
     private static GameState NewMatch() =>
-        GameEngine.NewMatch(RulesConfig.Default, MapLibrary.Load("riverford"), "Elves", "Goblins", seed: 42);
+        GameEngine.NewMatch(RulesConfig.Default, MapLibrary.Load("riverford"), seed: 42);
 
     private static GameState Drafted()
     {

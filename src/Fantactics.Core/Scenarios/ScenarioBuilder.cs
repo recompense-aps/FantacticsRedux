@@ -18,7 +18,8 @@ public sealed class ScenarioBuilder(RulesConfig? rules = null)
     private readonly RulesConfig _rules = rules ?? RulesConfig.Default;
     private readonly List<Unit> _units = [];
     private readonly Dictionary<Seat, int> _command = new() { [Seat.P1] = 0, [Seat.P2] = 0 };
-    private readonly Dictionary<Seat, string> _races = new() { [Seat.P1] = "Elves", [Seat.P2] = "Goblins" };
+    private readonly Dictionary<Seat, ImmutableSortedSet<string>> _allowedRaces = [];
+    private readonly Dictionary<Seat, int> _draftBudgets = [];
     private GameMap _map = MapLibrary.Load("riverford");
     private int _turn = 1;
     private Seat _tiePriority = Seat.P1;
@@ -38,11 +39,17 @@ public sealed class ScenarioBuilder(RulesConfig? rules = null)
         return this;
     }
 
-    /// <summary>Sets both races.</summary>
-    public ScenarioBuilder WithRaces(string p1, string p2)
+    /// <summary>Limits the races <paramref name="seat"/> may draft from (default: every race).</summary>
+    public ScenarioBuilder WithAllowedRaces(Seat seat, params string[] races)
     {
-        _races[Seat.P1] = p1;
-        _races[Seat.P2] = p2;
+        _allowedRaces[seat] = [.. races];
+        return this;
+    }
+
+    /// <summary>Overrides <paramref name="seat"/>'s draft budget, which its Rout threshold follows (GameDesign §4.5).</summary>
+    public ScenarioBuilder WithDraftBudget(Seat seat, int budget)
+    {
+        _draftBudgets[seat] = budget;
         return this;
     }
 
@@ -93,10 +100,13 @@ public sealed class ScenarioBuilder(RulesConfig? rules = null)
         return this;
     }
 
-    /// <summary>Builds the state, in the movement phase of the configured turn.</summary>
+    /// <summary>
+    /// Builds the state, in the movement phase of the configured turn. Each seat's drafted races are counted from
+    /// its non-summoned units.
+    /// </summary>
     public GameState Build()
     {
-        GameState state = GameEngine.NewMatch(_rules, _map, _races[Seat.P1], _races[Seat.P2], _seed);
+        GameState state = GameEngine.NewMatch(_rules, _map, _seed, _allowedRaces, _draftBudgets);
         return state with
         {
             Owners = _units.ToImmutableSortedDictionary(unit => unit.Id, unit => unit.Owner),
@@ -107,7 +117,13 @@ public sealed class ScenarioBuilder(RulesConfig? rules = null)
             Units = _units.ToImmutableSortedDictionary(unit => unit.Id, unit => unit),
             Players = state.Players.Values.ToImmutableSortedDictionary(
                 player => player.Seat,
-                player => player with { Command = _command[player.Seat] }),
+                player => player with
+                {
+                    Command = _command[player.Seat],
+                    DraftedRaces = DraftRules.CountRaces(_rules, _units
+                        .Where(unit => unit.Owner == player.Seat && !unit.IsSummoned)
+                        .Select(unit => unit.Type)),
+                }),
             PendingOrders = ImmutableSortedDictionary<Seat, ICommand>.Empty,
             NextUnitId = _units.Count + 1,
         };

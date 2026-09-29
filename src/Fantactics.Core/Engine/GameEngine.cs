@@ -14,27 +14,58 @@ namespace Fantactics.Core.Engine;
 public static class GameEngine
 {
     /// <summary>Version of the rules code, recorded in match records. Bump it when rule behavior changes.</summary>
-    public const string RulesVersion = "0.5.0";
+    public const string RulesVersion = "0.6.0";
 
     /// <summary>Creates a match waiting for both drafts.</summary>
     /// <param name="rules">Rules config.</param>
     /// <param name="map">Starting map.</param>
-    /// <param name="p1Race">P1's race identifier.</param>
-    /// <param name="p2Race">P2's race identifier.</param>
     /// <param name="seed">Seed for all rule randomness.</param>
-    /// <exception cref="ArgumentException">A race is unknown.</exception>
-    public static GameState NewMatch(RulesConfig rules, GameMap map, string p1Race, string p2Race, ulong seed)
+    /// <param name="allowedRaces">
+    /// Races each seat may draft from; a seat that's missing, or a <c>null</c> map, may draft every race.
+    /// </param>
+    /// <param name="draftBudgets">Per-seat draft budgets overriding the rules' (GameDesign §4.4); missing seats use it.</param>
+    /// <param name="startingCaps">Per-seat starting caps overriding the rules'; missing seats use it.</param>
+    /// <exception cref="ArgumentException">
+    /// A race is unknown, a seat is allowed no races, or a budget or cap isn't positive.
+    /// </exception>
+    public static GameState NewMatch(
+        RulesConfig rules,
+        GameMap map,
+        ulong seed,
+        IReadOnlyDictionary<Seat, ImmutableSortedSet<string>>? allowedRaces = null,
+        IReadOnlyDictionary<Seat, int>? draftBudgets = null,
+        IReadOnlyDictionary<Seat, int>? startingCaps = null)
     {
-        foreach (string race in new[] { p1Race, p2Race }.Where(race => !rules.Races.ContainsKey(race)))
+        foreach (int points in (draftBudgets?.Values ?? []).Concat(startingCaps?.Values ?? []))
         {
-            throw new ArgumentException($"Unknown race '{race}'.");
+            if (points <= 0)
+            {
+                throw new ArgumentException($"Draft budgets and starting caps must be positive (got {points}).");
+            }
         }
 
-        ImmutableSortedDictionary<Seat, PlayerState> players = new Dictionary<Seat, PlayerState>
+        foreach (ImmutableSortedSet<string> races in allowedRaces?.Values ?? [])
         {
-            [Seat.P1] = new(Seat.P1, p1Race, Command: 0, DestroyedValue: 0),
-            [Seat.P2] = new(Seat.P2, p2Race, Command: 0, DestroyedValue: 0),
-        }.ToImmutableSortedDictionary();
+            if (races.IsEmpty)
+            {
+                throw new ArgumentException("A seat must be allowed at least one race.");
+            }
+
+            foreach (string race in races.Where(race => !rules.Races.ContainsKey(race)))
+            {
+                throw new ArgumentException($"Unknown race '{race}'.");
+            }
+        }
+
+        ImmutableSortedDictionary<Seat, PlayerState> players = SeatExtensions.All.ToImmutableSortedDictionary(
+            seat => seat,
+            seat => new PlayerState(
+                seat,
+                Command: 0,
+                DestroyedValue: 0,
+                AllowedRaces: allowedRaces?.GetValueOrDefault(seat),
+                DraftBudget: draftBudgets?.TryGetValue(seat, out int budget) == true ? budget : null,
+                StartingCap: startingCaps?.TryGetValue(seat, out int cap) == true ? cap : null));
 
         return new GameState(
             rules,

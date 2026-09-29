@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Fantactics.Core.Geometry;
 using Fantactics.Core.Maps;
 using Fantactics.Core.Rules;
@@ -10,11 +11,22 @@ public static class UnitRules
 {
     /// <summary>The value of a trait on <paramref name="unit"/> (unit and race traits), or 0 if it doesn't have it.</summary>
     public static int Trait(GameState state, Unit unit, string trait) =>
-        state.Rules.TraitsOf(unit.Type).GetValueOrDefault(trait);
+        TraitsOf(state, unit).GetValueOrDefault(trait);
 
     /// <summary>Whether <paramref name="unit"/> has <paramref name="trait"/>.</summary>
     public static bool HasTrait(GameState state, Unit unit, string trait) =>
-        state.Rules.TraitsOf(unit.Type).ContainsKey(trait);
+        TraitsOf(state, unit).ContainsKey(trait);
+
+    /// <summary>Every race <paramref name="unit"/> belongs to: its type's race, then any extra races.</summary>
+    public static IEnumerable<string> Races(GameState state, Unit unit) =>
+        (unit.ExtraRaces ?? []).Prepend(state.DefinitionOf(unit).Race).Distinct();
+
+    /// <summary>Whether <paramref name="a"/> and <paramref name="b"/> have a race in common (RacesAndUnits §2.4).</summary>
+    public static bool SharesRace(GameState state, Unit a, Unit b) => Races(state, a).Intersect(Races(state, b)).Any();
+
+    /// <summary>Whether <paramref name="unit"/>'s type carries the class <paramref name="classId"/>.</summary>
+    public static bool HasClass(GameState state, Unit unit, string classId) =>
+        state.DefinitionOf(unit).Classes?.Contains(classId) == true;
 
     /// <summary>Movement points this turn after Slowed (−2, minimum 1) and Rooted (0).</summary>
     public static int MovementPoints(GameState state, Unit unit)
@@ -118,4 +130,9 @@ public static class UnitRules
     /// <summary>Enemy units on the field orthogonally adjacent to <paramref name="tile"/>.</summary>
     public static IEnumerable<Unit> AdjacentEnemies(GameState state, Seat seat, Point tile) =>
         state.FieldUnits.Where(unit => unit.Owner != seat && unit.Position.IsAdjacentTo(tile));
+
+    private static ImmutableSortedDictionary<string, int> TraitsOf(GameState state, Unit unit) =>
+        unit.ExtraRaces is null
+            ? state.Rules.TraitsOf(unit.Type)
+            : state.Rules.TraitsOf(unit.Type, unit.ExtraRaces);
 }

@@ -27,7 +27,7 @@ public sealed class MatchHost
 
     /// <summary>Starts a new match.</summary>
     /// <param name="rules">Rules to play with.</param>
-    /// <param name="setup">Map, races, seed, and who plays each seat.</param>
+    /// <param name="setup">Map, seed, who plays each seat, and allowed races.</param>
     public MatchHost(RulesConfig rules, MatchSetup setup)
         : this(rules, setup, Fresh(rules, setup))
     {

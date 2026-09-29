@@ -14,6 +14,7 @@
     "disable": 0.5,
     "hold": 0.1,
     "reserveEagerness": 0.8,
+    "raceFocus": 1.0,
     "retreatThreshold": 0.25,
     "focusFire": 0.3,
     "priorities": { "Shaman": 1.3, "Herbalist": 1.3, "Druid": 1.2, "WarLord": 1.2 },
