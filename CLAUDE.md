@@ -1,6 +1,6 @@
 # Fantactics
 
-Turn-based fantasy tactics game. Godot 4.7.2 (Mono) with C# on .NET 8. Design docs are in `notes/design/` (start there); raw early brainstorms are in `notes/og/`.
+Turn-based fantasy tactics game. Godot 4.7.2 (Mono) with C# on .NET 8. Design docs are in `notes/design/` (start there); raw early brainstorms are in `notes/og/`. The roadmap is tracked in Linear (issue key `ALE`); GitHub and Linear links are in `notes/Tracking.md`. To work an issue end to end, use the `linear-issue` skill.
 
 ## Layout
 
