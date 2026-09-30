@@ -15,7 +15,7 @@ namespace Fantactics.Sim.Tournaments;
 
 /// <summary>
 /// Plays many bot-vs-bot matches in memory and aggregates the results. Matches run in parallel, one per thread;
-/// each reduces to a result row and unit-stat totals as soon as it ends, so memory doesn't grow with game length.
+/// each reduces to a result row plus unit and clash totals as soon as it ends, so memory doesn't grow with game length.
 /// Results depend only on the seeds, never on the thread count.
 /// </summary>
 /// <param name="rules">Rules to play with.</param>
@@ -37,41 +37,54 @@ public sealed class TournamentRunner(RulesConfig rules)
         RulesConfig effective = variant ?? rules;
         GameResult[] results = new GameResult[options.Games];
         Dictionary<(Seat Seat, string Type), UnitTypeStats> totals = [];
+        Dictionary<(string A, string B), ClashStats> clashTotals = [];
         ParallelOptions parallel = new() { MaxDegreeOfParallelism = options.Threads <= 0 ? -1 : options.Threads };
         Parallel.For(
             0,
             options.Games,
             parallel,
-            () => new Dictionary<(Seat Seat, string Type), UnitTypeStats>(),
+            () => (Units: new Dictionary<(Seat Seat, string Type), UnitTypeStats>(),
+                Clashes: new Dictionary<(string A, string B), ClashStats>()),
             (game, _, local) =>
             {
-                results[game] = PlayOne(effective, options, game, local);
+                results[game] = PlayOne(effective, options, game, local.Units, local.Clashes);
                 return local;
             },
             local =>
             {
                 lock (totals)
                 {
-                    foreach (((Seat Seat, string Type) key, UnitTypeStats stats) in local)
+                    foreach (((Seat Seat, string Type) key, UnitTypeStats stats) in local.Units)
                     {
                         totals[key] = Add(totals.GetValueOrDefault(key), stats);
+                    }
+
+                    foreach (((string A, string B) key, ClashStats stats) in local.Clashes)
+                    {
+                        clashTotals[key] = Add(clashTotals.GetValueOrDefault(key), stats);
                     }
                 }
             });
 
         ImmutableArray<GameResult> games = [.. results];
-        return (Summarize(effective, options, games, totals), games);
+        return (Summarize(effective, options, games, totals, clashTotals), games);
     }
 
     private static TournamentSummary Summarize(
         RulesConfig rules,
         TournamentOptions options,
         ImmutableArray<GameResult> games,
-        Dictionary<(Seat Seat, string Type), UnitTypeStats> totals)
+        Dictionary<(Seat Seat, string Type), UnitTypeStats> totals,
+        Dictionary<(string A, string B), ClashStats> clashTotals)
     {
         ImmutableArray<UnitTypeStats> unitStats = totals
             .OrderBy(pair => pair.Key.Seat)
             .ThenBy(pair => pair.Key.Type, StringComparer.Ordinal)
+            .Select(pair => pair.Value)
+            .ToImmutableArray();
+        ImmutableArray<ClashStats> clashes = clashTotals
+            .OrderBy(pair => pair.Key.A, StringComparer.Ordinal)
+            .ThenBy(pair => pair.Key.B, StringComparer.Ordinal)
             .Select(pair => pair.Value)
             .ToImmutableArray();
         ImmutableArray<EndReasonCount> endReasons = games
@@ -118,6 +131,7 @@ public sealed class TournamentRunner(RulesConfig rules)
                 Fingerprint(games, "P2", p2Label),
             ],
             unitStats,
+            clashes,
             Group(armies, army => Shape(army.Races)),
             Group(armies, army => army.Races));
     }
@@ -216,6 +230,16 @@ public sealed class TournamentRunner(RulesConfig rules)
             PickedWins = total.PickedWins + delta.PickedWins,
         };
 
+    private static ClashStats Add(ClashStats? total, ClashStats delta) => total is null
+        ? delta
+        : total with
+        {
+            Clashes = total.Clashes + delta.Clashes,
+            AWins = total.AWins + delta.AWins,
+            BWins = total.BWins + delta.BWins,
+            Unresolved = total.Unresolved + delta.Unresolved,
+        };
+
     private static IPlayerAgent CreateBot(string name, BotProfile? profile, RulesConfig rules, int seed) =>
         profile is null ? BotFactory.Create(name, rules, seed) : new TacticalAgent(profile, rules, seed);
 
@@ -223,7 +247,8 @@ public sealed class TournamentRunner(RulesConfig rules)
         RulesConfig rules,
         TournamentOptions options,
         int game,
-        Dictionary<(Seat Seat, string Type), UnitTypeStats> totals)
+        Dictionary<(Seat Seat, string Type), UnitTypeStats> totals,
+        Dictionary<(string A, string B), ClashStats> clashes)
     {
         ulong seed = options.Seed + (ulong)game;
         MatchSetup setup = new(
@@ -252,6 +277,30 @@ public sealed class TournamentRunner(RulesConfig rules)
                 UnitTypeStats delta = new(unit.Seat.ToString(), unit.Type, fielded, damage, kills, deaths);
                 totals[unit] = Add(totals.GetValueOrDefault(unit), delta);
             }
+        }
+
+        void CountClash(ClashResolved clash)
+        {
+            if (!known.TryGetValue(clash.UnitA, out (Seat Seat, string Type) a)
+                || !known.TryGetValue(clash.UnitB, out (Seat Seat, string Type) b))
+            {
+                return;
+            }
+
+            // Order the pair so each unordered pair of types has a single row.
+            ((int Id, string Type) first, (int Id, string Type) second) =
+                string.CompareOrdinal(a.Type, b.Type) <= 0
+                    ? ((clash.UnitA, a.Type), (clash.UnitB, b.Type))
+                    : ((clash.UnitB, b.Type), (clash.UnitA, a.Type));
+            ClashStats delta = new(
+                first.Type,
+                second.Type,
+                1,
+                clash.WinnerId == first.Id ? 1 : 0,
+                clash.WinnerId == second.Id ? 1 : 0,
+                clash.WinnerId is null ? 1 : 0);
+            (string, string) key = (first.Type, second.Type);
+            clashes[key] = Add(clashes.GetValueOrDefault(key), delta);
         }
 
         ImmutableArray<(Seat Seat, string Type)>? drafted = null;
@@ -299,6 +348,9 @@ public sealed class TournamentRunner(RulesConfig rules)
                         case UnitDied e:
                             Count(e.KillerId, kills: 1);
                             Count(e.UnitId, deaths: 1);
+                            break;
+                        case ClashResolved e:
+                            CountClash(e);
                             break;
                     }
                 }

@@ -56,7 +56,7 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : D
     public string? Csv { get; set; }
 
     /// <summary>Directory for detailed results.</summary>
-    [Option("--out", Description = "Also write games.csv, units.csv, and bots.csv to this directory.")]
+    [Option("--out", Description = "Also write games.csv, units.csv, clashes.csv, and bots.csv to this directory.")]
     public string? Out { get; set; }
 
     /// <summary>A profile file for P1.</summary>
@@ -129,6 +129,14 @@ public sealed class RunCommand(TournamentRunner runner, OutputWriter output) : D
                 "seat,type,fielded,damage,kills,deaths,picked,picked_wins",
                 .. summary.UnitStats.Select(u =>
                     $"{u.Seat},{u.Type},{u.Fielded},{u.Damage},{u.Kills},{u.Deaths},{u.Picked},{u.PickedWins}"),
+            ]);
+        File.WriteAllLines(
+            Path.Combine(directory, "clashes.csv"),
+            [
+                "type_a,type_b,clashes,a_wins,b_wins,unresolved,a_win_rate",
+                .. summary.Clashes.Select(c =>
+                    $"{c.TypeA},{c.TypeB},{c.Clashes},{c.AWins},{c.BWins},{c.Unresolved},"
+                    + c.AWinRate.ToString(CultureInfo.InvariantCulture)),
             ]);
         File.WriteAllLines(
             Path.Combine(directory, "bots.csv"),

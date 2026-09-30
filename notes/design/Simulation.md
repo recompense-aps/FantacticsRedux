@@ -132,7 +132,7 @@ A `MatchRecord` is a JSON file:
 | `act match.json --as P1 (--pick N \| --orders "<grammar>" \| --draft "<grammar>" \| --json '<command>') [--note "…"]` | Submit a decision. Prints the visible resulting events (including bot moves that followed), then **the seat's next view and options**, so a playing seat needs one call per decision. The map is included when the next decision is movement or placement. On failure it prints the `RuleViolation` instead. |
 | `log match.json --as P1 [--last N]` | That seat's event history |
 | `replay match.json [--as P1]` | Full history including every `--note`. Only allowed after the match ends. |
-| `run [--p1 bot:random] [--p2 bot:random] [--games 100] [--seed 1] [--map …] [--rules variant.json] [--threads N | --parallel] [--csv out.csv] [--out dir] [--p1-profile file.json] [--p2-profile file.json]` | Tournament (§7): win counts, P1's score rate with a 95% Wilson interval and a significance flag, end reasons, a **style fingerprint** per side (mean first-contact turn, games with no contact, first reserve arrival, objective points, damage dealt and taken, value destroyed), and damage/kills/deaths per unit type. The summary's size doesn't grow with `--games`. Per-game rows go to `--csv`; `--out` writes `games.csv`, `units.csv`, and `bots.csv`. `--p1-profile`/`--p2-profile` play a profile JSON file (same shape as `src/Fantactics.Ai/Profiles/Data/*.json`) instead of a built-in bot. `--threads 0` (or `--parallel`) plays games on every core, and results are identical for any thread count. `--rules` plays a rules-config variant instead of the built-in rules; `src/Fantactics.Sim/Variants/pre-engagement.json` is the rule set before the 2026-09-27 engagement fixes. The summary shows a short hash of the rules played. |
+| `run [--p1 bot:random] [--p2 bot:random] [--games 100] [--seed 1] [--map …] [--rules variant.json] [--threads N | --parallel] [--csv out.csv] [--out dir] [--p1-profile file.json] [--p2-profile file.json]` | Tournament (§7): win counts, P1's score rate with a 95% Wilson interval and a significance flag, end reasons, a **style fingerprint** per side (mean first-contact turn, games with no contact, first reserve arrival, objective points, damage dealt and taken, value destroyed), damage/kills/deaths per unit type, and clash wins per pair of unit types (either seat). The summary's size doesn't grow with `--games`. Per-game rows go to `--csv`; `--out` writes `games.csv`, `units.csv`, `clashes.csv`, and `bots.csv`. `--p1-profile`/`--p2-profile` play a profile JSON file (same shape as `src/Fantactics.Ai/Profiles/Data/*.json`) instead of a built-in bot. `--threads 0` (or `--parallel`) plays games on every core, and results are identical for any thread count. `--rules` plays a rules-config variant instead of the built-in rules; `src/Fantactics.Sim/Variants/pre-engagement.json` is the rule set before the 2026-09-27 engagement fixes. The summary shows a short hash of the rules played. |
 
 - **Exit codes:** 0 = ok, 1 = error, 2 = rule violation or bad order syntax, 3 = not your decision (or replay while running).
 - **Output format:** every command takes `--format text|toon|json` (§6.2). The default is `text`; the play skill always passes `toon`.
@@ -246,7 +246,7 @@ The same pattern covers LLM vs. bot (only one subagent is needed, or the session
 | 3 | **Invariant fuzzing** | Ai.Tests | `RandomAgent` vs. `RandomAgent` over N seeded games, with `Invariants.Check` after every step (below). A failing seed prints its `MatchRecord`. |
 | 4 | **Determinism** | Ai.Tests | The same seed produces an identical final `StateHash`, including when games run in parallel threads |
 | 5 | **Golden replays** | `src/tests/…/Replays/` | Interesting records (including promoted LLM playtests) must replay with matching hashes. When a rule changes on purpose, re-bless them with a CLI flag. |
-| 6 | **Balance tournaments** | `fantactics-sim run` | Win rate per race and seat (with the open draft, RacesAndUnits §2.4: per army shape — mono, two-race, three or more — and per unit), end-reason mix, average turns, damage and kills per unit type. Manual; a tiny smoke run can go in CI. |
+| 6 | **Balance tournaments** | `fantactics-sim run` | Win rate per race and seat (with the open draft, RacesAndUnits §2.4: per army shape — mono, two-race, three or more — and per unit), end-reason mix, average turns, damage and kills per unit type, clash win rates per unit-type pair. Manual; a tiny smoke run can go in CI. |
 | 7 | **LLM playtests** | `playtests/` (gitignored unless promoted) | Degenerate strategies, confusing rules, unclear views |
 
 Invariants checked in layer 3:
@@ -358,3 +358,42 @@ Captain vs Captain on Riverford, 300 games per row. Score is P1's rate (0.50 is 
 
 - Race-locked play is unchanged: Elves average about 0.49 over both seats, as before (the own-race scope can't trigger in a mono army).
 - **`RULES?` The open-draft Captain always drafts the same army: four Archers, three Rangers, and one filler Grunt.** Its power-per-cost rating favours Elf shooters, and `raceFocus` 1.0 doesn't stop the last 2 points going to a Grunt. That army beats a mono-Elf draft (0.655 for the open side) and edges mono-Goblins. Every army came out two-race, so the "each race's best units" failure mode (RacesAndUnits §2.4) shows up at once. Next steps: an Elf same-race aura (RacesAndUnits §7, question 10), a draft rating that values auras, and more draft variety in the personalities.
+
+### 2026-09-30 · Baseline before the VP/missions rework (rules 0.6.0, ALE-42)
+
+This baseline records the current attrition game (turn-limit score = destroyed value + ford points) before VP missions, attack types, and N seats (ALE-43, ALE-45) change anything. The N-seat refactor must reproduce these numbers exactly with the same seeds. All runs are Captain vs Captain on Riverford, 500 games, seeds 1–500, rules hash `3aceea381599`:
+
+```
+fantactics-sim run --p1 bot:captain --p2 bot:captain --games 500 --seed 1 --threads 0 --out <dir>
+# race-locked rows add --p1-races Elves --p2-races Goblins (or the reverse)
+```
+
+| Draft | P1–P2–draws | P1 score (95% CI) | Avg turns | End reasons (Rout P1/P2/draw · TurnLimit P1/P2/draw) | Mean turn-limit score P1 / P2 (all · TurnLimit games) |
+|---|---|---|---|---|---|
+| **open (any vs any)** | 252–247–1 | 0.505 (0.461–0.549) | 13.2 | 109/93/1 · 143/154/0 | 34.9 / 33.6 · 34.4 / 33.7 |
+| Elves vs Goblins | 235–263–2 | 0.472 (0.429–0.516) | 13.5 | 116/79/0 · 119/184/2 | 31.8 / 37.1 · 30.4 / 37.4 |
+| Goblins vs Elves | 246–253–1 | 0.493 (0.449–0.537) | 13.4 | 76/123/0 · 170/130/1 | 35.9 / 32.0 · 36.0 / 30.9 |
+
+- **Race balance.** In the open draft, all 1,000 armies were Elves+Goblins, scoring 0.500. As before, the Captain drafts four Archers, three Rangers, and a Grunt every game. Race-locked, Elves score 0.490 over both seats. About 60% of games reach the turn limit.
+- **Mean turn-limit score** is destroyed value plus objective points per seat, taken from `games.csv`. It is given over all games and over games that ended at the turn limit.
+
+**Clash table.** The open-draft mirror only has Archer, Ranger, and Grunt clashes, so the cross-race rows below come from the two race-locked runs combined. Rate is the Elf unit's share of the clashes it fought (no clash hit the strike cap).
+
+| Elf | vs Goblin | Clashes | Elf wins | Elf rate |
+|---|---|---|---|---|
+| Archer | Grunt | 314 | 265 | 0.844 |
+| Archer | Tank | 46 | 15 | 0.326 |
+| Archer | Bruiser | 223 | 56 | 0.251 |
+| Archer | Mauler | 122 | 30 | 0.246 |
+| Archer | WarLord | 137 | 14 | 0.102 |
+| Archer | WolfRider | 73 | 4 | 0.055 |
+| Ranger | Grunt | 179 | 41 | 0.229 |
+| Ranger | Mauler | 80 | 14 | 0.175 |
+| Ranger | Tank | 75 | 9 | 0.120 |
+| Ranger | WarLord | 87 | 7 | 0.080 |
+| Ranger | Bruiser | 220 | 11 | 0.050 |
+| Ranger | WolfRider | 209 | 2 | 0.010 |
+
+In the open mirror, Archers beat Grunts (0.810) but lose to Rangers (0.342), and Grunts beat Rangers (0.782). Mirror rows (Archer vs Archer, etc.) have no meaningful rate, because "A" is just the first unit the clash event names.
+
+- **Archers don't win clashes against tanky melee units.** They win only a third against the Tank and a quarter against the Bruiser and Mauler, which matches the hand math: a 1-damage slog on plains and a coin flip on forest. Clashing at half Attack makes Rangers worse still: they lose to everything but other Elves. This is the starting point for the attack-types and melee-trait tuning (ALE-45, ALE-46).
