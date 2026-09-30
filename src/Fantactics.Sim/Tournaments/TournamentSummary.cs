@@ -21,6 +21,7 @@ namespace Fantactics.Sim.Tournaments;
 /// <param name="EndReasons">How matches ended.</param>
 /// <param name="Fingerprints">How each side played, per game.</param>
 /// <param name="UnitStats">Totals per seat and unit type.</param>
+/// <param name="Clashes">Clash results per pair of unit types.</param>
 /// <param name="ArmyShapes">Results by army shape: mono, two-race, or three+ races (RacesAndUnits §2.4).</param>
 /// <param name="RaceMixes">Results by the exact races drafted, e.g. Elves+Goblins.</param>
 public sealed record TournamentSummary(
@@ -39,5 +40,6 @@ public sealed record TournamentSummary(
     ImmutableArray<EndReasonCount> EndReasons,
     ImmutableArray<StyleFingerprint> Fingerprints,
     ImmutableArray<UnitTypeStats> UnitStats,
+    ImmutableArray<ClashStats> Clashes,
     ImmutableArray<ArmyGroupStats> ArmyShapes,
     ImmutableArray<ArmyGroupStats> RaceMixes);

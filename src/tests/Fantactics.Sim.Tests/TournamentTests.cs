@@ -20,13 +20,31 @@ public sealed class TournamentTests
 
         Assert.Equal(one.AsEnumerable(), many.AsEnumerable());
         Assert.Equal(oneSummary.UnitStats.AsEnumerable(), manySummary.UnitStats.AsEnumerable());
+        Assert.Equal(oneSummary.Clashes.AsEnumerable(), manySummary.Clashes.AsEnumerable());
         Assert.Equal(oneSummary.EndReasons.AsEnumerable(), manySummary.EndReasons.AsEnumerable());
         Assert.Equal(oneSummary.Fingerprints.AsEnumerable(), manySummary.Fingerprints.AsEnumerable());
         Assert.Equal(oneSummary.ArmyShapes.AsEnumerable(), manySummary.ArmyShapes.AsEnumerable());
         Assert.Equal(oneSummary.RaceMixes.AsEnumerable(), manySummary.RaceMixes.AsEnumerable());
-        Assert.Equal(
-            oneSummary with { UnitStats = [], EndReasons = [], Fingerprints = [], ArmyShapes = [], RaceMixes = [] },
-            manySummary with { UnitStats = [], EndReasons = [], Fingerprints = [], ArmyShapes = [], RaceMixes = [] });
+        Assert.Equal(WithoutTables(oneSummary), WithoutTables(manySummary));
+    }
+
+    [Fact]
+    public void ClashesAreTalliedPerUnitTypePair()
+    {
+        TournamentRunner runner = new(RulesConfig.Default);
+        TournamentOptions options = new(
+            "riverford", null, null, "captain", "captain", Games: 6, Seed: 1, Threads: 0);
+
+        (TournamentSummary summary, _) = runner.Run(options);
+
+        Assert.NotEmpty(summary.Clashes);
+        Assert.All(summary.Clashes, clash =>
+        {
+            Assert.True(string.CompareOrdinal(clash.TypeA, clash.TypeB) <= 0);
+            Assert.Equal(clash.Clashes, clash.AWins + clash.BWins + clash.Unresolved);
+            Assert.Contains(clash.TypeA, RulesConfig.Default.Units.Keys);
+            Assert.Contains(clash.TypeB, RulesConfig.Default.Units.Keys);
+        });
     }
 
     [Fact]
@@ -96,6 +114,8 @@ public sealed class TournamentTests
             Assert.Equal(4, File.ReadAllLines(Path.Combine(details, "games.csv")).Length);
             Assert.Equal(3, File.ReadAllLines(Path.Combine(details, "bots.csv")).Length);
             Assert.True(File.Exists(Path.Combine(details, "units.csv")));
+            Assert.True(File.Exists(Path.Combine(details, "clashes.csv")));
+            Assert.Equal(JsonValueKind.Array, summary.RootElement.GetProperty("clashes").ValueKind);
         }
         finally
         {
@@ -123,4 +143,15 @@ public sealed class TournamentTests
             Assert.Throws<SimException>(() => Matches.SeatKind.Parse(value));
         }
     }
+
+    /// <summary>The summary with its array tables emptied, so the rest compares by value.</summary>
+    private static TournamentSummary WithoutTables(TournamentSummary summary) => summary with
+    {
+        UnitStats = [],
+        Clashes = [],
+        EndReasons = [],
+        Fingerprints = [],
+        ArmyShapes = [],
+        RaceMixes = [],
+    };
 }

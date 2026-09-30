@@ -189,6 +189,18 @@ public static class TextRenderer
                 $"{u.Fielded}", $"{u.Damage}", $"{u.Kills}", $"{u.Deaths}",
             })));
         text.AppendLine();
+        if (!summary.Clashes.IsEmpty)
+        {
+            text.Append(Table(
+                ["Clash A", "Clash B", "Clashes", "A wins", "B wins", "Unresolved", "A rate"],
+                summary.Clashes.Select(c => new[]
+                {
+                    c.TypeA, c.TypeB, $"{c.Clashes}", $"{c.AWins}", $"{c.BWins}", $"{c.Unresolved}",
+                    $"{c.AWinRate:F3}",
+                })));
+            text.AppendLine();
+        }
+
         text.Append(Table(
             ["Army", "Armies", "Wins", "Draws", "Score"],
             summary.ArmyShapes
