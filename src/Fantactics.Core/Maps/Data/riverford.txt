@@ -15,3 +15,7 @@
 ...+..%..~~.^^..%%..
 // The four ford tiles in the middle of the map; whoever holds more of them scores each turn.
 @objectives 9,6 10,6 9,7 10,7
+// P1 deploys on the left three columns, P2 on the right three.
+@seats 2
+@deploy P1 0,0-2,13
+@deploy P2 17,0-19,13

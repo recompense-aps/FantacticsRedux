@@ -20,7 +20,7 @@ public static class ActionFilter
         UseAbility { Ability: AbilityIds.Mend, Target: { } tile } => state.UnitAt(tile) is Unit ally
             && (ally.Hp < state.DefinitionOf(ally).Hp || ally.Has(StatusKind.Slowed) || ally.Has(StatusKind.Rooted)),
         UseAbility { Ability: AbilityIds.Entangle } ability => state.Units.TryGetValue(ability.UnitId, out Unit? druid)
-            && state.FieldUnits.Any(enemy => enemy.Owner != druid.Owner
+            && state.FieldUnits.Any(enemy => state.AreEnemies(enemy, druid)
                 && state.Map[enemy.Position] == Terrain.Forest
                 && enemy.Position.DistanceTo(druid.Position) <= state.Rules.Abilities[AbilityIds.Entangle].MaxRange),
         UseAbility => true,

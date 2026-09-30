@@ -129,7 +129,7 @@ public static class UnitRules
 
     /// <summary>Enemy units on the field orthogonally adjacent to <paramref name="tile"/>.</summary>
     public static IEnumerable<Unit> AdjacentEnemies(GameState state, Seat seat, Point tile) =>
-        state.FieldUnits.Where(unit => unit.Owner != seat && unit.Position.IsAdjacentTo(tile));
+        state.FieldUnits.Where(unit => state.AreEnemies(seat, unit.Owner) && unit.Position.IsAdjacentTo(tile));
 
     private static ImmutableSortedDictionary<string, int> TraitsOf(GameState state, Unit unit) =>
         unit.ExtraRaces is null

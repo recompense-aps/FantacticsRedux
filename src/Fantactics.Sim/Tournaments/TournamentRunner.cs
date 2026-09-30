@@ -367,7 +367,7 @@ public sealed class TournamentRunner(RulesConfig rules)
                 0,
                 0,
                 Picked: 1,
-                PickedWins: result.Outcome.Winner == pick.Seat ? 1 : 0);
+                PickedWins: result.Outcome.Won(pick.Seat) ? 1 : 0);
             totals[pick] = Add(totals.GetValueOrDefault(pick), delta);
         }
 
@@ -375,7 +375,7 @@ public sealed class TournamentRunner(RulesConfig rules)
         return new GameResult(
             game,
             seed,
-            result.Outcome.Winner?.ToString() ?? "draw",
+            result.Outcome.Winners is [Seat winner] ? winner.ToString() : "draw",
             result.Outcome.Reason.ToString(),
             result.Turns,
             UnitRules.ArmyValue(final, Seat.P1),

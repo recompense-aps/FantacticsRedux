@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 
 namespace Fantactics.Core.Engine;
 
@@ -16,6 +17,8 @@ namespace Fantactics.Core.Engine;
 /// </param>
 /// <param name="DraftBudget">The player's draft budget; Rout is measured against it (GameDesign §4.5).</param>
 /// <param name="StartingCap">The most Cost the player may place at the start.</param>
+/// <param name="Team">The player's team; enemies are players on other teams.</param>
+/// <param name="Eliminated">Whether the player was routed out of a match that went on.</param>
 public sealed record PlayerSummary(
     Seat Seat,
     int Command,
@@ -27,4 +30,11 @@ public sealed record PlayerSummary(
     ImmutableSortedSet<string>? AllowedRaces,
     ImmutableSortedDictionary<string, int>? DraftedRaces,
     int DraftBudget,
-    int StartingCap);
+    int StartingCap,
+    int Team = 0,
+    bool Eliminated = false)
+{
+    /// <summary>The player's team; a summary without one (0) is a team of its own.</summary>
+    [JsonIgnore]
+    public int TeamNumber => Team > 0 ? Team : Seat.OwnTeam();
+}

@@ -42,7 +42,7 @@ public sealed class Evaluator(Seat seat, StyleWeights style, SkillSettings skill
     /// Scores <paramref name="state"/>; finished matches score ±<see cref="WinScore"/>, or 0 for a draw.
     /// </summary>
     public double Evaluate(GameState state) => state.Outcome is MatchOutcome outcome
-        ? outcome.Winner is Seat winner ? (winner == seat ? WinScore : -WinScore) : 0
+        ? outcome.IsDraw ? 0 : outcome.Won(seat) ? WinScore : -WinScore
         : Score(Extract(state));
 
     /// <summary>The weighted sum of <paramref name="features"/>.</summary>
@@ -61,7 +61,7 @@ public sealed class Evaluator(Seat seat, StyleWeights style, SkillSettings skill
     /// <summary>Raw features of a whole state.</summary>
     public Features Extract(GameState state)
     {
-        Seat enemy = seat.Opponent();
+        List<Seat> enemies = [.. state.Opponents(seat)];
         List<Unit> mine = state.FieldUnits.Where(unit => unit.Owner == seat).ToList();
         List<Point> friends = mine.Select(unit => unit.Position).ToList();
         Features positional = mine
@@ -69,14 +69,15 @@ public sealed class Evaluator(Seat seat, StyleWeights style, SkillSettings skill
             .Aggregate(default(Features), (sum, next) => sum + next);
 
         PlayerState me = state.Players[seat];
-        PlayerState them = state.Players[enemy];
         double progress = (double)state.Turn / state.Rules.TurnLimit;
         return positional with
         {
-            Material = Material(state, seat) - Material(state, enemy),
-            Score = (me.Score - them.Score) * progress,
-            Objectives = (ObjectivesHeld(state, seat) - ObjectivesHeld(state, enemy)) * ObjectiveStakes(state),
-            Disable = Disabled(state, enemy) - Disabled(state, seat),
+            Material = Material(state, seat) - enemies.Sum(enemy => Material(state, enemy)),
+            Score = (me.Score - enemies.Select(enemy => state.Players[enemy].Score).DefaultIfEmpty(0).Max()) * progress,
+            Objectives = (ObjectivesHeld(state, seat)
+                    - enemies.Select(enemy => ObjectivesHeld(state, enemy)).DefaultIfEmpty(0).Max())
+                * ObjectiveStakes(state),
+            Disable = enemies.Sum(enemy => Disabled(state, enemy)) - Disabled(state, seat),
         };
     }
 
@@ -107,7 +108,7 @@ public sealed class Evaluator(Seat seat, StyleWeights style, SkillSettings skill
     private Features UnitFeatures(GameState state, Unit unit, Point tile, IReadOnlyCollection<Point> friends)
     {
         List<Unit> enemies = state.FieldUnits
-            .Where(other => other.Owner != seat && Sees(unit, other))
+            .Where(other => state.AreEnemies(other.Owner, seat) && Sees(unit, other))
             .ToList();
         int cohesion = friends.Count(friend => friend.IsAdjacentTo(tile));
         bool retreating = unit.Hp < style.RetreatThreshold * state.DefinitionOf(unit).Hp;

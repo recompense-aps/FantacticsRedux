@@ -8,7 +8,8 @@ namespace Fantactics.Sim.Views;
 /// <param name="You">The viewing seat.</param>
 /// <param name="TiePriority">Seat that wins initiative ties this turn.</param>
 /// <param name="Me">The viewer's totals.</param>
-/// <param name="Enemy">The opponent's public totals.</param>
+/// <param name="Opponents">Public totals of every opponent still playing (one in a two-player match).</param>
+/// <param name="Allies">Public totals of the viewer's teammates; empty unless the match has teams.</param>
 /// <param name="Pending">What the viewer must decide now, if anything.</param>
 /// <param name="WaitingFor">Seats that owe a decision.</param>
 /// <param name="Legend">How to read the map and unit ids.</param>
@@ -24,7 +25,8 @@ public sealed record SeatView(
     string You,
     string TiePriority,
     SideSummary Me,
-    SideSummary Enemy,
+    ImmutableArray<SideSummary> Opponents,
+    ImmutableArray<SideSummary> Allies,
     PendingInfo? Pending,
     ImmutableArray<string> WaitingFor,
     string Legend,

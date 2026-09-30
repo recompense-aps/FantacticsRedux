@@ -97,7 +97,8 @@ public class MatchFlowTests
         (GameState over, _) = WaitOutTurn(moved);
 
         Assert.Equal(Phase.Over, over.Phase);
-        Assert.Equal(new MatchOutcome(Seat.P2, EndReason.Rout), over.Outcome);
+        Assert.Equal<Seat>([Seat.P2], over.Outcome!.Winners);
+        Assert.Equal(EndReason.Rout, over.Outcome.Reason);
         Assert.Empty(GameEngine.PendingDecisions(over));
     }
 
@@ -117,7 +118,8 @@ public class MatchFlowTests
         (GameState moved, _) = Moves(state, SubmitMoveOrders.HoldAll, SubmitMoveOrders.HoldAll);
         (GameState over, _) = WaitOutTurn(moved);
 
-        Assert.Equal(new MatchOutcome(Seat.P1, EndReason.TurnLimit), over.Outcome);
+        Assert.Equal<Seat>([Seat.P1], over.Outcome!.Winners);
+        Assert.Equal(EndReason.TurnLimit, over.Outcome.Reason);
     }
 
     [Fact]
@@ -176,7 +178,8 @@ public class MatchFlowTests
         (GameState over, _) = WaitOutTurn(moved);
 
         // P1: 0 destroyed + 2 + 2 objective = 4 beats P2's 3 destroyed.
-        Assert.Equal(new MatchOutcome(Seat.P1, EndReason.TurnLimit), over.Outcome);
+        Assert.Equal<Seat>([Seat.P1], over.Outcome!.Winners);
+        Assert.Equal(EndReason.TurnLimit, over.Outcome.Reason);
     }
 
     private static GameState NewMatch() =>

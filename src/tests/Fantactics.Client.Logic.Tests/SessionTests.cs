@@ -113,7 +113,7 @@ public class SessionTests
         }
 
         Seat first = session.Shown;
-        Seat second = first.Opponent();
+        Seat second = first == Seat.P1 ? Seat.P2 : Seat.P1;
         await session.SubmitAsync(Core.Commands.SubmitMoveOrders.HoldAll);
 
         Assert.Equal(second, session.Shown);

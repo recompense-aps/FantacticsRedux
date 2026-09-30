@@ -99,7 +99,8 @@ internal static class MoveOrderRules
         Terrain terrain = state.Map[tile];
         bool fromTheTrees = terrain == Terrain.Forest
             && UnitRules.HasTrait(state, unit, TraitIds.FromTheTrees)
-            && !state.FieldUnits.Any(other => other.Owner != seat && other.Position.DistanceTo(tile) <= 2);
+            && !state.FieldUnits.Any(other =>
+                state.AreEnemies(seat, other.Owner) && other.Position.DistanceTo(tile) <= 2);
         bool outOfTheCaves = terrain == Terrain.Mountains
             && UnitRules.HasTrait(state, unit, TraitIds.OutOfTheCaves)
             && state.Map.IsInOrNextToDeployZone(tile, seat, columns);

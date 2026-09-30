@@ -76,7 +76,7 @@ internal static class AbilityRules
     {
         Unit? ally = state.UnitAt(target);
         RuleViolationException.ThrowUnless(
-            ally is not null && ally.Owner == unit.Owner && ally.Id != unit.Id,
+            ally is not null && !state.AreEnemies(ally, unit) && ally.Id != unit.Id,
             "bad-target",
             $"Mend needs another friendly unit on {target}.");
         RuleViolationException.ThrowUnless(
@@ -105,7 +105,7 @@ internal static class AbilityRules
     private static GameState Entangle(GameState state, Unit unit, AbilityDefinition ability, List<GameEvent> events)
     {
         List<int> targets = state.FieldUnits
-            .Where(enemy => enemy.Owner != unit.Owner
+            .Where(enemy => state.AreEnemies(enemy, unit)
                 && state.Map[enemy.Position] == Terrain.Forest
                 && enemy.Position.DistanceTo(unit.Position) <= ability.MaxRange)
             .Select(enemy => enemy.Id)
@@ -159,7 +159,7 @@ internal static class AbilityRules
     private static Unit RequireEnemyAt(GameState state, Unit unit, Point target)
     {
         Unit? enemy = state.UnitAt(target);
-        return enemy is not null && enemy.Owner != unit.Owner
+        return enemy is not null && state.AreEnemies(enemy, unit)
             ? enemy
             : throw new RuleViolationException("bad-target", $"No enemy on {target}.");
     }

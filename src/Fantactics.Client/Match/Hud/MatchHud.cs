@@ -1,11 +1,13 @@
+using Fantactics.Client.Common;
+using Fantactics.Core;
 using Godot;
 
 namespace Fantactics.Client.Match.Hud;
 
 /// <summary>
-/// The match HUD: status and prompt lines, the hovered tile's hint, the action bar, roster buttons (deploys,
-/// placement), the Submit button, the speed toggle, the menu button, and a banner. It only shows what it's given and
-/// reports button presses.
+/// The match HUD: status and prompt lines, the player list (with more than two players), the hovered tile's hint,
+/// the action bar, roster buttons (deploys, placement), the Submit button, the speed toggle, the menu button, and a
+/// banner. It only shows what it's given and reports button presses.
 /// </summary>
 public partial class MatchHud : Control
 {
@@ -14,6 +16,9 @@ public partial class MatchHud : Control
 
     [Export]
     private Label _prompt = null!;
+
+    [Export]
+    private VBoxContainer _players = null!;
 
     [Export]
     private Label _hint = null!;
@@ -76,6 +81,30 @@ public partial class MatchHud : Control
     {
         _status.Text = status;
         _prompt.Text = prompt;
+    }
+
+    /// <summary>
+    /// Lists every player in their seat's color, one line each. Hidden with two players, whom the status line covers.
+    /// </summary>
+    public void ShowPlayers(IReadOnlyList<(Seat Seat, string Text)> players)
+    {
+        foreach (Node child in _players.GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        _players.Visible = players.Count > 2;
+        if (!_players.Visible)
+        {
+            return;
+        }
+
+        foreach ((Seat seat, string text) in players)
+        {
+            Label line = new() { Text = text, HorizontalAlignment = HorizontalAlignment.Right };
+            line.AddThemeColorOverride("font_color", SeatColors.Of(seat).Lightened(0.35f));
+            _players.AddChild(line);
+        }
     }
 
     /// <summary>Sets the hint for the hovered tile.</summary>

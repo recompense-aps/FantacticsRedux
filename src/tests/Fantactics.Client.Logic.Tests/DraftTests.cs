@@ -89,7 +89,7 @@ public class DraftTests
     public void ABotsDraftAndPlacementLoadIntoTheBuildersUnchanged()
     {
         MatchHost host = new(_rules, States.Setup(5));
-        foreach (Seat seat in SeatExtensions.All)
+        foreach (Seat seat in SeatExtensions.TwoPlayer)
         {
             SubmitDraft draft = (SubmitDraft)States.CreateBot("captain", (int)seat).DecideFor(host.State, seat);
             DraftBuilder builder = new(LegalActions.ForView(host.State, seat)?.Draft ?? throw new InvalidOperationException());
@@ -238,7 +238,7 @@ public class DraftTests
     private static GameState PlacementState(ulong seed)
     {
         MatchHost host = new(_rules, States.Setup(seed));
-        foreach (Seat seat in SeatExtensions.All)
+        foreach (Seat seat in SeatExtensions.TwoPlayer)
         {
             host.SubmitEngine(seat, States.CreateBot("captain", (int)seed).DecideFor(host.State, seat));
         }

@@ -48,8 +48,8 @@ public sealed class ClientSession
         Rules = rules;
         _botFactory = botFactory;
         _draftAs = draftAs;
-        _connections = SeatExtensions.All.ToDictionary(seat => seat, match.Connect);
-        Seat[] humans = [.. SeatExtensions.All.Where(IsHuman)];
+        _connections = match.State.Seats.ToDictionary(seat => seat, match.Connect);
+        Seat[] humans = [.. _connections.Keys.Where(IsHuman)];
         _shown = (int)(shown
             ?? humans.FirstOrDefault(seat => _connections[seat].Current.Legal is not null, humans.DefaultIfEmpty(Seat.P1).First()));
         foreach ((Seat seat, IGameConnection connection) in _connections)
@@ -117,7 +117,7 @@ public sealed class ClientSession
     /// <summary>Turns auto-skip on or off for every human seat.</summary>
     public async Task SetAutoSkipAsync(bool enabled)
     {
-        foreach (Seat seat in SeatExtensions.All.Where(IsHuman))
+        foreach (Seat seat in _connections.Keys.Where(IsHuman))
         {
             await _connections[seat].SetAutoSkipAsync(enabled);
         }
@@ -155,7 +155,7 @@ public sealed class ClientSession
             // Seats are updated one after another, so only switch once the shown seat's own update says it's done.
             Seat shown = Shown;
             Seat[] waiting = _connections[shown].Current.Legal is null
-                ? [.. SeatExtensions.All.Where(other =>
+                ? [.. _connections.Keys.Order().Where(other =>
                     other != shown && IsHuman(other) && _connections[other].Current.Legal is not null)]
                 : [];
             if (waiting is [Seat next, ..])

@@ -30,10 +30,10 @@ public sealed class TacticalAgent(BotProfile profile, RulesConfig rules, int see
     /// <inheritdoc />
     public ICommand Decide(PlayerView view, Decision decision, LegalActions legal)
     {
-        GameState belief = BeliefState.From(view, rules, ReserveGuesser.Guess(view, rules));
+        GameState belief = BeliefState.From(view, rules, ReserveGuesser.GuessAll(view, rules));
         bool onField = view.Phase is Phase.Movement or Phase.Action;
         ThreatMap threats = onField && !profile.Skill.IgnoreThreats
-            ? ThreatMap.For(belief, view.Seat.Opponent())
+            ? ThreatMap.ForEnemiesOf(belief, view.Seat)
             : ThreatMap.Empty;
         PlanningContext context = new(
             view,

@@ -45,7 +45,7 @@ public static class MovePlanner
         return candidates[chooser.Choose([.. candidates.Select(candidate => candidate.Score)])].Orders;
     }
 
-    /// <summary>The state after the movement phase if the opponent holds every unit and deploys nothing.</summary>
+    /// <summary>The state after the movement phase if every other seat holds every unit and deploys nothing.</summary>
     private static GameState Resolve(PlanningContext context, SubmitMoveOrders orders)
     {
         Seat seat = context.View.Seat;
@@ -54,8 +54,17 @@ public static class MovePlanner
             return context.Belief;
         }
 
-        return GameEngine.Apply(mine.State, seat.Opponent(), SubmitMoveOrders.HoldAll) is Accepted both
-            ? both.State
-            : mine.State;
+        GameState state = mine.State;
+        foreach (Seat other in context.Belief.LiveSeats.Where(other => other != seat))
+        {
+            if (GameEngine.Apply(state, other, SubmitMoveOrders.HoldAll) is not Accepted held)
+            {
+                return mine.State;
+            }
+
+            state = held.State;
+        }
+
+        return state;
     }
 }

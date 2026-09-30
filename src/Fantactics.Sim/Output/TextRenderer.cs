@@ -23,13 +23,33 @@ public static class TextRenderer
     private static string View(SeatView view)
     {
         StringBuilder text = new();
-        text.AppendLine(
-            $"Turn {view.Turn} · {view.Phase} · You: {view.You}{Races(view.Me.Races)} · "
-            + (view.Enemy.Races is "" ? "" : $"Enemy drafted {view.Enemy.Races} · ")
-            + $"Command {view.Me.Command} · "
-            + $"Army {view.Me.Army} vs {view.Enemy.Army} · Destroyed {view.Me.Destroyed} vs {view.Enemy.Destroyed} · "
-            + $"Objective {view.Me.Objective} vs {view.Enemy.Objective} · "
-            + $"Tie priority {view.TiePriority}");
+        if (view is { Opponents: [SideSummary enemy], Allies: [] })
+        {
+            text.AppendLine(
+                $"Turn {view.Turn} · {view.Phase} · You: {view.You}{Races(view.Me.Races)} · "
+                + (enemy.Races is "" ? "" : $"Enemy drafted {enemy.Races} · ")
+                + $"Command {view.Me.Command} · "
+                + $"Army {view.Me.Army} vs {enemy.Army} · Destroyed {view.Me.Destroyed} vs {enemy.Destroyed} · "
+                + $"Objective {view.Me.Objective} vs {enemy.Objective} · "
+                + $"Tie priority {view.TiePriority}");
+        }
+        else
+        {
+            text.AppendLine(
+                $"Turn {view.Turn} · {view.Phase} · You: {view.You} · Command {view.Me.Command} · "
+                + $"Tie priority {view.TiePriority}");
+            text.Append(Table(
+                ["Seat", "Side", "Races", "Army", "Reserve", "Destroyed", "Objective"],
+                new[] { (Side: "you", Summary: view.Me) }
+                    .Concat(view.Allies.Select(ally => (Side: "ally", Summary: ally)))
+                    .Concat(view.Opponents.Select(enemy => (Side: "enemy", Summary: enemy)))
+                    .Select(row => new[]
+                    {
+                        row.Summary.Seat, row.Side, row.Summary.Races, $"{row.Summary.Army}", $"{row.Summary.Reserve}",
+                        $"{row.Summary.Destroyed}", $"{row.Summary.Objective}",
+                    })));
+        }
+
         text.AppendLine(view.Outcome is string outcome
             ? $"Match over: {outcome}"
             : view.Pending is PendingInfo pending
@@ -154,9 +174,16 @@ public static class TextRenderer
         text.AppendLine(status.Outcome is string outcome
             ? $"Match over after turn {status.Turn}: {outcome}"
             : $"Turn {status.Turn} · {status.Phase} · {status.Commands} commands");
-        text.Append(Table(
-            ["Seat", "Player", "Races", "Budget", "Owes"],
-            status.Seats.Select(s => new[] { s.Seat, s.Player, s.Races, s.Budget, s.Owes })));
+        // Two seats on their own teams read as before; otherwise show who is with whom.
+        bool teams = status.Seats.Length > 2
+            || status.Seats.Select(s => s.Team).Distinct().Count() < status.Seats.Length;
+        text.Append(teams
+            ? Table(
+                ["Seat", "Player", "Team", "Races", "Budget", "Owes"],
+                status.Seats.Select(s => new[] { s.Seat, s.Player, $"{s.Team}", s.Races, s.Budget, s.Owes }))
+            : Table(
+                ["Seat", "Player", "Races", "Budget", "Owes"],
+                status.Seats.Select(s => new[] { s.Seat, s.Player, s.Races, s.Budget, s.Owes })));
         return text.ToString().TrimEnd();
     }
 

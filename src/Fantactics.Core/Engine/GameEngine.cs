@@ -16,7 +16,7 @@ public static class GameEngine
     /// <summary>Version of the rules code, recorded in match records. Bump it when rule behavior changes.</summary>
     public const string RulesVersion = "0.6.0";
 
-    /// <summary>Creates a match waiting for both drafts.</summary>
+    /// <summary>Creates a one-against-one match (P1 and P2) waiting for both drafts.</summary>
     /// <param name="rules">Rules config.</param>
     /// <param name="map">Starting map.</param>
     /// <param name="seed">Seed for all rule randomness.</param>
@@ -34,8 +34,61 @@ public static class GameEngine
         ulong seed,
         IReadOnlyDictionary<Seat, ImmutableSortedSet<string>>? allowedRaces = null,
         IReadOnlyDictionary<Seat, int>? draftBudgets = null,
+        IReadOnlyDictionary<Seat, int>? startingCaps = null) =>
+        NewMatch(rules, map, seed, SeatExtensions.TwoPlayer, null, allowedRaces, draftBudgets, startingCaps);
+
+    /// <summary>Creates a match for <paramref name="seats"/>, waiting for every draft (GameDesign §3).</summary>
+    /// <param name="rules">Rules config.</param>
+    /// <param name="map">Starting map; it must have a deploy zone for every seat.</param>
+    /// <param name="seed">Seed for all rule randomness.</param>
+    /// <param name="seats">Two to <see cref="GameMap.Seats"/> distinct seats.</param>
+    /// <param name="teams">
+    /// Each seat's team; a missing seat, or <c>null</c>, is a team of its own. At least two teams must play.
+    /// </param>
+    /// <param name="allowedRaces">
+    /// Races each seat may draft from; a seat that's missing, or a <c>null</c> map, may draft every race.
+    /// </param>
+    /// <param name="draftBudgets">Per-seat draft budgets overriding the rules' (GameDesign §4.4); missing seats use it.</param>
+    /// <param name="startingCaps">Per-seat starting caps overriding the rules'; missing seats use it.</param>
+    /// <exception cref="ArgumentException">
+    /// The seats don't fit the map, fewer than two teams play, a race is unknown, a seat is allowed no races, or a
+    /// budget or cap isn't positive.
+    /// </exception>
+    public static GameState NewMatch(
+        RulesConfig rules,
+        GameMap map,
+        ulong seed,
+        IReadOnlyCollection<Seat> seats,
+        IReadOnlyDictionary<Seat, int>? teams,
+        IReadOnlyDictionary<Seat, ImmutableSortedSet<string>>? allowedRaces = null,
+        IReadOnlyDictionary<Seat, int>? draftBudgets = null,
         IReadOnlyDictionary<Seat, int>? startingCaps = null)
     {
+        if (seats.Count < 2 || seats.Count > map.Seats || seats.Distinct().Count() != seats.Count)
+        {
+            throw new ArgumentException($"Map '{map.Name}' takes 2 to {map.Seats} distinct seats (got {seats.Count}).");
+        }
+
+        foreach (Seat seat in seats.Where(seat => !map.HasDeployZone(seat)))
+        {
+            throw new ArgumentException($"Map '{map.Name}' has no deploy zone for {seat}.");
+        }
+
+        if (seats.Select(seat => teams?.GetValueOrDefault(seat) is int team and > 0 ? team : seat.OwnTeam())
+                .Distinct()
+                .Count() < 2)
+        {
+            throw new ArgumentException("At least two teams must play.");
+        }
+
+        foreach (int team in teams?.Values ?? [])
+        {
+            if (team <= 0)
+            {
+                throw new ArgumentException($"Teams are numbered from 1 (got {team}).");
+            }
+        }
+
         foreach (int points in (draftBudgets?.Values ?? []).Concat(startingCaps?.Values ?? []))
         {
             if (points <= 0)
@@ -57,7 +110,7 @@ public static class GameEngine
             }
         }
 
-        ImmutableSortedDictionary<Seat, PlayerState> players = SeatExtensions.All.ToImmutableSortedDictionary(
+        ImmutableSortedDictionary<Seat, PlayerState> players = seats.ToImmutableSortedDictionary(
             seat => seat,
             seat => new PlayerState(
                 seat,
@@ -65,14 +118,15 @@ public static class GameEngine
                 DestroyedValue: 0,
                 AllowedRaces: allowedRaces?.GetValueOrDefault(seat),
                 DraftBudget: draftBudgets?.TryGetValue(seat, out int budget) == true ? budget : null,
-                StartingCap: startingCaps?.TryGetValue(seat, out int cap) == true ? cap : null));
+                StartingCap: startingCaps?.TryGetValue(seat, out int cap) == true ? cap : null,
+                Team: teams?.TryGetValue(seat, out int team) == true ? team : null));
 
         return new GameState(
             rules,
             map,
             Turn: 0,
             Phase.Draft,
-            TiePriority: Seat.P1,
+            TiePriority: players.Keys.First(),
             players,
             Units: ImmutableSortedDictionary<int, Unit>.Empty,
             PendingOrders: ImmutableSortedDictionary<Seat, ICommand>.Empty,
@@ -121,12 +175,12 @@ public static class GameEngine
     }
 
     private static ImmutableArray<Decision> HiddenDecisions(GameState state, Func<Seat, Decision> create) =>
-        SeatExtensions.All
+        state.LiveSeats
             .Where(seat => !state.PendingOrders.ContainsKey(seat))
             .Select(create)
             .ToImmutableArray();
 
-    /// <summary>Stores a seat's hidden orders; once both seats are in, resolves the phase.</summary>
+    /// <summary>Stores a seat's hidden orders; once every live seat's are in, resolves the phase.</summary>
     private static GameState SubmitHidden(GameState state, Seat seat, ICommand command, Phase phase, List<GameEvent> events)
     {
         RuleViolationException.ThrowUnless(
@@ -149,7 +203,7 @@ public static class GameEngine
 
         state = state with { PendingOrders = state.PendingOrders.SetItem(seat, command) };
         events.Add(new OrdersLocked(seat, phase));
-        if (state.PendingOrders.Count < SeatExtensions.All.Count)
+        if (state.LiveSeats.Any(live => !state.PendingOrders.ContainsKey(live)))
         {
             return state;
         }

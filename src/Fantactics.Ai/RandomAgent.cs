@@ -69,7 +69,7 @@ public sealed class RandomAgent(int seed) : IPlayerAgent
     private SubmitMoveOrders Move(PlayerView view, MoveOptions options)
     {
         List<Point> enemies = view.Units
-            .Where(unit => unit.Owner != view.Seat && unit.IsOnField)
+            .Where(unit => view.AreEnemies(unit.Owner, view.Seat) && unit.IsOnField)
             .Select(unit => unit.Position)
             .ToList();
         ImmutableArray<MoveOrder> moves = options.Units

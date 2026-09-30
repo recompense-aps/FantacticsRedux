@@ -17,9 +17,11 @@ public sealed class ScenarioBuilder(RulesConfig? rules = null)
 {
     private readonly RulesConfig _rules = rules ?? RulesConfig.Default;
     private readonly List<Unit> _units = [];
-    private readonly Dictionary<Seat, int> _command = new() { [Seat.P1] = 0, [Seat.P2] = 0 };
+    private readonly Dictionary<Seat, int> _command = [];
     private readonly Dictionary<Seat, ImmutableSortedSet<string>> _allowedRaces = [];
     private readonly Dictionary<Seat, int> _draftBudgets = [];
+    private readonly Dictionary<Seat, int> _teams = [];
+    private ImmutableSortedSet<Seat> _seats = [Seat.P1, Seat.P2];
     private GameMap _map = MapLibrary.Load("riverford");
     private int _turn = 1;
     private Seat _tiePriority = Seat.P1;
@@ -36,6 +38,23 @@ public sealed class ScenarioBuilder(RulesConfig? rules = null)
     public ScenarioBuilder WithObjectives(params (int X, int Y)[] tiles)
     {
         _map = _map with { Objectives = [.. tiles.Select(tile => new Point(tile.X, tile.Y))] };
+        return this;
+    }
+
+    /// <summary>
+    /// Plays with <paramref name="seats"/> (default P1 and P2). Deploy zones aren't checked, so any map works; give it
+    /// <c>@deploy</c> lines to test arrivals.
+    /// </summary>
+    public ScenarioBuilder WithSeats(params Seat[] seats)
+    {
+        _seats = [.. seats];
+        return this;
+    }
+
+    /// <summary>Puts <paramref name="seat"/> on <paramref name="team"/> (default: a team of its own).</summary>
+    public ScenarioBuilder WithTeam(Seat seat, int team)
+    {
+        _teams[seat] = team;
         return this;
     }
 
@@ -115,15 +134,18 @@ public sealed class ScenarioBuilder(RulesConfig? rules = null)
             Phase = Phase.Movement,
             TiePriority = _tiePriority,
             Units = _units.ToImmutableSortedDictionary(unit => unit.Id, unit => unit),
-            Players = state.Players.Values.ToImmutableSortedDictionary(
-                player => player.Seat,
-                player => player with
-                {
-                    Command = _command[player.Seat],
-                    DraftedRaces = DraftRules.CountRaces(_rules, _units
-                        .Where(unit => unit.Owner == player.Seat && !unit.IsSummoned)
+            Players = _seats.ToImmutableSortedDictionary(
+                seat => seat,
+                seat => new PlayerState(
+                    seat,
+                    _command.GetValueOrDefault(seat),
+                    DestroyedValue: 0,
+                    AllowedRaces: _allowedRaces.GetValueOrDefault(seat),
+                    DraftedRaces: DraftRules.CountRaces(_rules, _units
+                        .Where(unit => unit.Owner == seat && !unit.IsSummoned)
                         .Select(unit => unit.Type)),
-                }),
+                    DraftBudget: _draftBudgets.TryGetValue(seat, out int budget) ? budget : null,
+                    Team: _teams.TryGetValue(seat, out int team) ? team : null)),
             PendingOrders = ImmutableSortedDictionary<Seat, ICommand>.Empty,
             NextUnitId = _units.Count + 1,
         };

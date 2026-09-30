@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using Fantactics.Core.Rules;
 
 namespace Fantactics.Core.State;
@@ -10,12 +11,17 @@ namespace Fantactics.Core.State;
 /// <param name="ObjectivePoints">Points scored for holding objectives (GameDesign §4.5).</param>
 /// <param name="AllowedRaces">Races the player may draft from, or <c>null</c> for every race (GameDesign §4.4).</param>
 /// <param name="DraftedRaces">
-/// Units drafted per race, set once both drafts are in; revealed to the opponent before placement (GameDesign §4.4).
+/// Units drafted per race, set once every draft is in; revealed to every other player before placement
+/// (GameDesign §4.4).
 /// </param>
 /// <param name="DraftBudget">
 /// The player's draft budget when the match setup overrides the rules' (GameDesign §4.4), or <c>null</c>.
 /// </param>
 /// <param name="StartingCap">The player's starting cap when the match setup overrides the rules', or <c>null</c>.</param>
+/// <param name="Team">The player's team when the setup names one, or <c>null</c> for a team of its own.</param>
+/// <param name="EliminatedOnTurn">
+/// The turn the player was routed out of a match that went on without it (GameDesign §4.5), or <c>null</c>.
+/// </param>
 public sealed record PlayerState(
     Seat Seat,
     int Command,
@@ -24,8 +30,18 @@ public sealed record PlayerState(
     ImmutableSortedSet<string>? AllowedRaces = null,
     ImmutableSortedDictionary<string, int>? DraftedRaces = null,
     int? DraftBudget = null,
-    int? StartingCap = null)
+    int? StartingCap = null,
+    int? Team = null,
+    int? EliminatedOnTurn = null)
 {
+    /// <summary>Whether the player was eliminated: it has no units and no more decisions.</summary>
+    [JsonIgnore]
+    public bool Eliminated => EliminatedOnTurn is not null;
+
+    /// <summary>The player's team: the setup's, else a team of its own. Enemies are players on other teams.</summary>
+    [JsonIgnore]
+    public int TeamNumber => Team ?? Seat.OwnTeam();
+
     /// <summary>Score compared at the turn limit: destroyed value plus objective points.</summary>
     public int Score => DestroyedValue + ObjectivePoints;
 

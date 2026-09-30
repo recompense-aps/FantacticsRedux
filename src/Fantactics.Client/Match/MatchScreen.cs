@@ -309,13 +309,15 @@ public partial class MatchScreen : Node
         }
     }
 
-    /// <summary>What's public about the opponent's draft, for the draft screen's header.</summary>
-    private static string OpponentLimits(PlayerView view)
-    {
-        PlayerSummary them = view.Players[view.Seat.Opponent()];
-        string races = them.AllowedRaces is { } allowed ? string.Join(", ", allowed) : "any race";
-        return $"{them.Seat}: budget {them.DraftBudget}, starting cap {them.StartingCap}, {races}";
-    }
+    /// <summary>What's public about the opponents' drafts, for the draft screen's header.</summary>
+    private static string OpponentLimits(PlayerView view) =>
+        string.Join(" · ", view.Opponents()
+            .Select(seat => view.Players[seat])
+            .Select(them =>
+            {
+                string races = them.AllowedRaces is { } allowed ? string.Join(", ", allowed) : "any race";
+                return $"{them.Seat}: budget {them.DraftBudget}, starting cap {them.StartingCap}, {races}";
+            }));
 
     private void OnSessionUpdated(SeatUpdate update) => MainThread.Post(() =>
     {
@@ -429,6 +431,7 @@ public partial class MatchScreen : Node
             : BoardModel.Build(update.View, _session.Rules, _moves, _actions, _board.Hovered, _placement);
         _board.Render(model);
         _hud.ShowStatus(HudText.Status(update.View, _session.Rules), _message ?? HudText.Prompt(update, LabelOf));
+        _hud.ShowPlayers(HudText.Players(update.View));
         _hud.ShowHint(model.Hint);
 
         _draftPanel.Visible = _draft is not null;
@@ -493,7 +496,7 @@ public partial class MatchScreen : Node
         IReadOnlyList<LoggedEvent> events = match.Events;
         _debug.Show(
             StateHash.Compute(state)[..12],
-            SeatExtensions.All.ToDictionary(seat => seat, seat => match.ControllerOf(seat).Label),
+            state.Seats.ToDictionary(seat => seat, seat => match.ControllerOf(seat).Label),
             DebugText.Timeline(match.ToRecord(), events),
             [.. events.Select(DebugText.Line)],
             DebugText.Hidden(state, _session.Shown));
@@ -808,7 +811,7 @@ public partial class MatchScreen : Node
         if (_open.SharedFile is { } file)
         {
             string relative = $"{Path.GetFileName(Path.GetDirectoryName(file.Path))}/{Path.GetFileName(file.Path)}";
-            Seat[] llms = [.. SeatExtensions.All
+            Seat[] llms = [.. _session.Match.State.Seats
                 .Where(seat => _session.Match.ControllerOf(seat).Kind == SeatControllerKind.Llm)];
             lines.Add(llms.Length > 0
                 ? $"Ask Claude to play {string.Join(" and ", llms)} in {relative} (play-fantactics skill)."

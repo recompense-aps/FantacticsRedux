@@ -21,7 +21,7 @@ public sealed class MatchHost
     private readonly GameState? _customStart;
     private readonly List<RecordedCommand> _commands;
     private readonly List<LoggedEvent> _events;
-    private readonly Dictionary<Seat, bool> _autoSkip = SeatExtensions.All.ToDictionary(seat => seat, _ => false);
+    private readonly Dictionary<Seat, bool> _autoSkip = Enum.GetValues<Seat>().ToDictionary(seat => seat, _ => false);
     private readonly Dictionary<int, (Seat Seat, int Turn, ICommand Command)> _queued = [];
     private readonly List<GameEvent> _unpublished = [];
 
@@ -288,7 +288,7 @@ public sealed class MatchHost
 
         List<GameEvent> events = [.. _unpublished];
         _unpublished.Clear();
-        foreach (Seat seat in SeatExtensions.All)
+        foreach (Seat seat in State.Seats)
         {
             ViewIds ids = ViewIds.For(State, seat);
             SeatUpdate update = new(

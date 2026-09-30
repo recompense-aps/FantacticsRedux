@@ -2,7 +2,10 @@ namespace Fantactics.Sim.Views;
 
 /// <summary>One visible unit.</summary>
 /// <param name="Id">Handle: uppercase for the viewer's units, lowercase for the enemy's.</param>
-/// <param name="Side">you or enemy.</param>
+/// <param name="Side">
+/// <c>you</c> or <c>enemy</c>; with more than two seats, the owner and relation, e.g. <c>P3 enemy</c> or
+/// <c>P3 ally</c>.
+/// </param>
 /// <param name="Type">Unit type.</param>
 /// <param name="X">Column.</param>
 /// <param name="Y">Row.</param>

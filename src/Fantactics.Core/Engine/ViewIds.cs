@@ -7,14 +7,18 @@ namespace Fantactics.Core.Engine;
 
 /// <summary>
 /// Per-player unit ids (decided 2026-09-28). Engine ids are assigned in draft order, so showing them would reveal how
-/// many units the opponent drafted. Instead each seat numbers its own units 1, 2, 3, … in creation order and enemy
-/// units <see cref="EnemyIdBase"/> + 1, + 2, … in the order they first appeared on the field. Everything a seat is
-/// shown (views, legal options, events) uses these ids, and its commands are translated back with
-/// <see cref="ToEngine(ICommand)"/>.
+/// many units another player drafted. Instead each seat numbers its own units 1, 2, 3, … in creation order, and
+/// every other seat's units in their own block, in the order they first appeared on the field: the first other seat
+/// (in seat order) gets <see cref="EnemyIdBase"/> + 1, + 2, …, the second 2 × <see cref="EnemyIdBase"/> + 1, and so
+/// on. In a two-player match the opponent's units are 1001, 1002, …. Everything a seat is shown (views, legal
+/// options, events) uses these ids, and its commands are translated back with <see cref="ToEngine(ICommand)"/>.
 /// </summary>
 public sealed class ViewIds
 {
-    /// <summary>Enemy unit ids start above this, so they never collide with the viewer's own.</summary>
+    /// <summary>
+    /// Other seats' unit ids start above this, one block of this size per seat, so they never collide with the
+    /// viewer's own or each other's.
+    /// </summary>
     public const int EnemyIdBase = 1000;
 
     /// <summary>The id commands get for a unit the seat can't name; the engine rejects it as unknown.</summary>
@@ -34,7 +38,7 @@ public sealed class ViewIds
     public Seat Seat { get; }
 
     /// <summary>The ids <paramref name="seat"/> sees in <paramref name="state"/>.</summary>
-    /// <exception cref="InvalidOperationException">The seat has more units than <see cref="EnemyIdBase"/>.</exception>
+    /// <exception cref="InvalidOperationException">A seat has more units than <see cref="EnemyIdBase"/>.</exception>
     public static ViewIds For(GameState state, Seat seat)
     {
         List<int> own = state.Owners
@@ -48,10 +52,12 @@ public sealed class ViewIds
 
         IEnumerable<KeyValuePair<int, int>> ownIds = own
             .Select((id, index) => KeyValuePair.Create(id, index + 1));
-        IEnumerable<KeyValuePair<int, int>> enemyIds = state.FieldOrder
-            .Where(id => state.Owners.GetValueOrDefault(id) != seat)
-            .Select((id, index) => KeyValuePair.Create(id, EnemyIdBase + index + 1));
-        return new ViewIds(seat, ownIds.Concat(enemyIds).ToImmutableDictionary());
+        IEnumerable<KeyValuePair<int, int>> otherIds = state.Seats
+            .Where(other => other != seat)
+            .SelectMany((other, block) => state.FieldOrder
+                .Where(id => state.Owners.TryGetValue(id, out Seat owner) && owner == other)
+                .Select((id, index) => KeyValuePair.Create(id, EnemyIdBase * (block + 1) + index + 1)));
+        return new ViewIds(seat, ownIds.Concat(otherIds).ToImmutableDictionary());
     }
 
     /// <summary>The seat's id for engine unit <paramref name="engineId"/>.</summary>
@@ -114,6 +120,7 @@ public sealed class ViewIds
             WinnerId = e.WinnerId is int winner ? ToView(winner) : null,
         },
         InitiativeOrdered e => e with { Order = [.. e.Order.Select(ToView)] },
+        SeatEliminated e => e with { FieldUnits = [.. e.FieldUnits.Select(ToView)] },
         StatusApplied e => e with { UnitId = ToView(e.UnitId) },
         StatusRemoved e => e with { UnitId = ToView(e.UnitId) },
         UnitArrived e => e with { UnitId = ToView(e.UnitId) },

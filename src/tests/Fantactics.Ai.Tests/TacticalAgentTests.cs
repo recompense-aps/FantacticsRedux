@@ -66,7 +66,7 @@ public class TacticalAgentTests
                         ? TestMatches.Bots("captain", "random", seed)
                         : TestMatches.Bots("random", "captain", seed),
                     keepRecord: false);
-                return result.Outcome.Winner == (captainIsP1 ? Seat.P1 : Seat.P2);
+                return result.Outcome.Won(captainIsP1 ? Seat.P1 : Seat.P2);
             });
 
         Assert.True(captainWins >= 18, $"Captain won only {captainWins} of 20.");

@@ -6,18 +6,36 @@ using Fantactics.Core.Rules;
 namespace Fantactics.Ai.Belief;
 
 /// <summary>
-/// Guesses the opponent's hidden reserve: a composition of unit types from the races they drafted (the draft reveal,
+/// Guesses other seats' hidden reserves: a composition of unit types from the races they drafted (the draft reveal,
 /// GameDesign §4.4) whose Cost adds up to the reserve value the view shows. Only the value matters for Rout, so a
 /// plausible guess is enough for now.
 /// </summary>
 public static class ReserveGuesser
 {
-    /// <summary>Unit types that make up the enemy reserve value, fewest units first; empty if nothing fits.</summary>
+    /// <summary>
+    /// Unit types that make up the only opponent's reserve value, fewest units first; empty if nothing fits.
+    /// </summary>
     /// <param name="view">The guessing seat's view.</param>
     /// <param name="rules">Rules in effect.</param>
-    public static ImmutableArray<string> Guess(PlayerView view, RulesConfig rules)
+    /// <exception cref="InvalidOperationException">The seat doesn't have exactly one opponent.</exception>
+    public static ImmutableArray<string> Guess(PlayerView view, RulesConfig rules) =>
+        Guess(view, rules, view.SoleOpponent());
+
+    /// <summary>The guessed reserve of every other seat still playing, teammates included.</summary>
+    /// <param name="view">The guessing seat's view.</param>
+    /// <param name="rules">Rules in effect.</param>
+    public static IReadOnlyDictionary<Seat, IReadOnlyList<string>> GuessAll(PlayerView view, RulesConfig rules) =>
+        view.Players.Values
+            .Where(player => player.Seat != view.Seat && !player.Eliminated)
+            .ToDictionary(player => player.Seat, player => (IReadOnlyList<string>)Guess(view, rules, player.Seat));
+
+    /// <summary>Unit types that make up <paramref name="other"/>'s reserve value, fewest units first.</summary>
+    /// <param name="view">The guessing seat's view.</param>
+    /// <param name="rules">Rules in effect.</param>
+    /// <param name="other">The seat whose reserve to guess.</param>
+    public static ImmutableArray<string> Guess(PlayerView view, RulesConfig rules, Seat other)
     {
-        PlayerSummary enemy = view.Players[view.Seat.Opponent()];
+        PlayerSummary enemy = view.Players[other];
         if (enemy.ReserveValue <= 0)
         {
             return [];

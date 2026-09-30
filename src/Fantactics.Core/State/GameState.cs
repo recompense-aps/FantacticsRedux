@@ -43,9 +43,54 @@ public sealed record GameState(
     /// </summary>
     public ImmutableArray<int> FieldOrder { get; init; } = [];
 
+    /// <summary>The match's seats, in seat order (GameDesign §3).</summary>
+    [JsonIgnore]
+    public IEnumerable<Seat> Seats => Players.Keys;
+
+    /// <summary>Seats still playing: every seat that hasn't been eliminated, in seat order.</summary>
+    [JsonIgnore]
+    public IEnumerable<Seat> LiveSeats => Players.Values
+        .Where(player => !player.Eliminated)
+        .Select(player => player.Seat);
+
+    /// <summary>
+    /// Live seats in this turn's tie order: the seat with <see cref="TiePriority"/>, then the others in seat order,
+    /// wrapping around (GameDesign §4.1).
+    /// </summary>
+    [JsonIgnore]
+    public IEnumerable<Seat> TieOrder
+    {
+        get
+        {
+            List<Seat> live = LiveSeats.ToList();
+            int first = Math.Max(0, live.IndexOf(TiePriority));
+            return live.Skip(first).Concat(live.Take(first));
+        }
+    }
+
     /// <summary>Units on the map, by id.</summary>
     [JsonIgnore]
     public IEnumerable<Unit> FieldUnits => Units.Values.Where(unit => unit.IsOnField);
+
+    /// <summary>The team <paramref name="seat"/> is on.</summary>
+    public int TeamOf(Seat seat) => Players[seat].TeamNumber;
+
+    /// <summary>Whether two seats are on different teams. A seat is never its own enemy.</summary>
+    public bool AreEnemies(Seat a, Seat b) => a != b && TeamOf(a) != TeamOf(b);
+
+    /// <summary>Whether the owners of two units are on different teams.</summary>
+    public bool AreEnemies(Unit a, Unit b) => AreEnemies(a.Owner, b.Owner);
+
+    /// <summary>Live seats on other teams than <paramref name="seat"/>, in seat order.</summary>
+    public IEnumerable<Seat> Opponents(Seat seat) => LiveSeats.Where(other => AreEnemies(seat, other));
+
+    /// <summary>
+    /// The only opponent of <paramref name="seat"/>, for text and tools that only make sense one against one.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The seat has more than one opponent, or none.</exception>
+    public Seat SoleOpponent(Seat seat) => Opponents(seat).ToList() is [Seat only]
+        ? only
+        : throw new InvalidOperationException($"{seat} doesn't have exactly one opponent.");
 
     /// <summary>The unit on <paramref name="tile"/>, if any.</summary>
     public Unit? UnitAt(Point tile) => FieldUnits.FirstOrDefault(unit => unit.Position == tile);

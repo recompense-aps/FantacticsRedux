@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Fantactics.Core.Events;
+using Fantactics.Core.State;
 
 namespace Fantactics.Client.Logic.Playback;
 
@@ -76,7 +77,9 @@ public static class TimelineBuilder
         AbilityUsed e => new AbilityStep(e.UnitId, e.Ability, e.Target),
         TileChanged e => new TileStep(e.Tile, e.Terrain),
         TurnStarted e => new BannerStep($"Turn {e.Turn}"),
-        MatchEnded e => new BannerStep(e.Winner is null ? "Draw" : $"{e.Winner} wins ({e.Reason})"),
+        SeatEliminated e => new BannerStep($"{e.Seat} is eliminated"),
+        MatchEnded e => new BannerStep(
+            e.Winners.IsDefaultOrEmpty ? "Draw" : $"{MatchOutcome.Headline(e.Winners)} ({e.Reason})"),
         _ when Ignored.Contains(gameEvent.GetType()) => null,
         _ => throw new ArgumentException($"No playback for {gameEvent.GetType().Name}.", nameof(gameEvent)),
     };
