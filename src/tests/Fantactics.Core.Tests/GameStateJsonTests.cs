@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Rules;
 using Fantactics.Core.Serialization;
@@ -23,5 +24,18 @@ public class GameStateJsonTests
         Assert.Equal(StateHash.Compute(state), StateHash.Compute(read));
         Assert.Same(RulesConfig.Default, read.Rules);
         Assert.Equal(GameEngine.PendingDecisions(state).AsEnumerable(), GameEngine.PendingDecisions(read));
+    }
+
+    [Fact]
+    public void OutcomesSavedBeforeTeamsReadTheirSingleWinner()
+    {
+        MatchOutcome? won = JsonSerializer.Deserialize<MatchOutcome>(
+            """{"winner":"P2","reason":"Rout"}""",
+            CoreJson.Options);
+        MatchOutcome? drawn = JsonSerializer.Deserialize<MatchOutcome>("""{"reason":"TurnLimit"}""", CoreJson.Options);
+
+        Assert.Equal<Seat>([Seat.P2], won!.Winners);
+        Assert.True(drawn!.IsDraw);
+        Assert.DoesNotContain("\"winner\"", JsonSerializer.Serialize(won, CoreJson.Options));
     }
 }

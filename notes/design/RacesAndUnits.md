@@ -90,7 +90,7 @@ Classes start as tags that abilities and auras can target (e.g. "Mages within 3"
 - **Race-scoped abilities** that only affect the caster's own race.
 - So unity is something you keep up through positioning, and a mixed army pays for its flexibility with auras that cover fewer units.
 
-**Scope rule.** A race mechanic or ability affects **its own race by default**. An ability that reaches other races says so explicitly ("any friendly unit", "any unit"). Abilities that target enemies or terrain aren't restricted by race. Current MVP scopes:
+**Scope rule.** A race mechanic or ability affects **its own race by default**. "Friendly" and "ally" mean your own units and your teammates' (GameDesign §3); in a free-for-all that is just your own. An ability that reaches other races says so explicitly ("any friendly unit", "any unit"). Abilities that target enemies or terrain aren't restricted by race. Current MVP scopes:
 
 | Mechanic | Scope | Change? |
 |---|---|---|

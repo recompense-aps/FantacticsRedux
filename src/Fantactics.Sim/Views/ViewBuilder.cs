@@ -15,7 +15,8 @@ public static class ViewBuilder
     /// <summary>How to read the map and unit ids.</summary>
     public const string Legend =
         "map x=column y=row from top-left; terrain . plains = road % forest + hills ^ mountains # bridge ~ water; "
-        + "* = objective tile (hold more of them than the enemy to score each turn); units UPPER=yours lower=enemy (@ = unit with a 2-letter id)";
+        + "* = objective tile (hold the most of them to score each turn); "
+        + "units UPPER=yours lower=other players' (the units table says enemy or ally) (@ = unit with a 2-letter id)";
 
     private const int RecentLimit = 60;
 

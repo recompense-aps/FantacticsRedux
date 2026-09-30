@@ -11,7 +11,7 @@
 - **Genre:** turn-based tactics / strategy
 - **Engine:** Godot 4.7.2 (.NET / C#)
 - **Art:** pixel art
-- **Players:** 1v1 first. Local, LAN, and online play.
+- **Players:** 1v1 first; 2–4 players with optional teams are supported (§3). Local, LAN, and online play.
 
 ## 2. Design Pillars (proposed)
 
@@ -24,11 +24,19 @@
 
 ### MVP (first playable)
 
-- A single hand-made map on a square grid
-- 1v1, **Deathmatch** only
+- A single hand-made map on a square grid (plus a small four-seat test map, §5.2)
+- **Deathmatch** only. 1v1 is the balance target, but matches take 2–4 players with optional teams (below).
 - 2 races: **Elves and Goblins** (see [MVP Matchup](#61-mvp-matchup-elves-vs-goblins)). With the open draft (§4.4) both races share one pool, so mixed Elf/Goblin armies are possible.
 - Core terrain set (plains, forest, hills, mountains, water)
 - Local hotseat play first, then LAN, using the same command pipeline (see TechnicalDesign)
+
+### Player Counts and Teams
+
+(Decided 2026-09-30, ALE-43.) A match has **2 to 4 seats** (P1–P4), as many as the map is laid out for (§5). Each seat has a **team**; by default every seat is its own team (a free-for-all), and a setup can pair seats up instead, e.g. P1+P3 against P2+P4. **Enemy** always means a unit or player on another team:
+
+- Zone of control, blocking, clashes, attacks, Support, War Cry, and ally targets (Mend) all go by team. Teammates pass through each other and settle shared tiles like friendly units (§4.1).
+- Each seat still owns its own units, orders, Command, draft, and reserve. Teammates don't see each other's hidden information.
+- Balance work stays focused on 1v1; larger matches are for variety and future modes. With two seats, every rule below reads exactly as it did before teams.
 
 ### Later
 
@@ -44,7 +52,7 @@
 
 Each turn has three phases:
 
-1. **Movement (simultaneous, hidden).** Both players secretly give every unit a move order (or **Hold**), lock in, and all moves resolve together.
+1. **Movement (simultaneous, hidden).** Every player secretly gives every unit a move order (or **Hold**), locks in, and all moves resolve together.
 2. **Clashes.** Enemy units that tried to enter the same tile fight immediately, before normal initiative play (see below).
 3. **Action (open, per-unit initiative).** Every unit that can act is ordered by its **effective initiative**, highest first. When a unit's slot comes up, its owner chooses its action (attack / ability / wait), and the action resolves immediately. A unit killed before its slot does not act.
 
@@ -54,13 +62,14 @@ Each turn has three phases:
 - **One tile per tick.** All moving units advance one tile per tick, whatever the terrain costs. Cost only limits how far a unit gets, so a unit crossing costly terrain finishes its move in fewer ticks.
 - **Zone of control:** after each tick, every moving unit that is now adjacent to an enemy (using the new positions) stops. It only triggers on *becoming* adjacent: a unit that starts the phase next to an enemy can move away freely, and the minimum move (§5) works for it too.
 - **Paths may enter a tile an enemy stands on now**, betting it moves away. If the enemy stays, the step is blocked and the unit stops. If the enemy moves into this unit's tile at the same time, it's a swap clash (below).
-- **Friendly units pass through each other** but can't end on the same tile. A unit that has to stop on a friendly-occupied tile (zone of control stops it there, or the friendly unit held on its destination) backs up to the last tile of its path it can legally end on. Orders whose destination is a friendly tile with a Hold order are rejected at submit.
+- **Friendly units** (your own and your teammates', §3) **pass through each other** but can't end on the same tile. A unit that has to stop on a friendly-occupied tile (zone of control stops it there, or the friendly unit held on its destination) backs up to the last tile of its path it can legally end on. Orders whose destination is a friendly tile with a Hold order are rejected at submit.
   - The unit that reached the tile first keeps it; between units that arrived on the same tick, the higher base Initiative keeps it.
   - **Cascade:** if the tile a unit backs up to is held by a friend who also moved this turn, that friend backs up too, recursively. A unit that held all turn is never displaced. (Decided 2026-09-27.)
 - **Friendly collisions:** if two friendly units would *end* the same tick on the same tile, the one with higher base Initiative (then lower unit ID) takes it, and the other stops short. Friendly units may swap tiles.
 - **Clash:** when enemy units enter the same tile on the same tick, they stop on their previous tiles and are marked to clash.
   - **Swaps count too:** two enemy units that try to swap tiles in the same tick clash. The winner takes the tile the loser stood on. Units never pass through enemies.
-  - **Three or more units:** friendly collisions are settled first, so at most one unit per side contests the tile. The others stop short. What remains is a normal 1v1 clash.
+  - **Three or more units:** friendly collisions are settled first, so at most one unit per team contests the tile. The others stop short. With two teams left, it's a normal 1v1 clash.
+  - **Three or more teams on one tile** (decided 2026-09-30): the contestants fight one after another, highest base Initiative first (ties in this turn's tie order, below). The first two clash; the survivor clashes with the next, and so on, and the last survivor takes the tile. Slippery units step aside first. If a fight ends with both alive (the safety cap in §4.3), the chain stops and the rest stay where they stopped.
   - **The contested tile is blocked** for the rest of the movement phase. It's reserved for the clash winner, and other paths through it stop just before it.
 
   Clashes resolve after movement and before the action phase:
@@ -75,7 +84,7 @@ Each turn has three phases:
 - Each unit has a base **Initiative** stat.
 - **Held (+1):** a unit with a Hold order that didn't move gets a small bonus. Any movement, even a 1-tile step, counts as moving. Rooted units don't get it (RacesAndUnits §2.2).
 - **Braced (+3)** (unit trait, melee defenders only): a held unit that an enemy **moved next to** this turn gets a larger bonus instead. A braced Goblin Tank (2 → 5) strikes a charging Grunt (3) first. Bracing units are the counter to blind charges, and they give a race a defensive identity without making every unit reward sitting still. (Decided 2026-09-27, after self-play: Braced used to trigger anywhere in range and belonged to Archers, which made a held Archer line nearly unassailable. `bracedTrigger` in the rules config switches between `Adjacent` and the old `InRange`.)
-- **Ties between players** go to the player with tie priority, which alternates each turn. **Who has it on turn 1 is set by the game mode.** In Deathmatch it's the player with the lower value **on the field** (the Cost of their placed starting army, reserves not counted); if the values are equal, a coin flip seeded by the match seed decides. Starting lighter to keep a bigger reserve buys the first tie.
+- **Ties between players** go by **tie order**: the player with tie priority first, then the others in seat order, wrapping around (P3, P4, P1, P2 when P3 has priority). Tied units take turns in that order, one unit per player at a time. Tie priority passes to the next seat still playing each turn; with two players it simply alternates. **Who has it on turn 1 is set by the game mode.** In Deathmatch it's the player with the lowest value **on the field** (the Cost of their placed starting army, reserves not counted); among equal values, a draw seeded by the match seed decides (a coin flip with two players). Starting lighter to keep a bigger reserve buys the first tie.
 - **Ties between one player's own units** go by unit ID, lowest first.
 - After movement and clashes resolve, the full action order is shown before anyone acts.
 
@@ -96,7 +105,7 @@ Each turn has three phases:
 - **Clash resolution:**
   - ~~Do strikes land simultaneously, or in initiative order?~~ Alternating, in initiative order (§4.3).
   - ~~Can the winner still use a non-attack ability that turn?~~ No; the clash is its action (§4.2).
-  - ~~What happens with three or more units?~~ Settled to one unit per side, then 1v1 (above).
+  - ~~What happens with three or more units?~~ Settled to one unit per team; three or more teams fight in turn (above).
 - ~~Friendly collisions and swaps (bounce vs. initiative wins).~~ Higher initiative wins; friendlies pass through and may swap (above).
 - Planning timer for online play.
 
@@ -181,7 +190,7 @@ damage = max(1, Attack + Support − (Defense + terrain Defense))
 
 **Clashes** (answers the open clash questions in §4.1):
 
-- Units trade basic attacks using the damage formula, but **alternate** instead of striking at the same time. The unit with the higher effective initiative strikes first, and ties use that turn's tie priority. Exactly one unit survives, so the contested tile is never left empty.
+- Units trade basic attacks using the damage formula, but **alternate** instead of striking at the same time. The unit with the higher effective initiative strikes first, and ties go to the player earlier in that turn's tie order (§4.1). Exactly one unit survives, so the contested tile is never left empty.
 - Terrain Defense comes from each unit's *own* tile (where it stopped). Support counts as normal, so a clash next to friendly units favors you.
 - Ranged units (max range above 1) clash at half Attack, rounded down, **including units with min range 2** such as Archers. A clash is a brawl, not a basic attack.
 - **Clashes are pure fighting** (decided 2026-09-27). Damage modifiers apply: terrain Defense, Support, and Crush. Clash-specific traits apply (Reckless, Slippery). On-hit effects don't: no Bloodthirst healing, no Hamstring, and no Retaliate. This also guarantees every clash ends, since damage is at least 1 and nobody heals. The engine still stops a clash after `maxClashStrikes` strikes as a safety guard.
@@ -214,7 +223,7 @@ damage = max(1, Attack + Support − (Defense + terrain Defense))
 **Deploy zones:**
 
 - Each player's **deploy zone** is the **3 back columns** of their short map edge, full height (§5). On a 20×14 map that's 42 tiles per side, with 14 columns between the zones, so no unit can reach the enemy on turn 1.
-- **Starting placement** is hidden and simultaneous. Both players place their starting army anywhere in their own zone, lock in, and then both placements are revealed. It uses the same order UI as the movement phase (every unit gets a "deploy on this tile" order), and hotseat play uses the same pass-the-device screen.
+- **Starting placement** is hidden and simultaneous. Every player places their starting army anywhere in their own zone, locks in, and then all placements are revealed. It uses the same order UI as the movement phase (every unit gets a "deploy on this tile" order), and hotseat play uses the same pass-the-device screen.
 
 **Command:**
 
@@ -228,7 +237,7 @@ damage = max(1, Attack + Support − (Defense + terrain Defense))
 - Arriving units are placed before moves advance, so zone of control and clashes apply to them normally.
 - **Home arrivals act.** A unit that arrives inside its own deploy zone acts normally on its arrival turn. A unit that arrives anywhere else through a race arrival rule (an elf forest, a goblin mountain outside the zone, later a dwarf tunnel) follows the **Summoned** rule and can't act that turn (RacesAndUnits §2.1). This stops spawn camping from being free kills: enemies waiting near your edge can be hit by whatever arrives. Forward arrivals remain ambushes that need a turn to pay off.
 - At most **2 arrivals per turn**.
-- **Arrival clash:** if both players deploy onto the same tile (possible where deploy rules overlap), the two arrivals clash right away, before anyone moves. Both fight as if standing on that tile (its terrain Defense and adjacent Support count), and both players pay the Command. The survivor keeps the tile and, like any clash winner, gets no action that turn. (Decided 2026-09-27.)
+- **Arrival clash:** if enemies deploy onto the same tile (possible where deploy rules overlap), the arrivals clash right away, before anyone moves. They fight as if standing on that tile (its terrain Defense and adjacent Support count), and every player pays the Command. The survivor keeps the tile and, like any clash winner, gets no action that turn. (Decided 2026-09-27.) With three or more teams, the survivor fights the next arrival, highest Initiative first. If teammates pick the same tile, only the lower seat's unit arrives; the other stays in reserve and keeps its Command. (Decided 2026-09-30.)
 - Reserves can't be sold, swapped, or refunded mid-match.
 
 At +2 Command per turn from turn 2, a 10-point reserve is fully deployed around turn 6, so the early fight is the starting army and reinforcements shape the midgame.
@@ -267,10 +276,12 @@ Mode-dependent (see [Game Modes](#8-game-modes)).
 **Deathmatch: Rout plus a turn limit.** Hunting down every last unit is tedious. Summons, unspent reserves, and fast or hidden units (Scouts, later forest invisibility) could drag a lost game out for many turns. Deathmatch therefore ends before that point.
 
 - **Army value** = the Cost of a player's units on the field plus the Cost of their undeployed reserves. Summoned units are worth 0 (RacesAndUnits §2.1).
-- **Rout:** at the end of any turn, a player whose army value is below **25% of their draft budget** loses. If both players rout on the same turn, the one with more army value left wins; if that's also tied, the match is a draw.
-- **Objectives** (decided 2026-09-27): maps mark objective tiles (Riverford: the four ford tiles, §5.1). At the end of each turn, the player with a unit on **more** objective tiles than the opponent scores **2 objective points**. Holding equally many scores nothing, so each side has to take tiles from the other. This exists because a safe draw at the turn limit made waiting outside the enemy's range the best play (Simulation §10).
-- **Turn limit:** if nobody has routed by the end of turn **15**, the player with the higher **score** wins: destroyed value plus objective points. An equal score is a draw.
-- Both players' army values, destroyed value, and objective points are always shown in the HUD, so neither a rout nor the turn-limit result comes as a surprise.
+- **Rout:** at the end of any turn, a player whose army value is below **25% of their draft budget** is routed. If only one team is left standing, it wins. If every team routs on the same turn, the one with more army value left wins; if that's also tied, the match is a draw.
+- **Elimination** (decided 2026-09-30, matches with more than two teams): while at least two teams are still standing, a routed player is **eliminated** instead. All their units leave the field and the reserve, and they make no more decisions, gain no Command, and stop scoring; points already scored still count for their team. The match goes on until one team remains or the turn limit. With two players, a rout always ends the match, as before.
+- **Objectives** (decided 2026-09-27): maps mark objective tiles (Riverford: the four ford tiles, §5.1). At the end of each turn, the one player with a unit on **the most** objective tiles scores **2 objective points**. A tie for the most scores nothing, so each side has to take tiles from the others. This exists because a safe draw at the turn limit made waiting outside the enemy's range the best play (Simulation §10).
+- **Turn limit:** if no team has won by the end of turn **15**, the team with the higher **score** wins: the sum of its players' destroyed value plus objective points. An equal score is a draw.
+- **Placings:** the result ranks every player. The winners share first place; teams still standing rank by the deciding measure (score, or army value on a rout), then eliminated teams by how late they went out. Teammates share a place.
+- Every player's army value, destroyed value, and objective points are always shown in the HUD, so neither a rout nor the turn-limit result comes as a surprise.
 
 There's no leader or king unit. Not every race has a natural leader, and a fragile elf leader would just sit at the back.
 
@@ -314,7 +325,7 @@ There's no leader or king unit. Not every race has a natural leader, and a fragi
 
 The MVP set is plains, road, forest, hills, mountains, bridge, and water.
 
-**Map layout:** MVP maps are point-symmetric (the same after a 180° rotation), so both sides get the same terrain. The deploy zones sit on the short edges and are marked on the map.
+**Map layout:** MVP maps are point-symmetric (the same after a 180° rotation), so both sides get the same terrain. The deploy zones sit on the short edges and are marked on the map. A map says how many seats it takes (`@seats`, default 2) and where each seat deploys (`@deploy P1 x1,y1-x2,y2 …`, one or more rectangles); a two-seat map without `@deploy` lines uses the back 3 columns on each side. Maps for more seats should be symmetric under every rotation that maps one seat's zone onto another's.
 
 **Open:**
 
@@ -352,6 +363,31 @@ Terrain: `.` plains, `=` road, `%` forest, `+` hills, `^` mountains, `#` bridge,
 - **Forest and mountains on both halves:** the forest pockets next to the ford (e.g. (12–13, 5)) give elves firing positions, and mountain spurs (e.g. (4–5, 5) and (6–7, 0)) give goblins covered approaches.
 - **Deploy zones** each have forest (for From the Trees) and a mountain (for Out of the Caves) nearby, so both MVP arrival rules get exercised.
 - All of it is a first pass for simulations to test. Expect it to change once tournaments show which side each route favors.
+
+### 5.2 Test Map: Crossroads (four seats)
+
+A small map for 3–4 player matches and tests, not balanced play. It's **16×16** and the same under every rotation and reflection. A road runs across the middle each way, the four crossroads tiles (7–8, 7–8) are the objectives, and forest, hills, and mountains repeat in each quarter. Each seat deploys on the middle 10 tiles of one edge, 3 deep: **P1 left, P2 top, P3 right, P4 bottom**; the corners stay empty. With teams 1,2,1,2, allies face each other across the map.
+
+```
+              111111
+    0123456789012345
+ 0  ......%==%......
+ 1  ..^...%==%...^..
+ 2  .^..+..==..+..^.
+ 3  ...%%..==..%%...
+ 4  ..+%...==...%+..
+ 5  ......%==%......
+ 6  %%...%.==.%...%%
+ 7  =======..=======
+ 8  =======..=======
+ 9  %%...%.==.%...%%
+10  ......%==%......
+11  ..+%...==...%+..
+12  ...%%..==..%%...
+13  .^..+..==..+..^.
+14  ..^...%==%...^..
+15  ......%==%......
+```
 
 ## 6. Races
 
@@ -457,6 +493,7 @@ Answer inline or move decisions into the [Decision Log](#decision-log).
 | 2026-09-27 | Deathmatch win condition: Rout (army value below 25% of draft) plus a 15-turn limit decided by value destroyed | No leader unit; summoned units are worth 0; a home base becomes a separate later mode (Stronghold); see §4.5, §8 |
 | 2026-09-27 | Deploy zones: 3 back columns on each short edge; starting armies placed hidden and simultaneously; reserves arriving in their own zone can act that turn | Replaces "arrivals follow the Summoned rule" from the economy entry: only arrivals outside the zone (race arrival rules) can't act; MVP maps are point-symmetric; see §4.4, §5 |
 | 2026-09-27 | Movement resolution: path orders, 1 tile per tick, zone of control checked after each tick (only on becoming adjacent), friendlies pass through, enemy swaps clash, 3+ unit clashes reduce to 1v1, contested tile blocked | Held +1 / Braced +3; any move loses Held; own-unit ties by unit ID; turn-1 tie priority per game mode (Deathmatch: lower starting value on the field, then a seeded coin flip); see §4.1 |
+| 2026-09-30 | 2–4 seats with optional teams (ALE-43) | "Enemy" means another team; tie priority rotates through the seats; three or more teams on a tile clash in turn; routed players are eliminated while two teams stand; team scores add up at the turn limit; deploy zones come from the map (§3, §4.1, §4.5, §5) |
 | 2026-09-27 | Combat details: Support applies to all attacks; point blank = floor(Attack/2) + Support; ranged units (min range 2 included) clash at half Attack; Retaliate triggers on any attack from distance 1 | See §4.3 |
 | 2026-09-27 | Economy details: Command income starts on turn 2; the Goblin discount applies only to Cost 3+; the opponent's reserve composition is hidden, its value is visible | See §4.4 |
 | 2026-09-27 | First MVP map drafted: Riverford, 20×14, point-symmetric, two bridges and a central ford | See §5.1 |

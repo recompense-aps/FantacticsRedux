@@ -13,17 +13,17 @@ GODOT="C:/Users/alex/code/godot/godot4.7.2/Godot_v4.7.2-stable_mono_win64_consol
 
 Use the `_console` binary from a shell so that `GD.Print` output and exit codes reach the terminal. To pass options when running from the editor, put them in **Project Settings → Editor → Run → Main Run Args** (`editor/run/main_run_args`), e.g. `-- --load playtests/quick.json`.
 
-With no options the game opens the main menu. It goes straight into a match only when you give `--new`, `--p1`/`--p2`, `--load`, or `--autoplay`. Options that don't start a match (such as `--saves` or `--speed`) still apply to matches started from the menu.
+With no options the game opens the main menu. It goes straight into a match only when you give `--new`, `--p1` to `--p4`, `--load`, or `--autoplay`. Options that don't start a match (such as `--saves` or `--speed`) still apply to matches started from the menu.
 
 An unknown option, a missing value, or a bad number prints an error and exits with code 1.
 
 ## Seat labels
 
-`--p1` and `--p2` take the same seat labels as `fantactics-sim`. The label is stored in the match file.
+`--p1` to `--p4` take the same seat labels as `fantactics-sim`. The label is stored in the match file.
 
 | Label | Who plays |
 |---|---|
-| `human` | You, at this machine. When both seats are `human`, you play hotseat with a curtain between turns. |
+| `human` | You, at this machine. With more than one `human` seat, you play hotseat with a curtain between turns. |
 | `llm` | An LLM (e.g. Claude with the `play-fantactics` skill) through `fantactics-sim` on a shared match file. See [Playing against an LLM](#playing-against-an-llm). |
 | `bot:<profile>[@<difficulty>]` | A computer player. Profiles: `captain` (balanced), `warden` (defensive), `berserker` (aggressive), `trickster` (baits, unpredictable), `bumble` (very weak), `random`. Difficulties: `novice`, `easy`, `normal`, `hard`, `expert`, `master`. Leave the difficulty out to use the profile's default. |
 
@@ -31,24 +31,26 @@ An unknown option, a missing value, or a bad number prints an error and exits wi
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--new` | | Start a new match. Implied by `--p1` and `--p2`. |
+| `--new` | | Start a new match. Implied by `--p1` to `--p4`. |
 | `--p1 <label>` | `human` | Who plays P1. |
 | `--p2 <label>` | `bot:captain@easy` | Who plays P2. |
-| `--map <name>` | `riverford` | The map (from `src/Fantactics.Core/Maps/Data/`). |
+| `--p3 <label>`, `--p4 <label>` | none | Who plays P3 and P4 (GameDesign §3). Only maps laid out for them take them (`crossroads` takes four); give `--p3` before `--p4`. |
+| `--teams <list>` | everyone on their own | Each seat's team in seat order, e.g. `1,2,1,2` for P1+P3 against P2+P4. |
+| `--map <name>` | `riverford` | The map (from `src/Fantactics.Core/Maps/Data/`): `riverford` (2 seats) or `crossroads` (2–4 seats). |
 | `--seed <n>` | random | The rules seed. The same seed and the same commands give the same match. |
 | `--draft-as <profile\|none>` | `none` | A bot profile that drafts and places for every `human` seat, so the match opens at turn 1. `none` means you use the draft and placement screens. |
 | `--out <file>` | | Keep the match in this file (the Sim's match format), shared with `fantactics-sim`. `llm` seats need a file and get `match-<date>-<time>.json` in the saves folder when this is left out. |
 
 ### Draft limits (open draft, GameDesign §4.4)
 
-Both seats may draft units of every race unless you limit them. Budget and cap options accept positive whole numbers. A per-seat option overrides the both-seats one.
+Every seat may draft units of every race unless you limit it. Budget and cap options accept positive whole numbers. A per-seat option overrides the all-seats one; P3 and P4 use the all-seats values.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--p1-races <list>`, `--p2-races <list>` | `any` | Comma-separated races the seat may draft, e.g. `Elves` or `Elves,Goblins`; `any` allows every race. |
-| `--budget <n>` | rules' `draftBudget` (40) | Draft points for both seats. |
+| `--p1-races <list>` to `--p4-races <list>` | `any` | Comma-separated races the seat may draft, e.g. `Elves` or `Elves,Goblins`; `any` allows every race. |
+| `--budget <n>` | rules' `draftBudget` (40) | Draft points for every seat. |
 | `--p1-budget <n>`, `--p2-budget <n>` | `--budget` | One seat's draft points. |
-| `--starting-cap <n>` | rules' `startingCap` (30) | The most the starting army may cost, for both seats. |
+| `--starting-cap <n>` | rules' `startingCap` (30) | The most the starting army may cost, for every seat. |
 | `--p1-starting-cap <n>`, `--p2-starting-cap <n>` | `--starting-cap` | One seat's starting cap. |
 
 ## Loading a match
@@ -56,7 +58,7 @@ Both seats may draft units of every race unless you limit them. Budget and cap o
 | Option | Meaning |
 |---|---|
 | `--load <file>` | Continue a match file: an autosave, a quicksave (`quick.json`), a branch (`<name>.b<seq>.json`), or a `fantactics-sim` match file. |
-| `--as <P1\|P2>` | The seat to show first. Defaults to the first `human` seat. |
+| `--as <P1\|P2\|P3\|P4>` | The seat to show first. Defaults to the first `human` seat. |
 
 Loading replays the file's command log and checks it against its snapshot. If the snapshot was hand-edited, or the rules have changed so the log no longer replays, the match continues from the snapshot and a warning appears in the top right (TechnicalDesign §4). A file with an `llm` seat is played on that file, shared with the CLI. Any other file loads into memory: playing on autosaves to `autosave.json` and leaves the loaded file unchanged.
 
@@ -92,6 +94,12 @@ In a match, F5 quicksaves to `quick.json` and F9 loads it. The debug panel (F1) 
 
 # Elves only against Goblins only, with a bigger P2 budget, on a fixed seed
 -- --p1-races Elves --p2-races Goblins --p2-budget 50 --seed 7
+
+# Four players on Crossroads, two against two (you and P3 against two bots)
+-- --map crossroads --p2 bot:captain --p3 bot:captain --p4 bot:captain --teams 1,2,1,2
+
+# Four-bot smoke test, free-for-all
+--headless --path src/Fantactics.Client -- --autoplay --map crossroads --p1 bot:captain@easy --p2 bot:captain@easy --p3 bot:captain@easy --p4 bot:captain@easy
 
 # Continue the autosave (or any save) as P2
 -- --load playtests/autosave.json --as P2
