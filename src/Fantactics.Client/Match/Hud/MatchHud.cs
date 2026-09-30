@@ -3,8 +3,9 @@ using Godot;
 namespace Fantactics.Client.Match.Hud;
 
 /// <summary>
-/// The match HUD: status and prompt lines, the hovered tile's hint, the action bar, reserve (deploy) buttons, the
-/// Submit button, the speed toggle, and a banner. It only shows what it's given and reports button presses.
+/// The match HUD: status and prompt lines, the hovered tile's hint, the action bar, roster buttons (deploys,
+/// placement), the Submit button, the speed toggle, the menu button, and a banner. It only shows what it's given and
+/// reports button presses.
 /// </summary>
 public partial class MatchHud : Control
 {
@@ -33,6 +34,9 @@ public partial class MatchHud : Control
     private Button _speed = null!;
 
     [Export]
+    private Button _menu = null!;
+
+    [Export]
     private Label _banner = null!;
 
     [Export]
@@ -46,19 +50,24 @@ public partial class MatchHud : Control
     [Signal]
     public delegate void ActionPressedEventHandler(string action);
 
-    /// <summary>A reserve unit's button was pressed.</summary>
+    /// <summary>A roster button (a reserve unit to deploy, or a starting unit to place) was pressed.</summary>
     [Signal]
-    public delegate void DeployPressedEventHandler(int unitId);
+    public delegate void UnitPressedEventHandler(int unitId);
 
     /// <summary>The speed button was pressed.</summary>
     [Signal]
     public delegate void SpeedPressedEventHandler();
+
+    /// <summary>The menu button was pressed.</summary>
+    [Signal]
+    public delegate void MenuPressedEventHandler();
 
     /// <inheritdoc />
     public override void _Ready()
     {
         _submit.Pressed += () => EmitSignal(SignalName.SubmitPressed);
         _speed.Pressed += () => EmitSignal(SignalName.SpeedPressed);
+        _menu.Pressed += () => EmitSignal(SignalName.MenuPressed);
         _banner.Visible = false;
     }
 
@@ -78,10 +87,10 @@ public partial class MatchHud : Control
         Refill(_actions, actions.Select(a => (a.Label, (Action)(() => EmitSignal(SignalName.ActionPressed, a.Action)), false)));
     }
 
-    /// <summary>Shows reserve units that can deploy, as (unit, label, chosen) triples.</summary>
-    public void ShowReserve(IReadOnlyList<(int UnitId, string Label, bool Chosen)> units)
+    /// <summary>Shows roster buttons (reserve units to deploy, or starting units to place): (unit, label, chosen).</summary>
+    public void ShowRoster(IReadOnlyList<(int UnitId, string Label, bool Chosen)> units)
     {
-        Refill(_reserve, units.Select(u => (u.Label, (Action)(() => EmitSignal(SignalName.DeployPressed, u.UnitId)), u.Chosen)));
+        Refill(_reserve, units.Select(u => (u.Label, (Action)(() => EmitSignal(SignalName.UnitPressed, u.UnitId)), u.Chosen)));
     }
 
     /// <summary>Shows or hides Submit, with any problems that stop it.</summary>

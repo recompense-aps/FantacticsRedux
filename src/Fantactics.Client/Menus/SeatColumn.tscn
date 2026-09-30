@@ -1,0 +1,69 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Menus/SeatColumn.cs" id="1_seat"]
+
+[node name="SeatColumn" type="VBoxContainer" node_paths=PackedStringArray("_title", "_controller", "_difficulty", "_races", "_budget", "_startingCap")]
+custom_minimum_size = Vector2(260, 0)
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_seat")
+_title = NodePath("Title")
+_controller = NodePath("Grid/Controller")
+_difficulty = NodePath("Grid/Difficulty")
+_races = NodePath("Races")
+_budget = NodePath("Grid/Budget")
+_startingCap = NodePath("Grid/StartingCap")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "P1"
+
+[node name="Grid" type="GridContainer" parent="."]
+layout_mode = 2
+columns = 2
+
+[node name="ControllerLabel" type="Label" parent="Grid"]
+layout_mode = 2
+text = "Player"
+
+[node name="Controller" type="OptionButton" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DifficultyLabel" type="Label" parent="Grid"]
+layout_mode = 2
+text = "Difficulty"
+
+[node name="Difficulty" type="OptionButton" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BudgetLabel" type="Label" parent="Grid"]
+layout_mode = 2
+text = "Draft budget"
+
+[node name="Budget" type="SpinBox" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 500.0
+value = 40.0
+
+[node name="StartingCapLabel" type="Label" parent="Grid"]
+layout_mode = 2
+text = "Starting cap"
+
+[node name="StartingCap" type="SpinBox" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 500.0
+value = 30.0
+
+[node name="RacesLabel" type="Label" parent="."]
+layout_mode = 2
+text = "May draft"
+
+[node name="Races" type="HFlowContainer" parent="."]
+layout_mode = 2

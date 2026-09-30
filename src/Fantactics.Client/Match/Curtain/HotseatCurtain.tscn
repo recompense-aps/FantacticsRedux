@@ -1,0 +1,42 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Match/Curtain/HotseatCurtain.cs" id="1_curtain"]
+
+[node name="HotseatCurtain" type="ColorRect" node_paths=PackedStringArray("_title", "_ready")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.06, 0.06, 0.08, 1)
+script = ExtResource("1_curtain")
+_title = NodePath("Center/Rows/Title")
+_ready = NodePath("Center/Rows/Ready")
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Rows" type="VBoxContainer" parent="Center"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Center/Rows"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Pass to P2"
+horizontal_alignment = 1
+
+[node name="Note" type="Label" parent="Center/Rows"]
+layout_mode = 2
+text = "Hidden orders: only the next player should look at the screen."
+horizontal_alignment = 1
+
+[node name="Ready" type="Button" parent="Center/Rows"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "I'm P2: show my board"

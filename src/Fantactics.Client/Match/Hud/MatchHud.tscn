@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://Match/Hud/MatchHud.cs" id="1_hud"]
 
-[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_hint", "_actions", "_reserve", "_problems", "_submit", "_speed", "_banner", "_notice")]
+[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_hint", "_actions", "_reserve", "_problems", "_submit", "_speed", "_menu", "_banner", "_notice")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -19,6 +19,7 @@ _reserve = NodePath("Bottom/Reserve")
 _problems = NodePath("Bottom/Problems")
 _submit = NodePath("Bottom/Submit")
 _speed = NodePath("Bottom/Speed")
+_menu = NodePath("Bottom/Menu")
 _banner = NodePath("Banner")
 _notice = NodePath("Notice")
 
@@ -81,6 +82,11 @@ text = "Submit (Enter)"
 layout_mode = 2
 focus_mode = 0
 text = "Speed"
+
+[node name="Menu" type="Button" parent="Bottom"]
+layout_mode = 2
+focus_mode = 0
+text = "Menu (Esc)"
 
 [node name="Banner" type="Label" parent="."]
 layout_mode = 1

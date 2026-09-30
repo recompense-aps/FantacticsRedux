@@ -37,7 +37,7 @@ $SIM new --out playtests/match-1.json --p1 llm --p2 bot:random --seed 7
 ```
 
 If you're playing against a person in the Godot client, they start the game with `-- --p2 llm --out playtests/<name>.json`
-(or load a file with an `llm` seat, or switch a seat to `llm` in the debug panel, F1) and give you the file; the game shows
+(or pick Player `llm` on the New match screen, load a file with an `llm` seat, or switch a seat to `llm` in the debug panel, F1; see `notes/LaunchOptions.md`) and give you the file; the game shows
 the path in its top-right notice. Their seat is labeled `human`. Play exactly as below:
 `status --wait-for <your seat>` blocks while they think, and the client animates your moves as they land.
 

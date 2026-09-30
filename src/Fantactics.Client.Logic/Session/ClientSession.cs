@@ -11,7 +11,7 @@ namespace Fantactics.Client.Logic.Session;
 
 /// <summary>
 /// One match as the screen sees it: a connection per seat, which seat's view is shown, and the quick start, where a
-/// bot drafts and places for human seats until the draft screens exist. In hotseat the shown seat follows whoever
+/// bot drafts and places for human seats (skip the draft). In hotseat the shown seat follows whoever
 /// owes a decision, and <see cref="ShownChanged"/> tells the screen to raise the curtain. Events are raised on the
 /// match's worker thread; the Godot side marshals them to the main thread.
 /// </summary>
@@ -21,6 +21,7 @@ public sealed class ClientSession
     private readonly string? _draftAs;
     private readonly Dictionary<Seat, IGameConnection> _connections;
     private readonly string? _autosave;
+    private readonly object _switching = new();
     private int _shown;
     private int _savedTurn;
 
@@ -29,7 +30,9 @@ public sealed class ClientSession
     /// <param name="rules">Its rules.</param>
     /// <param name="botFactory">Creates bots from a spec and seed (for the quick start).</param>
     /// <param name="draftAs">Bot profile that drafts and places for human seats, or <c>null</c> to do it by hand.</param>
-    /// <param name="shown">The seat to show first; defaults to the first human seat.</param>
+    /// <param name="shown">
+    /// The seat to show first; defaults to the first human seat that owes a decision, or else the first human seat.
+    /// </param>
     /// <param name="autosave">File to save the match to at the start of every turn, or <c>null</c>.</param>
     public ClientSession(
         LocalMatch match,
@@ -46,7 +49,9 @@ public sealed class ClientSession
         _botFactory = botFactory;
         _draftAs = draftAs;
         _connections = SeatExtensions.All.ToDictionary(seat => seat, match.Connect);
-        _shown = (int)(shown ?? SeatExtensions.All.Where(IsHuman).DefaultIfEmpty(Seat.P1).First());
+        Seat[] humans = [.. SeatExtensions.All.Where(IsHuman)];
+        _shown = (int)(shown
+            ?? humans.FirstOrDefault(seat => _connections[seat].Current.Legal is not null, humans.DefaultIfEmpty(Seat.P1).First()));
         foreach ((Seat seat, IGameConnection connection) in _connections)
         {
             connection.Updated += update => OnUpdated(seat, update);
@@ -85,7 +90,20 @@ public sealed class ClientSession
         {
             QuickStart(seat, connection.Current);
         }
+
+        FollowDecisions();
     }
+
+    /// <summary>
+    /// What a bot would draft or place for the shown seat, to fill in the draft or placement screen in one click.
+    /// </summary>
+    /// <param name="profile">The bot profile, e.g. <c>captain</c>.</param>
+    /// <param name="seed">The bot's seed; vary it for different suggestions.</param>
+    /// <returns>The bot's command, or <c>null</c> when the seat doesn't owe a draft or placement.</returns>
+    public ICommand? Suggest(string profile, int seed) =>
+        Current is { Legal: { Decision: DraftArmyDecision or PlaceStartingArmyDecision } legal } update
+            ? _botFactory(profile, seed).Decide(update.View, legal.Decision, legal)
+            : null;
 
     /// <summary>Saves the match (record and snapshot) to <paramref name="path"/>.</summary>
     public void SaveTo(string path) => MatchFiles.Write(path, Match.ToRecord());
@@ -114,21 +132,38 @@ public sealed class ClientSession
             SaveTo(_autosave);
         }
 
-        Seat shown = Shown;
-        if (seat == shown)
+        // Under the switching lock, so an update for the old seat can't slip out after the curtain for the new one.
+        lock (_switching)
         {
-            Updated?.Invoke(update);
-        }
+            if (seat == Shown)
+            {
+                Updated?.Invoke(update);
+            }
 
-        // Seats are updated one after another, so only switch once the shown seat's own update says it's done.
-        Seat[] waiting = _connections[shown].Current.Legal is null
-            ? [.. SeatExtensions.All.Where(other => other != shown && IsHuman(other) && _connections[other].Current.Legal is not null)]
-            : [];
-        if (waiting is [Seat next, ..])
+            FollowDecisions();
+        }
+    }
+
+    /// <summary>
+    /// Hotseat: when the shown seat has nothing to do and another human seat owes a decision, shows that seat instead,
+    /// raising <see cref="ShownChanged"/> (for the curtain) and then passing on its latest update.
+    /// </summary>
+    private void FollowDecisions()
+    {
+        lock (_switching)
         {
-            Volatile.Write(ref _shown, (int)next);
-            ShownChanged?.Invoke(next);
-            Updated?.Invoke(_connections[next].Current);
+            // Seats are updated one after another, so only switch once the shown seat's own update says it's done.
+            Seat shown = Shown;
+            Seat[] waiting = _connections[shown].Current.Legal is null
+                ? [.. SeatExtensions.All.Where(other =>
+                    other != shown && IsHuman(other) && _connections[other].Current.Legal is not null)]
+                : [];
+            if (waiting is [Seat next, ..])
+            {
+                Volatile.Write(ref _shown, (int)next);
+                ShownChanged?.Invoke(next);
+                Updated?.Invoke(_connections[next].Current);
+            }
         }
     }
 

@@ -11,7 +11,7 @@ All code lives under `src/`; the repo root holds only docs and config.
 - `src/Fantactics.Protocol`: wire DTOs shared by client and server, `IGameConnection` (the client's only link to a match) with its in-process `LocalMatch`, and match files (`MatchFiles`, `SharedMatchFile` for LLM seats) shared with the Sim CLI. Core's `MatchHost` is the match wrapper behind it (TechnicalDesign §2.4–2.5).
 - `src/Fantactics.Server`: ASP.NET Core + SignalR server.
 - `src/Fantactics.Client`: Godot project (`project.godot` lives here). Scenes and nodes only; see Godot Conventions below.
-- `src/Fantactics.Client.Logic`: the client's presentation logic without Godot (input builders, playback timeline, board model, session, launch options), tested by `src/tests/Fantactics.Client.Logic.Tests`.
+- `src/Fantactics.Client.Logic`: the client's presentation logic without Godot (draft, placement, move, and action builders, playback timeline, board model, session, new-match form, launch options), tested by `src/tests/Fantactics.Client.Logic.Tests`.
 - `src/Fantactics.Ai`: computer players (`TacticalAgent`, `RandomAgent`, implementing Core's `IPlayerAgent`) and `MatchRunner` for in-memory matches. References Core only. Bot profiles and difficulty presets are embedded JSON in `Profiles/Data/`; bots are named `profile[@difficulty]` (e.g. `captain@easy`).
 - `src/Fantactics.Sim`: the `fantactics-sim` CLI (file-backed matches for LLM/human seats, bot tournaments). See `notes/design/Simulation.md` §6.
 - `src/tests/Fantactics.Core.Tests`: xUnit rules tests for Core (built with `ScenarioBuilder`).
@@ -32,10 +32,10 @@ Core's rules data (unit stats, tunable numbers) is `src/Fantactics.Core/Rules/Da
 - Run server: `dotnet run --project src/Fantactics.Server`
 - Simulation CLI: `dotnet run --project src/Fantactics.Sim -- <command>` (e.g. `new --out playtests/m.json`, `run --p1 bot:captain --games 500 --threads 0`). To play a seat as an LLM, use the `play-fantactics` skill.
 - Re-import Godot assets headlessly: `<console binary> --headless --path src/Fantactics.Client --import`
-- Run the game: `<console binary> --path src/Fantactics.Client`, with launch options after `--` (TechnicalDesign §2.5), e.g. `-- --p2 bot:captain@easy`, `-- --load playtests/x.json --as P1`, `-- --p2 llm --out playtests/x.json`.
+- Run the game: `<console binary> --path src/Fantactics.Client` (opens the main menu), with launch options after `--` to skip it, e.g. `-- --p2 bot:captain@easy`, `-- --load playtests/x.json --as P1`, `-- --p2 llm --out playtests/x.json`. Every option is in `notes/LaunchOptions.md`; update it whenever `LaunchArgs` changes.
 - Godot smoke test (bots play a match through the real scenes, exit 0): `<console binary> --headless --path src/Fantactics.Client -- --autoplay`
 - Cross-process check (Godot plus a CLI player on one file): `<console binary> --headless --path src/Fantactics.Client -- --autoplay --p1 bot:captain@easy --p2 llm --out <file>`, then play P2 through `fantactics-sim` on `<file>`; Godot exits 0 when the match ends.
-- Check layout without looking: `<console binary> --path src/Fantactics.Client -- --p2 bot:captain --seed 3 --screenshot <png>` (add `--debug` to include the debug panel), then view the PNG.
+- Check layout without looking: `<console binary> --path src/Fantactics.Client -- --p2 bot:captain --seed 3 --screenshot <png>` (add `--debug` to include the debug panel; `--menu new|load|settings` shows a menu screen instead), then view the PNG.
 - Set up a test position: play or load a match, quicksave (F5) or take `autosave.json`, edit its `snapshot` by hand, and `--load` it (TechnicalDesign §4).
 
 ## C# Conventions

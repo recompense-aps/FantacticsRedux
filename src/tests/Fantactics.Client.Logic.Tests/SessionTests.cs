@@ -2,8 +2,11 @@ using System.Collections.Immutable;
 using Fantactics.Client.Logic.Launch;
 using Fantactics.Client.Logic.Session;
 using Fantactics.Core;
+using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Hosting;
+using Fantactics.Core.Players;
+using Fantactics.Core.Records;
 using Fantactics.Core.Rules;
 using Fantactics.Protocol.Connections;
 
@@ -28,6 +31,8 @@ public class SessionTests
         Assert.StartsWith("bot:", LaunchArgs.Parse(["--autoplay"]).P1);
         Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--load"]));
         Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--bogus"]));
+        Assert.Equal("load", LaunchArgs.Parse(["--menu", "load"]).Menu);
+        Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--menu", "shop"]));
     }
 
     [Fact]
@@ -37,8 +42,8 @@ public class SessionTests
 
         Assert.Equal(["Elves", "Goblins"], args.P1Races);
         Assert.Null(args.P2Races);
-        Assert.Equal([Seat.P1], args.AllowedRaces()?.Keys ?? []);
-        Assert.Null(LaunchArgs.Parse(["--new"]).AllowedRaces());
+        Assert.Equal([Seat.P1], args.Form(RulesConfig.Default).ToSetup(RulesConfig.Default, 1).AllowedRaces?.Keys ?? []);
+        Assert.Null(LaunchArgs.Parse(["--new"]).Form(RulesConfig.Default).ToSetup(RulesConfig.Default, 1).AllowedRaces);
     }
 
     [Fact]
@@ -46,14 +51,17 @@ public class SessionTests
     {
         LaunchArgs args = LaunchArgs.Parse(["--budget", "60", "--p2-budget", "30", "--p1-starting-cap", "45"]);
 
-        ImmutableSortedDictionary<Seat, int>? budgets = args.DraftBudgets();
-        ImmutableSortedDictionary<Seat, int>? caps = args.StartingCaps();
+        RulesConfig rules = RulesConfig.Default with { DraftBudget = 40, StartingCap = 30 };
+        MatchSetup setup = args.Form(rules).ToSetup(rules, 1);
+        ImmutableSortedDictionary<Seat, int>? budgets = setup.DraftBudgets;
+        ImmutableSortedDictionary<Seat, int>? caps = setup.StartingCaps;
 
         Assert.NotNull(budgets);
         Assert.NotNull(caps);
         Assert.Equal(new Dictionary<Seat, int> { [Seat.P1] = 60, [Seat.P2] = 30 }, budgets);
         Assert.Equal(new Dictionary<Seat, int> { [Seat.P1] = 45 }, caps);
-        Assert.Null(LaunchArgs.Parse(["--new"]).DraftBudgets());
+        Assert.Null(LaunchArgs.Parse(["--new"]).Form(rules).ToSetup(rules, 1).DraftBudgets);
+        Assert.Null(LaunchArgs.Parse(["--budget", "40"]).Form(rules).ToSetup(rules, 1).DraftBudgets);
         Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--budget", "0"]));
         Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--budget", "lots"]));
     }
@@ -111,6 +119,77 @@ public class SessionTests
         Assert.Equal(second, session.Shown);
         Assert.Contains(second, curtains);
         Assert.IsType<SubmitMoveOrdersDecision>(session.Current.Legal?.Decision);
+    }
+
+    [Fact]
+    public async Task LoadingHotseatAsTheIdleSeatPassesToTheSeatThatOwesADecision()
+    {
+        MatchHost host = new(RulesConfig.Default, States.Setup(5));
+        host.SubmitEngine(Seat.P1, States.CreateBot("captain", 1).DecideFor(host.State, Seat.P1));
+        LocalMatch match = new(host, States.CreateBot);
+        ClientSession session = new(match, RulesConfig.Default, States.CreateBot, draftAs: null, shown: Seat.P1);
+        List<Seat> curtains = [];
+        session.ShownChanged += curtains.Add;
+
+        await session.StartAsync();
+
+        Assert.Equal([Seat.P2], curtains);
+        Assert.Equal(Seat.P2, session.Shown);
+        Assert.IsType<DraftArmyDecision>(session.Current.Legal?.Decision);
+        Assert.Equal(Seat.P2, new ClientSession(match, RulesConfig.Default, States.CreateBot, null).Shown);
+    }
+
+    [Fact]
+    public async Task AHotseatMatchFromDraftToEndOnlyEverShowsTheSeatBehindTheLastCurtain()
+    {
+        LocalMatch match = new(new MatchHost(RulesConfig.Default, States.Setup(6)), States.CreateBot);
+        ClientSession session = new(match, RulesConfig.Default, States.CreateBot, draftAs: null);
+        List<(Seat? Curtain, Seat? Shown)> seen = [];
+        session.ShownChanged += seat =>
+        {
+            lock (seen)
+            {
+                seen.Add((seat, null));
+            }
+        };
+        session.Updated += update =>
+        {
+            lock (seen)
+            {
+                seen.Add((null, update.View.Seat));
+            }
+        };
+        await session.StartAsync();
+
+        int decisions = 0;
+        while (session.Current.View.Outcome is null && decisions < 5000)
+        {
+            SeatUpdate update = session.Current;
+            if (update.Legal is not LegalActions legal)
+            {
+                await Task.Delay(5);
+                continue;
+            }
+
+            ICommand command = update.Legal.Decision is DraftArmyDecision or PlaceStartingArmyDecision
+                ? session.Suggest("captain", decisions) ?? throw new InvalidOperationException("No suggestion.")
+                : States.CreateBot("captain", decisions).Decide(update.View, legal.Decision, legal);
+            Assert.Null(await session.SubmitAsync(command));
+            decisions++;
+        }
+
+        Assert.NotNull(session.Current.View.Outcome);
+        Seat behindCurtain = Seat.P1;
+        lock (seen)
+        {
+            Assert.Contains(seen, item => item.Curtain == Seat.P2);
+            Assert.Contains(seen, item => item.Curtain == Seat.P1);
+            foreach ((Seat? curtain, Seat? shown) in seen)
+            {
+                behindCurtain = curtain ?? behindCurtain;
+                Assert.True(shown is null || shown == behindCurtain, $"{shown}'s view was shown behind {behindCurtain}'s curtain.");
+            }
+        }
     }
 
     /// <summary>The repository root, found by walking up to the <c>.git</c> folder.</summary>

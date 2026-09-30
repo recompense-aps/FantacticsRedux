@@ -1,0 +1,94 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Menus/MainMenu.cs" id="1_menu"]
+
+[node name="MainMenu" type="Control" node_paths=PackedStringArray("_quickMatch", "_newMatch", "_continue", "_load", "_settings", "_quit", "_footer", "_error")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+_quickMatch = NodePath("Center/Rows/QuickMatch")
+_newMatch = NodePath("Center/Rows/NewMatch")
+_continue = NodePath("Center/Rows/Continue")
+_load = NodePath("Center/Rows/Load")
+_settings = NodePath("Center/Rows/Settings")
+_quit = NodePath("Center/Rows/Quit")
+_footer = NodePath("Footer")
+_error = NodePath("Center/Rows/Error")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.11, 1)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Rows" type="VBoxContainer" parent="Center"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Center/Rows"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "Fantactics"
+horizontal_alignment = 1
+
+[node name="QuickMatch" type="Button" parent="Center/Rows"]
+layout_mode = 2
+tooltip_text = "You against bot:captain@easy; a bot drafts and places your army."
+text = "Quick match"
+
+[node name="NewMatch" type="Button" parent="Center/Rows"]
+layout_mode = 2
+text = "New match…"
+
+[node name="Continue" type="Button" parent="Center/Rows"]
+layout_mode = 2
+text = "Continue"
+
+[node name="Load" type="Button" parent="Center/Rows"]
+layout_mode = 2
+text = "Load…"
+
+[node name="Settings" type="Button" parent="Center/Rows"]
+layout_mode = 2
+text = "Settings"
+
+[node name="Quit" type="Button" parent="Center/Rows"]
+layout_mode = 2
+text = "Quit"
+
+[node name="Error" type="Label" parent="Center/Rows"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+modulate = Color(1, 0.5, 0.5, 1)
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Footer" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -30.0
+offset_right = -12.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 0
+modulate = Color(0.6, 0.6, 0.65, 1)

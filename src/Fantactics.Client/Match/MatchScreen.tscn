@@ -1,18 +1,24 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://Match/MatchScreen.cs" id="1_screen"]
 [ext_resource type="PackedScene" path="res://Match/Board/BoardView.tscn" id="2_board"]
 [ext_resource type="Script" path="res://Match/Playback/EventPlayer.cs" id="3_player"]
 [ext_resource type="PackedScene" path="res://Match/Hud/MatchHud.tscn" id="4_hud"]
 [ext_resource type="PackedScene" path="res://Debug/DebugPanel.tscn" id="5_debug"]
+[ext_resource type="PackedScene" path="res://Match/Draft/DraftPanel.tscn" id="6_draft"]
+[ext_resource type="PackedScene" path="res://Match/Menu/MatchMenu.tscn" id="7_menu"]
+[ext_resource type="PackedScene" path="res://Match/Curtain/HotseatCurtain.tscn" id="8_curtain"]
 
-[node name="MatchScreen" type="Node" node_paths=PackedStringArray("_board", "_camera", "_player", "_hud", "_debug")]
+[node name="MatchScreen" type="Node" node_paths=PackedStringArray("_board", "_camera", "_player", "_hud", "_draftPanel", "_debug", "_menu", "_curtain")]
 script = ExtResource("1_screen")
 _board = NodePath("BoardView")
 _camera = NodePath("Camera2D")
 _player = NodePath("EventPlayer")
 _hud = NodePath("HudLayer/MatchHud")
+_draftPanel = NodePath("HudLayer/DraftPanel")
 _debug = NodePath("HudLayer/DebugPanel")
+_menu = NodePath("MenuLayer/MatchMenu")
+_curtain = NodePath("CurtainLayer/HotseatCurtain")
 
 [node name="BoardView" parent="." instance=ExtResource("2_board")]
 
@@ -25,4 +31,16 @@ script = ExtResource("3_player")
 
 [node name="MatchHud" parent="HudLayer" instance=ExtResource("4_hud")]
 
+[node name="DraftPanel" parent="HudLayer" instance=ExtResource("6_draft")]
+
 [node name="DebugPanel" parent="HudLayer" instance=ExtResource("5_debug")]
+
+[node name="MenuLayer" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="MatchMenu" parent="MenuLayer" instance=ExtResource("7_menu")]
+
+[node name="CurtainLayer" type="CanvasLayer" parent="."]
+layer = 3
+
+[node name="HotseatCurtain" parent="CurtainLayer" instance=ExtResource("8_curtain")]

@@ -28,12 +28,14 @@ public sealed record BoardModel(
     /// <param name="moves">Orders being built in the movement phase, if any.</param>
     /// <param name="actions">The action being picked in the action phase, if any.</param>
     /// <param name="hover">The tile under the pointer, if any.</param>
+    /// <param name="placement">The starting placement being built, if any.</param>
     public static BoardModel Build(
         PlayerView view,
         RulesConfig rules,
         MoveOrderBuilder? moves,
         ActionPicker? actions,
-        Point? hover)
+        Point? hover,
+        PlacementBuilder? placement = null)
     {
         ImmutableHashSet<int> acting = [.. view.PendingDecisions.OfType<ChooseUnitActionDecision>().Select(d => d.UnitId)];
         ImmutableArray<TokenModel> tokens = [.. view.Units
@@ -49,7 +51,7 @@ public sealed record BoardModel(
                 view.TurnState.Held.Contains(unit.Id),
                 view.TurnState.Braced.Contains(unit.Id),
                 [.. unit.Statuses.Keys],
-                acting.Contains(unit.Id)))];
+                acting.Contains(unit.Id))), .. PlacedTokens(view, rules, placement)];
 
         Dictionary<Point, TileMark> marks = view.Map.Objectives.ToDictionary(tile => tile, _ => TileMark.Objective);
         void Mark(IEnumerable<Point> tiles, TileMark mark)
@@ -68,12 +70,46 @@ public sealed record BoardModel(
             Mark(hover is Point tile ? moves.Preview(tile) : [], TileMark.Path);
         }
 
+        if (placement is not null)
+        {
+            Mark(placement.FreeTiles, TileMark.Reachable);
+            if (placement.Selected is int selected && placement.Placed.TryGetValue(selected, out Point at))
+            {
+                Mark([at], TileMark.Selected);
+            }
+        }
+
         if (actions is not null)
         {
             Mark(actions.Targets, TileMark.Target);
         }
 
         return new BoardModel(tokens, marks.ToImmutableDictionary(), ArrowsFor(view, moves), HintFor(view, rules, actions, hover));
+    }
+
+    /// <summary>Starting units placed so far (or already submitted), which aren't on the field yet.</summary>
+    private static IEnumerable<TokenModel> PlacedTokens(PlayerView view, RulesConfig rules, PlacementBuilder? placement)
+    {
+        IEnumerable<(int UnitId, Point Tile)> placed = placement is not null
+            ? placement.Placed.Select(pair => (pair.Key, pair.Value))
+            : view.MyPendingOrders is PlaceStartingArmy submitted
+                ? submitted.Placements.Select(p => (p.UnitId, p.Tile))
+                : [];
+        Dictionary<int, Unit> units = view.Units.ToDictionary(unit => unit.Id);
+        return placed
+            .Where(p => units.ContainsKey(p.UnitId))
+            .Select(p => new TokenModel(
+                p.UnitId,
+                view.Seat,
+                units[p.UnitId].Type,
+                p.Tile,
+                units[p.UnitId].Hp,
+                rules.Units[units[p.UnitId].Type].Hp,
+                Mine: true,
+                Held: false,
+                Braced: false,
+                [],
+                Acting: false));
     }
 
     private static ImmutableArray<OrderArrow> ArrowsFor(PlayerView view, MoveOrderBuilder? moves)

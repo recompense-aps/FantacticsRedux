@@ -38,8 +38,9 @@ public static class HudText
 
         return update.Legal?.Decision switch
         {
-            DraftArmyDecision => "Draft your army.",
-            PlaceStartingArmyDecision => "Place your starting army.",
+            DraftArmyDecision => "Draft your army: pick starting units and reserves within your budget.",
+            PlaceStartingArmyDecision => "Place your starting army: click a highlighted tile for each unit."
+                + (view.Players[view.Seat.Opponent()].DraftedRaces is { } enemy ? $" Enemy drafted {Races(enemy)}." : ""),
             SubmitMoveOrdersDecision =>
                 "Move orders: click a unit, then a tile. Right-click clears. Enter submits.",
             ChooseUnitActionDecision decision =>

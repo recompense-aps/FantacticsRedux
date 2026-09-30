@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using System.Text.Json;
+using Fantactics.Client.Logic.Session;
 using Fantactics.Core;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
@@ -54,23 +54,7 @@ public static class DebugText
     }
 
     /// <summary>A save file's one-line summary (turn, phase, seats), read without replaying it.</summary>
-    public static string Summary(string path)
-    {
-        try
-        {
-            using JsonDocument json = JsonDocument.Parse(File.ReadAllText(path));
-            JsonElement root = json.RootElement;
-            string seats = string.Join(" vs ", root.GetProperty("setup").GetProperty("seats").EnumerateObject().Select(s => s.Value.GetString()));
-            string turn = root.TryGetProperty("snapshot", out JsonElement snapshot)
-                ? $"turn {snapshot.GetProperty("turn").GetInt32()} {snapshot.GetProperty("phase").GetString()}"
-                : $"{root.GetProperty("commands").GetArrayLength()} commands";
-            return $"{Path.GetFileName(path)}: {turn}, {seats}";
-        }
-        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or IOException)
-        {
-            return $"{Path.GetFileName(path)}: not a match file";
-        }
-    }
+    public static string Summary(string path) => SaveSummary.Read(path).Text;
 
     private static string Describe(ICommand command) => command switch
     {

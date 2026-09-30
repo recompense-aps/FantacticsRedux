@@ -94,28 +94,34 @@ The Godot project is a thin presentation layer. Everything about playing a match
 
 | Folder | Contents |
 |---|---|
-| `Input/` | `MoveOrderBuilder` (click a unit, then a highlighted destination; the engine's cheapest path; arrivals for reserve units; joint problems before Submit) and `ActionPicker` (click an enemy to attack, 1–9 for abilities, Wait/Delay). Both build only from `LegalActions`, so they can only produce legal commands. |
+| `Input/` | `DraftBuilder` (starting army and reserve within the budget, starting cap, and unique limits, checked as the engine checks them), `PlacementBuilder` (pick a unit, click a deploy tile; a taken tile swaps), `MoveOrderBuilder` (click a unit, then a highlighted destination; the engine's cheapest path; arrivals for reserve units; joint problems before Submit) and `ActionPicker` (click an enemy to attack, 1–9 for abilities, Wait/Delay). All four build only from `LegalActions`, so they can only produce legal commands. |
 | `Playback/` | `TimelineBuilder`: an update's events → `Beat`s of `Step`s (one movement tick's steps play together). Every event type maps to a step or is explicitly ignored, and a test enforces that. |
-| `Board/` | `BoardModel` (tokens, tile highlights, order arrows, hover hint: a pure function of the view and input state) and `HudText`. |
-| `Session/` | `ClientSession` (a connection per seat, which seat is shown, hotseat switching, autosave, and the quick start where a bot drafts and places for human seats until the draft screens exist), `MatchOpener` (new, load, branch, share; see §4) and `SaveLocations`. |
+| `Board/` | `BoardModel` (tokens, tile highlights, order arrows, hover hint: a pure function of the view and input state, including units placed so far), `HudText`, and `UnitText` (race, class, and stat lines for the draft). |
+| `Session/` | `ClientSession` (a connection per seat, which seat is shown, hotseat switching, autosave, the quick start where a bot drafts and places for human seats, and `Suggest`, a bot's draft or placement to fill the screen), `MatchOpener` (new, load, branch, share; see §4), `SaveLocations`, and `SaveSummary` (a file's turn and seats without replaying it). |
+| `Menus/` | `NewMatchForm` and `SeatForm`: the new-match screen and the launch options both describe a match this way, and `ToSetup` makes the record's `MatchSetup`. |
 | `Debug/` | `DebugText` (timeline, event log lines, hidden information, save summaries) and `GodView` (a board model from the full state). |
 | `Launch/`, `Settings/` | `LaunchArgs` (below) and `ClientSettings` (speed, auto-skip, curtain; JSON under `user://`). |
 
 **Godot side** (`src/Fantactics.Client`, folders by feature, scene and script side by side):
 
 ```
-App/Main.tscn            root: launch options, settings, starts or loads the match, --autoplay
+App/Main.tscn            root: launch options, settings, one screen at a time (menus or a match), --autoplay
+Menus/                   MainMenu, NewMatchScreen (+ SeatColumn per seat), LoadScreen, SettingsScreen
 Common/                  GodotConversions (Point <-> Vector2I, tile size 32), MainThread
 Match/MatchScreen.tscn   one match: queues updates, plays them, then snaps board and HUD to the view
 Match/Board/             BoardView (TileMapLayer + BoardOverlay + tokens), UnitToken, PlaceholderTiles
-Match/Hud/               MatchHud (status, prompt, hint, action bar, reserve, Submit, speed, banner)
+Match/Hud/               MatchHud (status, prompt, hint, action bar, roster for deploys and placement, Submit, speed, menu, banner)
+Match/Draft/             DraftPanel (every draftable unit by race, the army so far, budget and cap, Bot pick)
+Match/Curtain/           HotseatCurtain (pass-device screen)
+Match/Menu/              MatchMenu (Esc: resume, settings, main menu, quit; also shows the result)
 Match/Playback/          EventPlayer (tweens per beat, speed-scaled, Space skips)
 Debug/DebugPanel.tscn     F1: state hash, god view, seat controllers, quicksave/quickload, saves, timeline, events, hidden info
 ```
 
 - **Playback never has the final word.** After an update's beats play, the board snaps to the update's `PlayerView`, so a wrong or missing animation can't leave the board in a wrong state. Skipping just stops early.
 - **Placeholder art:** terrain is a runtime-built `TileSet` (one flat color per `Terrain`, atlas tile = terrain index), and units are drawn discs. Real art swaps the `TileSet` and token scene without changing code that uses them.
-- **Launch options** (after `--` on the Godot command line) skip the menu: `--new`/`--p1`/`--p2 <human|llm|bot:spec>`, `--p1-races`/`--p2-races <Elves,Goblins|any>` (races a seat may draft; default any), `--budget`, `--p1-budget`, `--p2-budget`, `--starting-cap`, `--p1-starting-cap`, `--p2-starting-cap` (per-seat draft points; default the rules'), `--map`, `--seed`, `--draft-as <profile|none>`, `--load <file> [--as P1]`, `--out <file>`, `--saves <dir>`, `--speed <n>`, `--debug` (open the debug panel), `--autoplay` (human seats become bots and `llm` seats stay, so a CLI player can join; play to the end, then quit with 0; 1 on failure, 2 on timeout: the headless smoke test), and `--screenshot <png>` (save the screen after a few seconds and quit, for checking layout without looking).
+- **Launch options** (after `--` on the Godot command line) skip the menu: seats and draft limits for a new match, `--load`, `--saves`, `--autoplay` (the headless smoke test), `--screenshot`, and more. The full list with recipes is in [LaunchOptions.md](../LaunchOptions.md).
+- **Hotseat curtain:** when the shown seat changes to another human seat, the session raises `ShownChanged`, and the match screen puts a curtain into its playback queue. Updates behind the curtain wait until the next player dismisses it, so nothing of their view (or the last player's) shows in between. The Settings screen can turn the curtain off.
 - **LLM seats:** when a seat is `llm` (or `--out` is given), the match runs on a shared file (`SharedMatchFile`, Protocol): every local operation takes the file's lock, catches up on commands the CLI appended (`MatchHost.CatchUp`, which publishes them so they animate), and saves; a 500 ms poll picks up the LLM's moves in between. If the file stops extending the match, syncing stops with a warning instead of guessing.
 
 ## 3. Networking

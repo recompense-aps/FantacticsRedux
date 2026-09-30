@@ -1,3 +1,4 @@
+using System.Globalization;
 using Fantactics.Client.Common;
 using Fantactics.Client.Debug;
 using Fantactics.Client.Logic.Board;
@@ -7,7 +8,10 @@ using Fantactics.Client.Logic.Playback;
 using Fantactics.Client.Logic.Session;
 using Fantactics.Client.Logic.Settings;
 using Fantactics.Client.Match.Board;
+using Fantactics.Client.Match.Curtain;
+using Fantactics.Client.Match.Draft;
 using Fantactics.Client.Match.Hud;
+using Fantactics.Client.Match.Menu;
 using Fantactics.Client.Match.Playback;
 using Fantactics.Core;
 using Fantactics.Core.Commands;
@@ -23,8 +27,10 @@ namespace Fantactics.Client.Match;
 
 /// <summary>
 /// One match on screen. Updates from the session are queued and played in order: the event player animates each
-/// one, then the board and HUD snap to its view. Clicks and keys go to the move-order builder or action picker for
-/// the decision the shown seat owes, and finished commands are submitted through the session.
+/// one, then the board and HUD snap to its view. In hotseat, a curtain goes up in that queue whenever the shown seat
+/// changes, so nothing of the next seat's view appears until they're ready. Clicks and keys go to the builder for the
+/// decision the shown seat owes (draft, placement, move orders, or an action), and finished commands are submitted
+/// through the session.
 /// </summary>
 public partial class MatchScreen : Node
 {
@@ -34,9 +40,12 @@ public partial class MatchScreen : Node
     /// <summary>Screen pixels the HUD takes at the bottom (buttons).</summary>
     private const float HudBottom = 52;
 
+    /// <summary>The bot profile behind "Bot pick" and "Auto-place".</summary>
+    private const string SuggestProfile = "captain";
+
     private static readonly double[] _speeds = [1, 2, 4, 0];
 
-    private readonly Queue<SeatUpdate> _pending = new();
+    private readonly Queue<Queued> _pending = new();
     private OpenMatch _open = null!;
     private ClientSession _session = null!;
     private SaveLocations _saves = null!;
@@ -44,9 +53,12 @@ public partial class MatchScreen : Node
     private ClientSettings _settings = new();
     private Action<ClientSettings> _saveSettings = _ => { };
     private SeatUpdate? _current;
+    private DraftBuilder? _draft;
+    private PlacementBuilder? _placement;
     private MoveOrderBuilder? _moves;
     private ActionPicker? _actions;
     private bool _pumping;
+    private bool _finished;
     private DateTime? _llmSince;
     private int _llmSeconds = -1;
     private bool _submitting;
@@ -65,7 +77,16 @@ public partial class MatchScreen : Node
     private MatchHud _hud = null!;
 
     [Export]
+    private DraftPanel _draftPanel = null!;
+
+    [Export]
     private DebugPanel _debug = null!;
+
+    [Export]
+    private MatchMenu _menu = null!;
+
+    [Export]
+    private HotseatCurtain _curtain = null!;
 
     /// <summary>The match ended and its last update has played; <paramref name="result"/> says who won.</summary>
     [Signal]
@@ -87,11 +108,26 @@ public partial class MatchScreen : Node
     [Signal]
     public delegate void ShareRequestedEventHandler();
 
+    /// <summary>Open the settings screen.</summary>
+    [Signal]
+    public delegate void SettingsRequestedEventHandler();
+
+    /// <summary>Leave the match for the main menu.</summary>
+    [Signal]
+    public delegate void MainMenuRequestedEventHandler();
+
+    /// <summary>Quit the game.</summary>
+    [Signal]
+    public delegate void QuitRequestedEventHandler();
+
+    /// <summary>Whether an animation, a submit in flight, the curtain, or the menu is in the way of input.</summary>
+    private bool Busy => _player.IsPlaying || _submitting || _curtain.IsUp || _menu.IsOpen;
+
     /// <summary>Gives the screen its match. Call before adding it to the tree.</summary>
     /// <param name="open">The match.</param>
     /// <param name="saves">Where quicksaves go and saves are listed from.</param>
-    /// <param name="settings">Player settings (speed, auto-skip).</param>
-    /// <param name="saveSettings">Called when the player changes a setting.</param>
+    /// <param name="settings">Player settings (speed, auto-skip, curtain).</param>
+    /// <param name="saveSettings">Called when the player changes a setting on this screen (the speed button).</param>
     /// <param name="seatOptions">Controllers the debug panel offers for a seat (<c>human</c>, <c>llm</c>, <c>bot:…</c>).</param>
     public void Initialize(
         OpenMatch open,
@@ -115,10 +151,35 @@ public partial class MatchScreen : Node
         _board.TileHovered += _ => RedrawIfIdle();
         _hud.SubmitPressed += SubmitOrders;
         _hud.ActionPressed += OnAction;
-        _hud.DeployPressed += OnDeploy;
+        _hud.UnitPressed += OnRosterUnit;
         _hud.SpeedPressed += CycleSpeed;
+        _hud.MenuPressed += OpenMenu;
+        _draftPanel.AddPressed += (type, reserve) => ChangeDraft(draft => draft.Add(type, reserve));
+        _draftPanel.RemovePressed += (type, reserve) => ChangeDraft(draft =>
+        {
+            draft.Remove(type, reserve);
+            return null;
+        });
+        _draftPanel.MovePressed += (type, fromReserve) => ChangeDraft(draft => draft.Move(type, fromReserve));
+        _draftPanel.ClearPressed += () => ChangeDraft(draft =>
+        {
+            draft.Clear();
+            return null;
+        });
+        _draftPanel.SuggestPressed += Suggest;
+        _draftPanel.SubmitPressed += SubmitOrders;
+        _menu.SettingsPressed += () => EmitSignal(SignalName.SettingsRequested);
+        _menu.MainMenuPressed += () => EmitSignal(SignalName.MainMenuRequested);
+        _menu.QuitPressed += () => EmitSignal(SignalName.QuitRequested);
+        _curtain.Dismissed += Pump;
         GetViewport().SizeChanged += FitCamera;
         _session.Updated += OnSessionUpdated;
+        _session.ShownChanged += OnShownChanged;
+        if (_open.SharedFile is { } file)
+        {
+            file.Diverged += OnDiverged;
+        }
+
         _debug.GodViewToggled += _ => Redraw();
         _debug.SeatChosen += OnSeatChosen;
         _debug.QuicksavePressed += Quicksave;
@@ -127,26 +188,18 @@ public partial class MatchScreen : Node
         _debug.BranchChosen += seq => EmitSignal(SignalName.BranchRequested, seq);
         _debug.SetSeatOptions(_seatOptions);
         _debug.Visible = false;
-
+        _draftPanel.Visible = false;
 
         _board.SetMap(_session.Current.View.Map);
         FitCamera();
         _hud.ShowSpeed(_settings.Speed);
-        string where = _open.SharedFile is { } shared ? $"Playing on {shared.Path}" : $"Autosaving to {Path.GetFileName(_saves.Folder)}/{Path.GetFileName(_saves.Autosave)}";
-        _hud.ShowNotice(_session.Match.ResumeWarning is string warning ? $"{warning}\n{where}" : where, 8);
+        _hud.ShowNotice(StartNotice(), 8);
         Show(_session.Current);
         Run(async () =>
         {
             await _session.SetAutoSkipAsync(_settings.AutoSkip);
             await _session.StartAsync();
         });
-    }
-
-    /// <summary>Opens or closes the debug panel.</summary>
-    public void ToggleDebug()
-    {
-        _debug.Visible = !_debug.Visible;
-        RefreshDebug();
     }
 
     /// <inheritdoc />
@@ -162,7 +215,9 @@ public partial class MatchScreen : Node
         if (seconds != _llmSeconds)
         {
             _llmSeconds = seconds;
-            _hud.ShowStatus(HudText.Status(update.View, _session.Rules), $"{HudText.Prompt(update, LabelOf)} The LLM is thinking… {seconds}s");
+            _hud.ShowStatus(
+                HudText.Status(update.View, _session.Rules),
+                $"{HudText.Prompt(update, LabelOf)} The LLM is thinking… {seconds}s");
         }
     }
 
@@ -170,17 +225,32 @@ public partial class MatchScreen : Node
     public override void _ExitTree()
     {
         _session.Updated -= OnSessionUpdated;
+        _session.ShownChanged -= OnShownChanged;
         if (_open.SharedFile is { } file)
         {
             file.Diverged -= OnDiverged;
         }
+
         GetViewport().SizeChanged -= FitCamera;
     }
 
     /// <inheritdoc />
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event.IsActionPressed("skip_animation"))
+        if (_curtain.IsUp)
+        {
+            return;
+        }
+
+        if (@event is InputEventKey && @event.IsActionPressed("cancel"))
+        {
+            Cancel();
+        }
+        else if (_menu.IsOpen)
+        {
+            return;
+        }
+        else if (@event.IsActionPressed("skip_animation"))
         {
             _player.Skip();
         }
@@ -208,34 +278,61 @@ public partial class MatchScreen : Node
         {
             OnAction("delay");
         }
-        else if (@event is InputEventKey && @event.IsActionPressed("cancel"))
-        {
-            _moves?.Deselect();
-            _actions?.ClearAbility();
-            RedrawIfIdle();
-        }
         else
         {
             for (int slot = 0; slot < 9; slot++)
             {
                 if (@event.IsActionPressed($"ability_{slot + 1}"))
                 {
-                    OnAction(slot.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    OnAction(slot.ToString(CultureInfo.InvariantCulture));
                 }
             }
         }
     }
 
+    /// <summary>Opens or closes the debug panel.</summary>
+    public void ToggleDebug()
+    {
+        _debug.Visible = !_debug.Visible;
+        RefreshDebug();
+    }
+
+    /// <summary>Uses changed settings (from the settings screen).</summary>
+    public void ApplySettings(ClientSettings settings)
+    {
+        bool autoSkipChanged = settings.AutoSkip != _settings.AutoSkip;
+        _settings = settings;
+        _hud.ShowSpeed(settings.Speed);
+        if (autoSkipChanged)
+        {
+            Run(() => _session.SetAutoSkipAsync(settings.AutoSkip));
+        }
+    }
+
+    /// <summary>What's public about the opponent's draft, for the draft screen's header.</summary>
+    private static string OpponentLimits(PlayerView view)
+    {
+        PlayerSummary them = view.Players[view.Seat.Opponent()];
+        string races = them.AllowedRaces is { } allowed ? string.Join(", ", allowed) : "any race";
+        return $"{them.Seat}: budget {them.DraftBudget}, starting cap {them.StartingCap}, {races}";
+    }
+
     private void OnSessionUpdated(SeatUpdate update) => MainThread.Post(() =>
     {
-        _pending.Enqueue(update);
+        _pending.Enqueue(new Queued(update, null));
         Pump();
     });
 
-    /// <summary>Plays queued updates one after another.</summary>
+    private void OnShownChanged(Seat seat) => MainThread.Post(() =>
+    {
+        _pending.Enqueue(new Queued(null, seat));
+        Pump();
+    });
+
+    /// <summary>Plays queued updates one after another, stopping at a raised curtain until it's dismissed.</summary>
     private async void Pump()
     {
-        if (_pumping)
+        if (_pumping || _curtain.IsUp)
         {
             return;
         }
@@ -243,16 +340,29 @@ public partial class MatchScreen : Node
         _pumping = true;
         try
         {
-            while (_pending.TryDequeue(out SeatUpdate? update))
+            while (_pending.TryDequeue(out Queued item))
             {
-                await _player.Play(
-                    TimelineBuilder.Build(update.Events),
-                    _board,
-                    _hud,
-                    _settings.Speed,
-                    update.View.Seat,
-                    _session.Rules);
-                Show(update);
+                if (item.Curtain is Seat next)
+                {
+                    if (_settings.Curtain)
+                    {
+                        // Dismissing the curtain calls Pump again for the rest of the queue.
+                        _menu.Close();
+                        _curtain.Raise(next);
+                        return;
+                    }
+                }
+                else if (item.Update is SeatUpdate update)
+                {
+                    await _player.Play(
+                        TimelineBuilder.Build(update.Events),
+                        _board,
+                        _hud,
+                        _settings.Speed,
+                        update.View.Seat,
+                        _session.Rules);
+                    Show(update);
+                }
             }
         }
         catch (Exception ex)
@@ -277,6 +387,10 @@ public partial class MatchScreen : Node
         _llmSince = update.Legal is null && update.View.Outcome is null && WaitingOnLlm(update) ? DateTime.UtcNow : null;
         _llmSeconds = -1;
         _message = null;
+        _draft = update.Legal is { Decision: DraftArmyDecision, Draft: DraftOptions draft } ? new DraftBuilder(draft) : null;
+        _placement = update.Legal is { Decision: PlaceStartingArmyDecision, Placement: PlacementOptions placement }
+            ? new PlacementBuilder(update.View, placement)
+            : null;
         _moves = update.Legal is { Decision: SubmitMoveOrdersDecision, Moves: MoveOptions moves }
             ? new MoveOrderBuilder(update.View, moves)
             : null;
@@ -286,9 +400,12 @@ public partial class MatchScreen : Node
         Redraw();
         RefreshDebug();
 
-        if (update.View.Outcome is not null && _pending.Count == 0)
+        if (update.View.Outcome is not null && _pending.Count == 0 && !_finished)
         {
-            EmitSignal(SignalName.MatchFinished, HudText.Prompt(update, LabelOf));
+            _finished = true;
+            string result = HudText.Prompt(update, LabelOf);
+            _menu.Open(result, over: true);
+            EmitSignal(SignalName.MatchFinished, result);
         }
     }
 
@@ -309,16 +426,22 @@ public partial class MatchScreen : Node
 
         BoardModel model = _debug.GodView
             ? GodView.Build(_session.Match.State, update.View.Seat, _board.Hovered)
-            : BoardModel.Build(update.View, _session.Rules, _moves, _actions, _board.Hovered);
+            : BoardModel.Build(update.View, _session.Rules, _moves, _actions, _board.Hovered, _placement);
         _board.Render(model);
         _hud.ShowStatus(HudText.Status(update.View, _session.Rules), _message ?? HudText.Prompt(update, LabelOf));
         _hud.ShowHint(model.Hint);
+
+        _draftPanel.Visible = _draft is not null;
+        if (_draft is not null)
+        {
+            _draftPanel.Show(_draft, _session.Rules, OpponentLimits(update.View), _message);
+        }
 
         List<(string, string)> actions = [];
         if (_actions is not null)
         {
             actions.AddRange(_actions.Abilities.Select((ability, slot) =>
-                (slot.ToString(System.Globalization.CultureInfo.InvariantCulture), $"{slot + 1} {ability}")));
+                (slot.ToString(CultureInfo.InvariantCulture), $"{slot + 1} {ability}")));
             if (_actions.Wait is not null)
             {
                 actions.Add(("wait", "Wait (W)"));
@@ -330,11 +453,31 @@ public partial class MatchScreen : Node
             }
         }
 
+        if (_placement is not null)
+        {
+            actions.Add(("suggest", "Auto-place"));
+        }
+
         _hud.ShowActions(actions);
-        _hud.ShowReserve(_moves is null
-            ? []
-            : [.. _moves.DeployOptions.Select(d => (d.UnitId, $"{d.Type} ({d.Cost})", _moves.Deploys.ContainsKey(d.UnitId)))]);
-        _hud.ShowSubmit(_moves is not null, _moves is null ? "" : string.Join(" ", _moves.Problems));
+        _hud.ShowRoster(Roster());
+        IReadOnlyList<string>? problems = _placement?.Problems ?? _moves?.Problems;
+        _hud.ShowSubmit(problems is not null, problems is null ? "" : string.Join(" ", problems));
+    }
+
+    /// <summary>Roster buttons: starting units to place, or reserve units that can deploy.</summary>
+    private IReadOnlyList<(int UnitId, string Label, bool Chosen)> Roster()
+    {
+        if (_placement is PlacementBuilder placement)
+        {
+            return [.. placement.Options.UnitIds.Select(id => (
+                id,
+                placement.Placed.ContainsKey(id) ? $"{placement.TypeOf(id)} ✓" : placement.TypeOf(id),
+                id == placement.Selected))];
+        }
+
+        return _moves is MoveOrderBuilder moves
+            ? [.. moves.DeployOptions.Select(d => (d.UnitId, $"{d.Type} ({d.Cost})", moves.Deploys.ContainsKey(d.UnitId)))]
+            : [];
     }
 
     /// <summary>Fills the debug panel, if it is open.</summary>
@@ -354,11 +497,38 @@ public partial class MatchScreen : Node
             DebugText.Timeline(match.ToRecord(), events),
             [.. events.Select(DebugText.Line)],
             DebugText.Hidden(state, _session.Shown));
-        _debug.ShowSaves(Directory.Exists(_saves.Folder)
-            ? Directory.GetFiles(_saves.Folder, "*.json")
-                .OrderByDescending(File.GetLastWriteTimeUtc)
-                .Select(path => (path, DebugText.Summary(path)))
-            : []);
+        _debug.ShowSaves(SaveSummary.In(_saves.Folder).Select(save => (save.Path, save.Text)));
+    }
+
+    /// <summary>Esc: close the menu, or drop the current pick if there is one, or open the menu.</summary>
+    private void Cancel()
+    {
+        if (_menu.IsOpen)
+        {
+            _menu.Close();
+        }
+        else if (_moves?.Selected is not null || _actions?.Ability is not null || _placement?.Selected is not null)
+        {
+            _moves?.Deselect();
+            _actions?.ClearAbility();
+            _placement?.Deselect();
+            RedrawIfIdle();
+        }
+        else
+        {
+            OpenMenu();
+        }
+    }
+
+    private void OpenMenu()
+    {
+        if (_curtain.IsUp)
+        {
+            return;
+        }
+
+        bool over = _current?.View.Outcome is not null;
+        _menu.Open(over && _current is SeatUpdate update ? HudText.Prompt(update, LabelOf) : "Paused", over);
     }
 
     private void Quicksave()
@@ -400,7 +570,7 @@ public partial class MatchScreen : Node
 
     private void OnTileClicked(Vector2I cell, bool secondary)
     {
-        if (_current is not SeatUpdate update || _player.IsPlaying || _submitting || _debug.GodView)
+        if (_current is not SeatUpdate update || Busy || _debug.GodView)
         {
             return;
         }
@@ -408,7 +578,11 @@ public partial class MatchScreen : Node
         Point tile = cell.ToPoint();
         Unit? mine = update.View.Units.FirstOrDefault(u => u.IsOnField && u.Owner == update.View.Seat && u.Position == tile);
         _message = null;
-        if (_moves is not null)
+        if (_placement is not null)
+        {
+            ClickForPlacement(tile, secondary);
+        }
+        else if (_moves is not null)
         {
             ClickForMoves(tile, mine, secondary);
         }
@@ -426,6 +600,31 @@ public partial class MatchScreen : Node
         }
 
         Redraw();
+    }
+
+    /// <summary>
+    /// Left click: place the picked unit (swapping with one already there), or pick up a placed unit when none is
+    /// picked. Right click: take a placed unit off the board.
+    /// </summary>
+    private void ClickForPlacement(Point tile, bool secondary)
+    {
+        PlacementBuilder placement = _placement ?? throw new InvalidOperationException("No placement is being built.");
+        int? there = placement.UnitAt(tile);
+        if (secondary)
+        {
+            if (there is int unit)
+            {
+                placement.Clear(unit);
+            }
+        }
+        else if (placement.Selected is null && there is int unit)
+        {
+            placement.Select(unit);
+        }
+        else
+        {
+            _message = placement.Choose(tile);
+        }
     }
 
     private void ClickForMoves(Point tile, Unit? mine, bool secondary)
@@ -456,7 +655,18 @@ public partial class MatchScreen : Node
 
     private void OnAction(string action)
     {
-        if (_actions is null || _player.IsPlaying || _submitting)
+        if (Busy)
+        {
+            return;
+        }
+
+        if (action == "suggest")
+        {
+            Suggest();
+            return;
+        }
+
+        if (_actions is null)
         {
             return;
         }
@@ -465,7 +675,7 @@ public partial class MatchScreen : Node
         {
             "wait" => _actions.Wait,
             "delay" => _actions.Delay,
-            _ => _actions.SelectAbility(int.Parse(action, System.Globalization.CultureInfo.InvariantCulture)),
+            _ => _actions.SelectAbility(int.Parse(action, CultureInfo.InvariantCulture)),
         };
         if (option is not null)
         {
@@ -477,15 +687,68 @@ public partial class MatchScreen : Node
         }
     }
 
-    private void OnDeploy(int unitId)
+    private void OnRosterUnit(int unitId)
     {
-        _moves?.Select(unitId);
+        if (_placement is not null)
+        {
+            _placement.Select(unitId);
+        }
+        else
+        {
+            _moves?.Select(unitId);
+        }
+
+        Redraw();
+    }
+
+    /// <summary>Changes the draft and shows any problem the change ran into.</summary>
+    private void ChangeDraft(Func<DraftBuilder, string?> change)
+    {
+        if (_draft is not null && !Busy)
+        {
+            _message = change(_draft);
+            Redraw();
+        }
+    }
+
+    /// <summary>Fills the draft or placement with what a bot would choose; the player can still change it.</summary>
+    private void Suggest()
+    {
+        if (Busy)
+        {
+            return;
+        }
+
+        switch (_session.Suggest(SuggestProfile, Random.Shared.Next()))
+        {
+            case SubmitDraft draft:
+                _draft?.Load(draft);
+                break;
+            case PlaceStartingArmy placement:
+                _placement?.Load(placement);
+                break;
+        }
+
+        _message = null;
         Redraw();
     }
 
     private void SubmitOrders()
     {
-        if (_moves is { Problems.Count: 0 } && !_player.IsPlaying && !_submitting)
+        if (Busy)
+        {
+            return;
+        }
+
+        if (_draft is { Problems.Count: 0 })
+        {
+            Submit(_draft.Build());
+        }
+        else if (_placement is { Problems.Count: 0 })
+        {
+            Submit(_placement.Build());
+        }
+        else if (_moves is { Problems.Count: 0 })
         {
             Submit(_moves.Build());
         }
@@ -545,8 +808,9 @@ public partial class MatchScreen : Node
         if (_open.SharedFile is { } file)
         {
             string relative = $"{Path.GetFileName(Path.GetDirectoryName(file.Path))}/{Path.GetFileName(file.Path)}";
-            IEnumerable<Seat> llms = SeatExtensions.All.Where(seat => _session.Match.ControllerOf(seat).Kind == SeatControllerKind.Llm);
-            lines.Add(llms.Any()
+            Seat[] llms = [.. SeatExtensions.All
+                .Where(seat => _session.Match.ControllerOf(seat).Kind == SeatControllerKind.Llm)];
+            lines.Add(llms.Length > 0
                 ? $"Ask Claude to play {string.Join(" and ", llms)} in {relative} (play-fantactics skill)."
                 : $"Playing on {relative}.");
         }
@@ -561,7 +825,8 @@ public partial class MatchScreen : Node
     private bool WaitingOnLlm(SeatUpdate update) =>
         update.View.PendingDecisions.Any(d => _session.Match.ControllerOf(d.Seat).Kind == SeatControllerKind.Llm);
 
-    private void OnDiverged(string reason) => MainThread.Post(() => _hud.ShowNotice($"{reason} Syncing stopped; the match continues here only.", 20));
+    private void OnDiverged(string reason) =>
+        MainThread.Post(() => _hud.ShowNotice($"{reason} Syncing stopped; the match continues here only.", 20));
 
     private string LabelOf(Seat seat) => _session.Match.ControllerOf(seat).Label;
 
@@ -577,4 +842,9 @@ public partial class MatchScreen : Node
             MainThread.Post(() => EmitSignal(SignalName.Failed, ex.ToString()));
         }
     });
+
+    /// <summary>An item in the playback queue: an update to play, or a curtain to raise for the next seat.</summary>
+    /// <param name="Update">The update, or <c>null</c> for a curtain.</param>
+    /// <param name="Curtain">The seat to raise the curtain for, or <c>null</c> for an update.</param>
+    private readonly record struct Queued(SeatUpdate? Update, Seat? Curtain);
 }

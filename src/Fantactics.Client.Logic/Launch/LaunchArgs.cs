@@ -1,13 +1,16 @@
 using System.Collections.Immutable;
 using System.Globalization;
+using Fantactics.Client.Logic.Menus;
 using Fantactics.Core;
+using Fantactics.Core.Rules;
 
 namespace Fantactics.Client.Logic.Launch;
 
 /// <summary>
 /// Command-line options for jumping straight into a match (everything after <c>--</c> on the Godot command line):
 /// <c>--new</c> with <c>--p1/--p2</c> seat labels, <c>--load &lt;file&gt;</c>, <c>--saves &lt;dir&gt;</c>, and
-/// <c>--autoplay</c> for the headless smoke run. With none of them, the game opens its menu.
+/// <c>--autoplay</c> for the headless smoke run. With none of them, the game opens its menu. Every option is
+/// described in <c>notes/LaunchOptions.md</c>; keep it in step with <see cref="Parse"/>.
 /// </summary>
 /// <param name="NewMatch">Start a new match.</param>
 /// <param name="P1">Who plays P1: <c>human</c>, <c>llm</c>, or <c>bot:&lt;spec&gt;</c>.</param>
@@ -16,7 +19,7 @@ namespace Fantactics.Client.Logic.Launch;
 /// <param name="P2Races">Races P2 may draft, or <c>null</c> for any.</param>
 /// <param name="Map">The map.</param>
 /// <param name="Seed">Rules seed; random when not given.</param>
-/// <param name="DraftAs">Bot profile that drafts and places for human seats (quick start), or <c>null</c>.</param>
+/// <param name="DraftAs">Bot profile that drafts and places for human seats (skip the draft), or <c>null</c> to draft by hand.</param>
 /// <param name="Load">A match file to continue.</param>
 /// <param name="As">The seat to show first.</param>
 /// <param name="Out">Where to keep the match file (needed for LLM seats), or <c>null</c> for an autosave name.</param>
@@ -25,6 +28,7 @@ namespace Fantactics.Client.Logic.Launch;
 /// <param name="Speed">Animation speed multiplier (0 = instant).</param>
 /// <param name="Debug">Open the debug panel at the start.</param>
 /// <param name="Screenshot">Save a picture of the screen here a few seconds in, then quit (for checking layout).</param>
+/// <param name="Menu">The menu screen to open: <c>main</c> (the default), <c>new</c>, <c>load</c>, or <c>settings</c>.</param>
 public sealed record LaunchArgs(
     bool NewMatch,
     string P1,
@@ -41,11 +45,12 @@ public sealed record LaunchArgs(
     bool Autoplay,
     double? Speed,
     string? Screenshot,
-    bool Debug)
+    bool Debug,
+    string Menu = "main")
 {
     /// <summary>No options: open the menu.</summary>
     public static LaunchArgs None { get; } = new(
-        false, "human", "bot:captain@easy", null, null, "riverford", null, "captain", null, null, null, null, false, null, null, false);
+        false, "human", "bot:captain@easy", null, null, "riverford", null, null, null, null, null, null, false, null, null, false);
 
     /// <summary>Draft budget for both seats (<c>--budget</c>), or <c>null</c> for the rules'.</summary>
     public int? Budget { get; init; }
@@ -103,6 +108,7 @@ public sealed record LaunchArgs(
                 "--speed" => result with { Speed = double.Parse(Value(), CultureInfo.InvariantCulture) },
                 "--screenshot" => result with { Screenshot = Value() },
                 "--debug" => result with { Debug = true },
+                "--menu" => result with { Menu = MenuScreen(Value()) },
                 _ => throw new ArgumentException($"Unknown option '{option}'."),
             };
         }
@@ -112,44 +118,17 @@ public sealed record LaunchArgs(
             : result;
     }
 
-    /// <summary>The match setup's allowed races: only the seats given a list; <c>null</c> when neither was.</summary>
-    public ImmutableSortedDictionary<Seat, ImmutableSortedSet<string>>? AllowedRaces()
-    {
-        var bySeat = ImmutableSortedDictionary.CreateBuilder<Seat, ImmutableSortedSet<string>>();
-        if (P1Races is not null)
-        {
-            bySeat[Seat.P1] = P1Races;
-        }
-
-        if (P2Races is not null)
-        {
-            bySeat[Seat.P2] = P2Races;
-        }
-
-        return bySeat.Count == 0 ? null : bySeat.ToImmutable();
-    }
-
-    /// <summary>The match setup's per-seat draft budgets; <c>null</c> when none was given.</summary>
-    public ImmutableSortedDictionary<Seat, int>? DraftBudgets() => PerSeat(Budget, P1Budget, P2Budget);
-
-    /// <summary>The match setup's per-seat starting caps; <c>null</c> when none was given.</summary>
-    public ImmutableSortedDictionary<Seat, int>? StartingCaps() => PerSeat(StartingCap, P1StartingCap, P2StartingCap);
-
-    private static ImmutableSortedDictionary<Seat, int>? PerSeat(int? both, int? p1, int? p2)
-    {
-        var bySeat = ImmutableSortedDictionary.CreateBuilder<Seat, int>();
-        if ((p1 ?? both) is int first)
-        {
-            bySeat[Seat.P1] = first;
-        }
-
-        if ((p2 ?? both) is int second)
-        {
-            bySeat[Seat.P2] = second;
-        }
-
-        return bySeat.Count == 0 ? null : bySeat.ToImmutable();
-    }
+    /// <summary>The new match these options describe, with the rules' budget and cap where none was given.</summary>
+    public NewMatchForm Form(RulesConfig rules) => new(
+        Map,
+        ImmutableSortedDictionary.CreateRange([
+            KeyValuePair.Create(Seat.P1, new SeatForm(
+                P1, P1Races, P1Budget ?? Budget ?? rules.DraftBudget, P1StartingCap ?? StartingCap ?? rules.StartingCap)),
+            KeyValuePair.Create(Seat.P2, new SeatForm(
+                P2, P2Races, P2Budget ?? Budget ?? rules.DraftBudget, P2StartingCap ?? StartingCap ?? rules.StartingCap))]),
+        Seed,
+        DraftAs,
+        Out);
 
     /// <summary>A positive number of draft points.</summary>
     /// <exception cref="ArgumentException">The value isn't a positive whole number.</exception>
@@ -157,6 +136,12 @@ public sealed record LaunchArgs(
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out int points) && points > 0
             ? points
             : throw new ArgumentException($"{option} needs a positive whole number.");
+
+    /// <summary>A menu screen name.</summary>
+    /// <exception cref="ArgumentException">It isn't one of the menu screens.</exception>
+    private static string MenuScreen(string value) => value is "main" or "new" or "load" or "settings"
+        ? value
+        : throw new ArgumentException("--menu is one of main, new, load, settings.");
 
     /// <summary>A comma-separated race list; <c>any</c> allows every race.</summary>
     private static ImmutableSortedSet<string>? Races(string value) =>
