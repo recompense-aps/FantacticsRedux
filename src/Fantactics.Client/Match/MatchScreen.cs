@@ -431,7 +431,7 @@ public partial class MatchScreen : Node
             : BoardModel.Build(update.View, _session.Rules, _moves, _actions, _board.Hovered, _placement);
         _board.Render(model);
         _hud.ShowStatus(HudText.Status(update.View, _session.Rules), _message ?? HudText.Prompt(update, LabelOf));
-        _hud.ShowPlayers(HudText.Players(update.View));
+        _hud.ShowPlayers(update.View.Phase == Phase.Draft ? [] : HudText.Players(update.View));
         _hud.ShowHint(model.Hint);
 
         _draftPanel.Visible = _draft is not null;

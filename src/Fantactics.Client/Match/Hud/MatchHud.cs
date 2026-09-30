@@ -101,7 +101,13 @@ public partial class MatchHud : Control
 
         foreach ((Seat seat, string text) in players)
         {
-            Label line = new() { Text = text, HorizontalAlignment = HorizontalAlignment.Right };
+            Label line = new()
+            {
+                Text = text,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            };
+            line.AddThemeFontSizeOverride("font_size", 14);
             line.AddThemeColorOverride("font_color", SeatColors.Of(seat).Lightened(0.35f));
             _players.AddChild(line);
         }
