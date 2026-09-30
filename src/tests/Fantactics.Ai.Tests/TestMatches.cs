@@ -32,6 +32,24 @@ internal static class TestMatches
         seed,
         new Dictionary<Seat, string> { [Seat.P1] = "bot", [Seat.P2] = "bot" }.ToImmutableSortedDictionary());
 
+    /// <summary>
+    /// A match on the four-seat Crossroads map with <paramref name="seats"/> seats (P1 up), open draft; everyone for
+    /// themselves unless <paramref name="teams"/> gives each seat's team in seat order.
+    /// </summary>
+    public static MatchSetup Crossroads(ulong seed, int seats = 4, params int[] teams) => new(
+        "crossroads",
+        seed,
+        Enum.GetValues<Seat>().Take(seats).ToImmutableSortedDictionary(seat => seat, _ => "bot"),
+        Teams: teams.Length == 0
+            ? null
+            : Enum.GetValues<Seat>().Zip(teams).ToImmutableSortedDictionary(pair => pair.First, pair => pair.Second));
+
+    /// <summary>One built-in bot per seat of <paramref name="setup"/>, with seeds derived from <paramref name="seed"/>.</summary>
+    public static IReadOnlyDictionary<Seat, IPlayerAgent> Bots(MatchSetup setup, string bot, int seed) =>
+        setup.Seats.Keys.ToDictionary(
+            seat => seat,
+            seat => BotLibrary.Create(bot, RulesConfig.Default, seed * 4 + (int)seat));
+
     /// <summary>The setup with new seat labels.</summary>
     public static MatchSetup WithSeats(this MatchSetup setup, string p1, string p2) => setup with
     {

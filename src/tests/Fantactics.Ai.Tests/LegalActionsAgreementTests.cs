@@ -39,7 +39,7 @@ public class LegalActionsAgreementTests
         Assert.Empty(failures.Take(20));
     }
 
-    private static IEnumerable<string> CheckOptions(GameState state, Seat seat)
+    internal static IEnumerable<string> CheckOptions(GameState state, Seat seat)
     {
         LegalActions? legal = LegalActions.For(state, seat);
         if (legal is null)
