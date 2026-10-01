@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://Match/Hud/MatchHud.cs" id="1_hud"]
 
-[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_hint", "_actions", "_reserve", "_problems", "_submit", "_speed", "_menu", "_banner", "_notice")]
+[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_players", "_hint", "_actions", "_reserve", "_problems", "_submit", "_speed", "_menu", "_banner", "_notice")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,6 +13,7 @@ mouse_filter = 2
 script = ExtResource("1_hud")
 _status = NodePath("Top/Status")
 _prompt = NodePath("Top/Prompt")
+_players = NodePath("Players")
 _hint = NodePath("Bottom/Hint")
 _actions = NodePath("Bottom/Actions")
 _reserve = NodePath("Bottom/Reserve")
@@ -41,6 +42,19 @@ text = "Status"
 [node name="Prompt" type="Label" parent="Top"]
 layout_mode = 2
 text = "Prompt"
+
+[node name="Players" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -296.0
+offset_top = 52.0
+offset_right = -8.0
+offset_bottom = 140.0
+grow_horizontal = 0
+mouse_filter = 2
 
 [node name="Bottom" type="HBoxContainer" parent="."]
 layout_mode = 1

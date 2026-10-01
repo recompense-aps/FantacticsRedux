@@ -7,7 +7,7 @@ bg_color = Color(0.11, 0.11, 0.13, 0.97)
 corner_radius_top_left = 4
 corner_radius_bottom_left = 4
 
-[node name="DebugPanel" type="PanelContainer" node_paths=PackedStringArray("_hash", "_godView", "_p1", "_p2", "_quicksave", "_quickload", "_saves", "_timeline", "_events", "_hidden")]
+[node name="DebugPanel" type="PanelContainer" node_paths=PackedStringArray("_hash", "_godView", "_p1", "_p2", "_p3Label", "_p3", "_p4Label", "_p4", "_quicksave", "_quickload", "_saves", "_timeline", "_events", "_hidden")]
 anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
@@ -23,6 +23,10 @@ _hash = NodePath("Margin/Rows/Hash")
 _godView = NodePath("Margin/Rows/GodView")
 _p1 = NodePath("Margin/Rows/Seats/P1")
 _p2 = NodePath("Margin/Rows/Seats/P2")
+_p3Label = NodePath("Margin/Rows/Seats/P3Label")
+_p3 = NodePath("Margin/Rows/Seats/P3")
+_p4Label = NodePath("Margin/Rows/Seats/P4Label")
+_p4 = NodePath("Margin/Rows/Seats/P4")
 _quicksave = NodePath("Margin/Rows/Saving/Quicksave")
 _quickload = NodePath("Margin/Rows/Saving/Quickload")
 _saves = NodePath("Margin/Rows/Saves")
@@ -71,6 +75,24 @@ layout_mode = 2
 text = "P2"
 
 [node name="P2" type="OptionButton" parent="Margin/Rows/Seats"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="P3Label" type="Label" parent="Margin/Rows/Seats"]
+layout_mode = 2
+text = "P3"
+
+[node name="P3" type="OptionButton" parent="Margin/Rows/Seats"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="P4Label" type="Label" parent="Margin/Rows/Seats"]
+layout_mode = 2
+text = "P4"
+
+[node name="P4" type="OptionButton" parent="Margin/Rows/Seats"]
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0

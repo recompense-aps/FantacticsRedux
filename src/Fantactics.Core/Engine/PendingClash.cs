@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Fantactics.Core.Geometry;
 
 namespace Fantactics.Core.Engine;
@@ -7,4 +8,12 @@ namespace Fantactics.Core.Engine;
 /// <param name="UnitA">One unit.</param>
 /// <param name="UnitB">The other unit.</param>
 /// <param name="Tile">The contested tile, or <c>null</c> for a swap (the winner takes the loser's tile).</param>
-internal readonly record struct PendingClash(int Tick, int UnitA, int UnitB, Point? Tile);
+/// <param name="Challengers">
+/// Units of further teams contesting the same tile, in the order they fight the survivor (GameDesign §4.1).
+/// </param>
+internal readonly record struct PendingClash(
+    int Tick,
+    int UnitA,
+    int UnitB,
+    Point? Tile,
+    ImmutableArray<int> Challengers);

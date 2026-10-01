@@ -63,7 +63,7 @@ public class ViewIdsTests
         GameState state = GameEngine.NewMatch(RulesConfig.Default, MapLibrary.Load("riverford"), 1);
         state = Apply(state, Seat.P1, new SubmitDraft(p1Starting, p1Reserve)).State;
         state = Apply(state, Seat.P2, new SubmitDraft(["Grunt", "Grunt", "Tank"], ["Rusher"])).State;
-        return SeatExtensions.All.Aggregate(state, (current, seat) =>
+        return SeatExtensions.TwoPlayer.Aggregate(state, (current, seat) =>
         {
             PlacementOptions options = LegalActions.For(current, seat)?.Placement
                 ?? throw new InvalidOperationException($"{seat} has nothing to place.");

@@ -29,7 +29,7 @@ public class DamageTests
         GameState state = new ScenarioBuilder()
             .WithMap(_map)
             .AddUnit(attackerSeat, attackerType, 0, 0, out int attacker)
-            .AddUnit(attackerSeat.Opponent(), targetType, tx, ty, out int target)
+            .AddUnit(attackerSeat == Seat.P1 ? Seat.P2 : Seat.P1, targetType, tx, ty, out int target)
             .Build();
 
         int damage = CombatRules.Damage(state, state.Units[attacker], state.Units[target], AttackKind.Basic);

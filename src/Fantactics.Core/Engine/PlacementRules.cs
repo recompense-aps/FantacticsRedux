@@ -37,10 +37,10 @@ internal static class PlacementRules
         }
     }
 
-    /// <summary>Reveals both placements, sets turn-1 tie priority, and starts turn 1.</summary>
+    /// <summary>Reveals every placement, sets turn-1 tie priority, and starts turn 1.</summary>
     public static GameState Resolve(GameState state, List<GameEvent> events)
     {
-        foreach (Seat seat in SeatExtensions.All)
+        foreach (Seat seat in state.Seats.ToList())
         {
             var placement = (PlaceStartingArmy)state.PendingOrders[seat];
             foreach (UnitPlacement p in placement.Placements.OrderBy(p => p.UnitId))
@@ -57,19 +57,22 @@ internal static class PlacementRules
     }
 
     /// <summary>
-    /// Deathmatch: the player with the lower value on the field gets turn-1 tie priority; a seeded coin flip breaks
-    /// equal values (GameDesign §4.1).
+    /// Deathmatch: the player with the lowest value on the field gets turn-1 tie priority; a seeded draw breaks equal
+    /// values (GameDesign §4.1). With two players, that draw is a coin flip.
     /// </summary>
     private static (Seat Priority, ulong RngState) FirstTiePriority(GameState state)
     {
-        int p1 = UnitRules.FieldValue(state, Seat.P1);
-        int p2 = UnitRules.FieldValue(state, Seat.P2);
-        if (p1 != p2)
+        Dictionary<Seat, int> values = state.Seats.ToDictionary(
+            seat => seat,
+            seat => UnitRules.FieldValue(state, seat));
+        int lowest = values.Values.Min();
+        List<Seat> tied = values.Keys.Where(seat => values[seat] == lowest).ToList();
+        if (tied.Count == 1)
         {
-            return (p1 < p2 ? Seat.P1 : Seat.P2, state.RngState);
+            return (tied[0], state.RngState);
         }
 
-        (int flip, ulong next) = Rng.Next(state.RngState, 2);
-        return (flip == 0 ? Seat.P1 : Seat.P2, next);
+        (int pick, ulong next) = Rng.Next(state.RngState, tied.Count);
+        return (tied[pick], next);
     }
 }

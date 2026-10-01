@@ -53,7 +53,7 @@ public partial class LoadScreen : Control
     public override void _Ready()
     {
         _folderLabel.Text = _folder;
-        foreach (Seat seat in SeatExtensions.All)
+        foreach (Seat seat in Enum.GetValues<Seat>())
         {
             _seat.AddItem($"Play as {seat}", (int)seat);
         }
@@ -84,6 +84,11 @@ public partial class LoadScreen : Control
             .Select(pair => pair.Key)
             .DefaultIfEmpty(Seat.P1)
             .First();
+        foreach (Seat seat in Enum.GetValues<Seat>())
+        {
+            _seat.SetItemDisabled(_seat.GetItemIndex((int)seat), !save.Seats.ContainsKey(seat));
+        }
+
         _seat.Select(_seat.GetItemIndex((int)human));
         _message.Text = "";
     }

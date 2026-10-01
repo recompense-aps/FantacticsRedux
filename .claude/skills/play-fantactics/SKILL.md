@@ -1,6 +1,6 @@
 ---
 name: play-fantactics
-description: Play a seat in a Fantactics match through the fantactics-sim CLI (as P1 or P2, against a bot, a human, or another LLM). Use when asked to play, playtest, or self-play Fantactics, or to referee an LLM-vs-LLM match.
+description: Play a seat in a Fantactics match through the fantactics-sim CLI (as any seat, P1 to P4, against bots, humans, or other LLMs, alone or on a team). Use when asked to play, playtest, or self-play Fantactics, or to referee an LLM-vs-LLM match.
 ---
 
 # Playing Fantactics with fantactics-sim
@@ -30,7 +30,11 @@ SIM="dotnet src/Fantactics.Sim/bin/Debug/net8.0/fantactics-sim.dll"
 Create a match if you weren't given one (defaults: P1 llm, P2 bot:random, map riverford). Both seats draft from
 every race's units; the draft table shows each unit's race and classes. Race auras and abilities (War Cry, Mend) only
 reach units of the same race. Limit a seat with `--p1-races Elves` (comma-separated). After both drafts, your view
-shows how many units of each race the enemy drafted.
+shows how many units of each race each opponent drafted.
+
+Matches can have up to four seats with teams (e.g. `new --map crossroads --p3 bot:captain --p4 bot:captain --teams
+1,2,1,2`). Your view then lists every `opponents` entry and your `allies`; units' `side` names the owner (`P3 enemy`,
+`P3 ally`). You can't attack or clash with allies, and allies' units don't block you.
 
 ```sh
 $SIM new --out playtests/match-1.json --p1 llm --p2 bot:random --seed 7
@@ -65,7 +69,7 @@ Always pass `--format toon` (compact tables; about half the tokens of JSON).
 | Moves | `--orders`: `X>x,y` move, `X>a,b>x,y` via waypoints, `X=hold`, `X@x,y` deploy a reserve unit | `--orders "D>7,2 F>3,9>5,8 G@0,4"` |
 | Action | `--pick N` from the numbered options | `--pick 2` |
 
-- Unit ids: UPPERCASE letters are yours (including reserve units), lowercase are the enemy's. Ids never change.
+- Unit ids: UPPERCASE letters are yours (including reserve units), lowercase are other players'. Ids never change.
 - Coordinates are `x,y`: x is the column and y the row, counted from the top-left, as in the map rows.
 - Units without a move clause hold (Held gives +1 initiative; Braced units get +3 when an enemy moves into contact).
 - Move orders are hidden and simultaneous. Enemies entering the same tile, or swapping tiles, clash to the death with
@@ -75,9 +79,10 @@ Always pass `--format toon` (compact tables; about half the tokens of JSON).
 ## Winning (Deathmatch)
 
 A player whose army value (units on the field plus undeployed reserve) falls below 25% of the draft budget at the end
-of a turn loses (Rout). Objective tiles (`*` on the map) score 2 points at the end of each turn for the player who
-holds more of them than the opponent. After turn 15, the higher score wins: destroyed enemy value plus objective
-points. Sitting back is not safe: an opponent holding the objectives wins on points.
+of a turn loses (Rout); with more than two teams, they're eliminated and the rest play on. Objective tiles (`*` on the
+map) score 2 points at the end of each turn for the one player who holds the most of them. After turn 15, the higher
+(team) score wins: destroyed enemy value plus objective points. Sitting back is not safe: an opponent holding the
+objectives wins on points.
 
 ## Self-play (referee)
 

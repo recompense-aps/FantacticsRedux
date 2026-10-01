@@ -7,13 +7,13 @@ using Fantactics.Core.State;
 
 namespace Fantactics.Core.Engine;
 
-/// <summary>Resolves both players' hidden orders: arrivals, movement ticks, clashes, then the action order.</summary>
+/// <summary>Resolves every player's hidden orders: arrivals, movement ticks, clashes, then the action order.</summary>
 internal static class MovementResolver
 {
-    /// <summary>Resolves the movement phase once both seats' orders are in.</summary>
+    /// <summary>Resolves the movement phase once every live seat's orders are in.</summary>
     public static GameState Resolve(GameState state, List<GameEvent> events)
     {
-        Dictionary<Seat, SubmitMoveOrders> orders = SeatExtensions.All.ToDictionary(
+        Dictionary<Seat, SubmitMoveOrders> orders = state.LiveSeats.ToDictionary(
             seat => seat,
             seat => (SubmitMoveOrders)state.PendingOrders[seat]);
         state = state with { PendingOrders = ImmutableSortedDictionary<Seat, ICommand>.Empty };
@@ -62,14 +62,16 @@ internal static class MovementResolver
 
         int maxDistance = state.Rules.BracedTrigger == BracedTrigger.Adjacent ? 1 : state.DefinitionOf(unit).MaxRange;
         return state.FieldUnits.Any(enemy =>
-            enemy.Owner != unit.Owner
+            state.AreEnemies(enemy, unit)
             && moved.Contains(enemy.Id)
             && enemy.Position.DistanceTo(unit.Position) <= maxDistance);
     }
 
     /// <summary>
-    /// Places reserve arrivals before any unit moves. If both players deploy onto the same tile, the two arrivals
-    /// clash on it right away (GameDesign §4.4): both fight as if standing on the tile, and the survivor keeps it.
+    /// Places reserve arrivals before any unit moves. If enemies deploy onto the same tile, the arrivals clash on it
+    /// right away (GameDesign §4.4): they fight as if standing on the tile, and the survivor keeps it. With three or
+    /// more teams, the survivor takes on the next arrival, highest initiative first. If teammates pick the same tile,
+    /// only the lowest seat's unit arrives; the others stay in reserve.
     /// </summary>
     /// <returns>The new state and the arrival clash winners (who get no action this turn).</returns>
     private static (GameState State, HashSet<int> Winners) ResolveArrivals(
@@ -77,8 +79,11 @@ internal static class MovementResolver
         Dictionary<Seat, SubmitMoveOrders> orders,
         List<GameEvent> events)
     {
-        List<(Seat Seat, DeployOrder Deploy)> deploys = SeatExtensions.All
+        List<(Seat Seat, DeployOrder Deploy)> deploys = orders.Keys
+            .Order()
             .SelectMany(seat => orders[seat].Deploys.Select(deploy => (seat, deploy)))
+            .GroupBy(d => (d.deploy.Tile, Team: state.TeamOf(d.seat)))
+            .Select(group => group.First())
             .ToList();
 
         foreach ((Seat seat, DeployOrder deploy) in deploys)
@@ -99,23 +104,44 @@ internal static class MovementResolver
         }
 
         HashSet<int> winners = [];
-        IEnumerable<(Point Tile, int A, int B)> contested = deploys
+        List<Seat> tieOrder = [.. state.TieOrder];
+        IEnumerable<(Point Tile, List<int> Units)> contested = deploys
             .GroupBy(d => d.Deploy.Tile)
-            .Where(group => group.Count() == 2)
+            .Where(group => group.Count() >= 2)
             .OrderBy(group => group.Key)
-            .Select(group => (group.Key, group.First().Deploy.UnitId, group.Last().Deploy.UnitId));
-        foreach ((Point tile, int a, int b) in contested)
+            .Select(group => (group.Key, group.Count() == 2
+                ? group.Select(d => d.Deploy.UnitId).ToList()
+                : group
+                    .OrderByDescending(d => state.DefinitionOf(state.Units[d.Deploy.UnitId]).Initiative)
+                    .ThenBy(d => tieOrder.IndexOf(d.Seat))
+                    .Select(d => d.Deploy.UnitId)
+                    .ToList()));
+        foreach ((Point tile, List<int> units) in contested)
         {
-            events.Add(new ClashMarked(0, a, b, tile));
-            (state, int? winner) = ClashResolver.Fight(state, a, b, events);
-            if (winner is int winnerId)
+            int? holder = null;
+            bool fought = false;
+            foreach (int challenger in units)
+            {
+                if (holder is not int current)
+                {
+                    holder = challenger;
+                    continue;
+                }
+
+                events.Add(new ClashMarked(0, current, challenger, tile));
+                (state, holder) = ClashResolver.Fight(state, current, challenger, events);
+                fought = true;
+                if (holder is null)
+                {
+                    // Strike cap reached with both alive: neither keeps the tile, and both return to reserve.
+                    state = new[] { current, challenger }.Aggregate(state, ReturnToReserve);
+                    fought = false;
+                }
+            }
+
+            if (fought && holder is int winnerId)
             {
                 winners.Add(winnerId);
-            }
-            else
-            {
-                // Strike cap reached with both alive: neither keeps the tile, and both return to reserve.
-                state = new[] { a, b }.Aggregate(state, ReturnToReserve);
             }
         }
 

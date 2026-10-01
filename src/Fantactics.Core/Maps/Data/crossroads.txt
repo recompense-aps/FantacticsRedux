@@ -1,0 +1,26 @@
+// Crossroads: 16x16, symmetric under every rotation and reflection, for 2-4 seats (GameDesign 5.2).
+......%==%......
+..^...%==%...^..
+.^..+..==..+..^.
+...%%..==..%%...
+..+%...==...%+..
+......%==%......
+%%...%.==.%...%%
+=======..=======
+=======..=======
+%%...%.==.%...%%
+......%==%......
+..+%...==...%+..
+...%%..==..%%...
+.^..+..==..+..^.
+..^...%==%...^..
+......%==%......
+// The four crossroads tiles in the middle; whoever holds the most of them scores each turn.
+@objectives 7,7 8,7 7,8 8,8
+// P1 deploys on the left edge, P2 on the top, P3 on the right, P4 on the bottom; the corners stay empty.
+// With --teams 1,2,1,2, opposite edges are allies.
+@seats 4
+@deploy P1 0,3-2,12
+@deploy P2 3,0-12,2
+@deploy P3 13,3-15,12
+@deploy P4 3,13-12,15

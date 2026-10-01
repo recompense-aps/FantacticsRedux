@@ -10,7 +10,7 @@ namespace Fantactics.Sim.Commands;
 public abstract class SeatCommand(OutputWriter output) : MatchCommand(output)
 {
     /// <summary>The seat.</summary>
-    [Option("--as", Description = "Seat to act or look as: P1 or P2.")]
+    [Option("--as", Description = "Seat to act or look as: P1 to P4.")]
     [Required]
     public Seat As { get; set; }
 }

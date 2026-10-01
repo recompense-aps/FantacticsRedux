@@ -28,6 +28,15 @@ public static class Invariants
             .Where(player => player.Command < 0)
             .Select(player => $"{player.Seat} has negative Command ({player.Command})."));
 
+        problems.AddRange(state.Units.Values
+            .Where(unit => !state.Players.TryGetValue(unit.Owner, out PlayerState? owner) || owner.Eliminated)
+            .Select(unit => $"Unit {unit.Id} belongs to {unit.Owner}, which isn't playing."));
+
+        if (state.Phase != Phase.Over && state.LiveSeats.Select(state.TeamOf).Distinct().Count() < 2)
+        {
+            problems.Add("Fewer than two teams are playing, but the match isn't over.");
+        }
+
         IEnumerable<int> queued = state.TurnState.ActionQueue.Concat(state.TurnState.DelayedQueue);
         problems.AddRange(queued
             .Where(id => !state.Units.TryGetValue(id, out Unit? unit) || !unit.IsOnField)

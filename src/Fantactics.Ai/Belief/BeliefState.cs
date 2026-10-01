@@ -10,7 +10,7 @@ namespace Fantactics.Ai.Belief;
 
 /// <summary>
 /// Rebuilds a plausible <see cref="GameState"/> from what a seat can see, so bots can drive the real engine for
-/// lookahead without seeing hidden information. Hidden parts are filled with guesses: the opponent's reserve
+/// lookahead without seeing hidden information. Hidden parts are filled with guesses: every other seat's reserve
 /// composition and, where lookahead needs them, their orders.
 /// </summary>
 public static class BeliefState
@@ -18,20 +18,33 @@ public static class BeliefState
     /// <summary>First id given to guessed units, well clear of real ids.</summary>
     public const int GuessedIdBase = 100_000;
 
-    /// <summary>Builds a state matching <paramref name="view"/>.</summary>
+    /// <summary>Builds a state matching <paramref name="view"/> in a one-against-one match.</summary>
     /// <param name="view">What the seat sees.</param>
     /// <param name="rules">Rules in effect (a view doesn't carry them).</param>
     /// <param name="enemyReserve">Guessed unit types of the opponent's reserve.</param>
-    public static GameState From(PlayerView view, RulesConfig rules, IReadOnlyList<string> enemyReserve)
+    /// <exception cref="InvalidOperationException">The seat doesn't have exactly one opponent.</exception>
+    public static GameState From(PlayerView view, RulesConfig rules, IReadOnlyList<string> enemyReserve) =>
+        From(view, rules, new Dictionary<Seat, IReadOnlyList<string>> { [view.SoleOpponent()] = enemyReserve });
+
+    /// <summary>Builds a state matching <paramref name="view"/>.</summary>
+    /// <param name="view">What the seat sees.</param>
+    /// <param name="rules">Rules in effect (a view doesn't carry them).</param>
+    /// <param name="reserves">Guessed unit types of other seats' reserves, by seat.</param>
+    public static GameState From(
+        PlayerView view,
+        RulesConfig rules,
+        IReadOnlyDictionary<Seat, IReadOnlyList<string>> reserves)
     {
-        Seat enemy = view.Seat.Opponent();
-        IEnumerable<Unit> guessed = enemyReserve.Select((type, index) => Unit.Create(
-            GuessedIdBase + index,
-            enemy,
-            type,
-            UnitLocation.Reserve,
-            default(Point),
-            rules.Units[type].Hp));
+        IEnumerable<Unit> guessed = reserves
+            .OrderBy(pair => pair.Key)
+            .SelectMany(pair => pair.Value.Select(type => (Seat: pair.Key, Type: type)))
+            .Select((guess, index) => Unit.Create(
+                GuessedIdBase + index,
+                guess.Seat,
+                guess.Type,
+                UnitLocation.Reserve,
+                default(Point),
+                rules.Units[guess.Type].Hp));
         ImmutableSortedDictionary<int, Unit> units = view.Units
             .Concat(guessed)
             .ToImmutableSortedDictionary(unit => unit.Id, unit => unit);
@@ -46,7 +59,9 @@ public static class BeliefState
                 summary.AllowedRaces,
                 summary.DraftedRaces,
                 summary.DraftBudget,
-                summary.StartingCap));
+                summary.StartingCap,
+                summary.TeamNumber == summary.Seat.OwnTeam() ? null : summary.TeamNumber,
+                summary.Eliminated ? view.Turn : null));
 
         ImmutableSortedDictionary<Seat, ICommand> pending = view.MyPendingOrders is ICommand mine
             ? ImmutableSortedDictionary<Seat, ICommand>.Empty.Add(view.Seat, mine)

@@ -26,7 +26,7 @@ internal static class InitiativeRules
             .Where(unit => !clashWinners.Contains(unit.Id) && unit.CannotActOnTurn != state.Turn)
             .GroupBy(unit => effective[unit.Id])
             .OrderByDescending(group => group.Key)
-            .SelectMany(group => Interleave(group, state.TiePriority))
+            .SelectMany(group => Interleave(group, state))
             .ToImmutableArray();
 
         state = state with
@@ -45,12 +45,20 @@ internal static class InitiativeRules
         return order.IsEmpty ? TurnRules.EndTurn(state, events) : state;
     }
 
-    /// <summary>Ties alternate between players, starting with the seat that has priority; each side goes by id.</summary>
-    private static IEnumerable<int> Interleave(IEnumerable<Unit> tied, Seat priority)
+    /// <summary>
+    /// Ties take turns between players in tie order, starting with the seat that has priority (GameDesign §4.1); each
+    /// player goes by id.
+    /// </summary>
+    private static IEnumerable<int> Interleave(IEnumerable<Unit> tied, GameState state)
     {
-        List<int> first = tied.Where(unit => unit.Owner == priority).Select(unit => unit.Id).Order().ToList();
-        List<int> second = tied.Where(unit => unit.Owner != priority).Select(unit => unit.Id).Order().ToList();
-        return Enumerable.Range(0, Math.Max(first.Count, second.Count))
-            .SelectMany(i => first.Skip(i).Take(1).Concat(second.Skip(i).Take(1)));
+        List<List<int>> bySeat = state.TieOrder
+            .Select(seat => tied
+                .Where(unit => unit.Owner == seat)
+                .Select(unit => unit.Id)
+                .Order()
+                .ToList())
+            .ToList();
+        return Enumerable.Range(0, bySeat.Max(ids => ids.Count))
+            .SelectMany(i => bySeat.SelectMany(ids => ids.Skip(i).Take(1)));
     }
 }

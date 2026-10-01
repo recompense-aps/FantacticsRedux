@@ -39,14 +39,19 @@ public static class DebugText
         return $"T{logged.Turn} #{logged.Seq}: {logged.Event.GetType().Name} {fields}".TrimEnd();
     }
 
-    /// <summary>What <paramref name="seat"/> can't see: the enemy's reserve and any orders already locked in.</summary>
+    /// <summary>
+    /// What <paramref name="seat"/> can't see: every other seat's reserve and any orders already locked in.
+    /// </summary>
     public static IEnumerable<string> Hidden(GameState state, Seat seat)
     {
-        Seat enemy = seat.Opponent();
-        string reserve = string.Join(", ", state.Units.Values
-            .Where(u => u.Owner == enemy && u.Location == UnitLocation.Reserve)
-            .Select(u => $"#{u.Id} {u.Type}"));
-        yield return $"{enemy} reserve: {(reserve.Length == 0 ? "none" : reserve)}";
+        foreach (Seat other in state.LiveSeats.Where(other => other != seat))
+        {
+            string reserve = string.Join(", ", state.Units.Values
+                .Where(u => u.Owner == other && u.Location == UnitLocation.Reserve)
+                .Select(u => $"#{u.Id} {u.Type}"));
+            yield return $"{other} reserve: {(reserve.Length == 0 ? "none" : reserve)}";
+        }
+
         foreach ((Seat owner, ICommand orders) in state.PendingOrders)
         {
             yield return $"{owner} locked in: {Describe(orders)}";

@@ -73,7 +73,7 @@ public class PersonalityTests
                     TestMatches.Riverford((ulong)seed, p1Race, p2Race),
                     botIsP1 ? TestMatches.Bots(bot, opponent, seed) : TestMatches.Bots(opponent, bot, seed),
                     keepRecord: false);
-                return result.Outcome.Winner == (botIsP1 ? Seat.P1 : Seat.P2);
+                return result.Outcome.Won(botIsP1 ? Seat.P1 : Seat.P2);
             });
 
     /// <summary>Rows spanned by the bot's starting placement as P1, after a fixed draft.</summary>

@@ -108,7 +108,8 @@ public static class EventFormatter
             "",
             $"held {e.Held} vs {e.EnemyHeld} objective tiles: +{e.Points} = {e.Total}"),
         TurnEnded e => Line(logged, "turn-end", "", "", $"turn {e.Turn} ends"),
-        MatchEnded e => Line(logged, "match-end", e.Winner?.ToString() ?? "", "", $"{e.Reason}"),
+        SeatEliminated e => Line(logged, "eliminated", e.Seat.ToString(), "", "routed; its units leave the field"),
+        MatchEnded e => Line(logged, "match-end", string.Join('+', e.Winners), "", $"{e.Reason}"),
         _ => Line(logged, logged.Event.GetType().Name, "", "", ""),
     };
 

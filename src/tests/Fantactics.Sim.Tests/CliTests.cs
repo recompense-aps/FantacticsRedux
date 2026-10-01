@@ -71,6 +71,44 @@ public sealed class CliTests : IDisposable
     }
 
     [Fact]
+    public void FourSeatTeamMatchesPlayOutWithBots()
+    {
+        Assert.Equal(
+            ExitCodes.Ok,
+            Run(
+                out _,
+                "new", "--out", MatchPath, "--map", "crossroads", "--p1", "bot:random", "--p2", "bot:random",
+                "--p3", "bot:random", "--p4", "bot:random", "--teams", "1,2,1,2", "--seed", "4"));
+
+        Assert.Equal(ExitCodes.Ok, Run(out JsonElement status, "status", MatchPath, "--format", "json"));
+        Assert.Equal(
+            [1, 2, 1, 2],
+            status.GetProperty("seats").EnumerateArray().Select(seat => seat.GetProperty("team").GetInt32()));
+        string outcome = status.GetProperty("outcome").GetString() ?? "";
+        Assert.True(
+            outcome.StartsWith("P1 and P3 win") || outcome.StartsWith("P2 and P4 win") || outcome.StartsWith("draw"),
+            outcome);
+        Assert.Equal(ExitCodes.Ok, Run(out JsonElement view, "view", MatchPath, "--as", "P1", "--format", "json"));
+        Assert.Equal(
+            ["P3"],
+            view.GetProperty("allies").EnumerateArray().Select(ally => ally.GetProperty("seat").GetString()));
+    }
+
+    [Theory]
+    [InlineData("--p3", "llm")]
+    [InlineData("--p4", "llm")]
+    [InlineData("--teams", "1,1")]
+    [InlineData("--teams", "1,2,3")]
+    [InlineData("--p3-races", "Elves")]
+    public void SeatsMustFitTheMap(string option, string value)
+    {
+        int exit = Run(out _, "new", "--out", MatchPath, "--p1", "llm", "--p2", "llm", option, value);
+
+        Assert.NotEqual(ExitCodes.Ok, exit);
+        Assert.False(File.Exists(MatchPath));
+    }
+
+    [Fact]
     public void WaitForReturnsWhenTheSeatOwesAndTimesOutWhenItDoesNot()
     {
         Run(out _, "new", "--out", MatchPath, "--p1", "llm", "--p2", "llm");

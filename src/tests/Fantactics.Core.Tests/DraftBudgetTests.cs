@@ -65,7 +65,7 @@ public class DraftBudgetTests
         (GameState moved, _) = Moves(builder.Build(), SubmitMoveOrders.HoldAll, SubmitMoveOrders.HoldAll);
         (GameState after, _) = WaitOutTurn(moved);
 
-        Assert.Equal(winner, after.Outcome?.Winner);
+        Assert.Equal(winner, after.Outcome?.Winners.Cast<Seat?>().SingleOrDefault());
     }
 
     [Fact]

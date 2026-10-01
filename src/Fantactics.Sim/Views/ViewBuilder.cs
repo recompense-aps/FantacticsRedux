@@ -15,7 +15,8 @@ public static class ViewBuilder
     /// <summary>How to read the map and unit ids.</summary>
     public const string Legend =
         "map x=column y=row from top-left; terrain . plains = road % forest + hills ^ mountains # bridge ~ water; "
-        + "* = objective tile (hold more of them than the enemy to score each turn); units UPPER=yours lower=enemy (@ = unit with a 2-letter id)";
+        + "* = objective tile (hold the most of them to score each turn); "
+        + "units UPPER=yours lower=other players' (the units table says enemy or ally) (@ = unit with a 2-letter id)";
 
     private const int RecentLimit = 60;
 
@@ -56,7 +57,10 @@ public static class ViewBuilder
             viewer.ToString(),
             view.TiePriority.ToString(),
             Side(view.Players[viewer]),
-            Side(view.Players[viewer.Opponent()]),
+            [.. view.Opponents().Select(seat => Side(view.Players[seat]))],
+            [.. view.Players.Values
+                .Where(player => player.Seat != viewer && !view.AreEnemies(player.Seat, viewer))
+                .Select(Side)],
             Pending(GameEngine.PendingDecisionFor(state, viewer), handles),
             WaitingFor(view),
             Legend,
@@ -72,14 +76,16 @@ public static class ViewBuilder
     public static StatusView Status(MatchSession session)
     {
         GameState state = session.State;
-        ImmutableArray<SeatStatus> seats = SeatExtensions.All
-            .Select(seat => (Seat: seat, Player: state.Players[seat]))
-            .Select(pair => new SeatStatus(
-                pair.Seat.ToString(),
-                session.KindOf(pair.Seat).Value,
-                RaceText.Allowed(pair.Player.AllowedRaces),
-                $"{pair.Player.BudgetUnder(state.Rules)}/{pair.Player.StartingCapUnder(state.Rules)}",
-                GameEngine.PendingDecisionFor(state, pair.Seat) is Decision decision ? KindOf(decision) : ""))
+        ImmutableArray<SeatStatus> seats = state.Players.Values
+            .Select(player => new SeatStatus(
+                player.Seat.ToString(),
+                session.KindOf(player.Seat).Value,
+                player.TeamNumber,
+                RaceText.Allowed(player.AllowedRaces),
+                $"{player.BudgetUnder(state.Rules)}/{player.StartingCapUnder(state.Rules)}",
+                player.Eliminated ? "out"
+                    : GameEngine.PendingDecisionFor(state, player.Seat) is Decision decision ? KindOf(decision)
+                    : ""))
             .ToImmutableArray();
         return new StatusView(state.Turn, state.Phase.ToString(), seats, session.CommandCount, Outcome(state.Outcome));
     }
@@ -97,12 +103,12 @@ public static class ViewBuilder
     public static ImmutableArray<string> WaitingFor(PlayerView view) =>
         view.PendingDecisions.Select(d => d.Seat.ToString()).Distinct().ToImmutableArray();
 
-    /// <summary>Readable result, e.g. <c>P2 wins (Rout)</c>.</summary>
+    /// <summary>Readable result, e.g. <c>P2 wins (Rout)</c> or <c>P1 and P3 win (TurnLimit)</c>.</summary>
     public static string? Outcome(MatchOutcome? outcome) => outcome switch
     {
         null => null,
-        { Winner: Seat winner } => $"{winner} wins ({outcome.Reason})",
-        _ => $"draw ({outcome.Reason})",
+        { IsDraw: true } => $"draw ({outcome.Reason})",
+        _ => $"{outcome.Headline()} ({outcome.Reason})",
     };
 
     private static UnitRow Row(GameState state, PlayerView view, Unit unit, Func<int, string> handle)
@@ -122,7 +128,7 @@ public static class ViewBuilder
             .Select(flag => flag.Flag);
         return new UnitRow(
             handle(unit.Id),
-            unit.Owner == view.Seat ? "you" : "enemy",
+            SideOf(view, unit.Owner),
             unit.Type,
             unit.Position.X,
             unit.Position.Y,
@@ -138,6 +144,12 @@ public static class ViewBuilder
             view.TurnState.EffectiveInitiative.GetValueOrDefault(unit.Id, definition.Initiative),
             string.Join(" ", statuses.Concat(flags)));
     }
+
+    /// <summary>Whose a unit is, as the viewer sees it; one-against-one keeps the short <c>enemy</c>.</summary>
+    private static string SideOf(PlayerView view, Seat owner) =>
+        owner == view.Seat ? "you"
+        : view.Players.Count == 2 ? "enemy"
+        : $"{owner} {(view.AreEnemies(owner, view.Seat) ? "enemy" : "ally")}";
 
     private static SideSummary Side(PlayerSummary player) => new(
         player.Seat.ToString(),

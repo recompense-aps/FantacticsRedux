@@ -30,6 +30,18 @@ public partial class DebugPanel : PanelContainer
     private OptionButton _p2 = null!;
 
     [Export]
+    private Label _p3Label = null!;
+
+    [Export]
+    private OptionButton _p3 = null!;
+
+    [Export]
+    private Label _p4Label = null!;
+
+    [Export]
+    private OptionButton _p4 = null!;
+
+    [Export]
     private Button _quicksave = null!;
 
     [Export]
@@ -78,8 +90,11 @@ public partial class DebugPanel : PanelContainer
     public override void _Ready()
     {
         _godView.Toggled += on => EmitSignal(SignalName.GodViewToggled, on);
-        _p1.ItemSelected += index => EmitSignal(SignalName.SeatChosen, (int)Seat.P1, _seatOptions[(int)index]);
-        _p2.ItemSelected += index => EmitSignal(SignalName.SeatChosen, (int)Seat.P2, _seatOptions[(int)index]);
+        foreach ((Seat seat, OptionButton picker) in Pickers())
+        {
+            picker.ItemSelected += index => EmitSignal(SignalName.SeatChosen, (int)seat, _seatOptions[(int)index]);
+        }
+
         _quicksave.Pressed += () => EmitSignal(SignalName.QuicksavePressed);
         _quickload.Pressed += () => EmitSignal(SignalName.QuickloadPressed);
         _saves.ItemActivated += index => EmitSignal(SignalName.LoadChosen, _files[(int)index]);
@@ -90,7 +105,7 @@ public partial class DebugPanel : PanelContainer
     public void SetSeatOptions(IReadOnlyList<string> options)
     {
         _seatOptions = options;
-        foreach (OptionButton seat in new[] { _p1, _p2 })
+        foreach ((_, OptionButton seat) in Pickers())
         {
             seat.Clear();
             foreach (string option in options)
@@ -120,8 +135,17 @@ public partial class DebugPanel : PanelContainer
             SetSeatOptions([.. _seatOptions, .. missing]);
         }
 
-        _p1.Select(_seatOptions.ToList().IndexOf(labels[Seat.P1]));
-        _p2.Select(_seatOptions.ToList().IndexOf(labels[Seat.P2]));
+        foreach ((Seat seat, OptionButton picker) in Pickers())
+        {
+            picker.Visible = labels.ContainsKey(seat);
+            if (picker.Visible)
+            {
+                picker.Select(_seatOptions.ToList().IndexOf(labels[seat]));
+            }
+        }
+
+        _p3Label.Visible = _p3.Visible;
+        _p4Label.Visible = _p4.Visible;
 
         _timeline.Clear();
         _timelineSeqs.Clear();
@@ -163,4 +187,7 @@ public partial class DebugPanel : PanelContainer
             _files.Add(path);
         }
     }
+
+    private IEnumerable<(Seat Seat, OptionButton Picker)> Pickers() =>
+        [(Seat.P1, _p1), (Seat.P2, _p2), (Seat.P3, _p3), (Seat.P4, _p4)];
 }

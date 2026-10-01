@@ -20,6 +20,8 @@ All code lives under `src/`; the repo root holds only docs and config.
 
 Core's rules data (unit stats, tunable numbers) is `src/Fantactics.Core/Rules/Data/mvp-rules.json`; maps are ASCII files in `src/Fantactics.Core/Maps/Data/`. Both are embedded resources. When a rule's behavior changes, bump `GameEngine.RulesVersion`.
 
+Map files are one terrain character per tile, one row per line, plus directives (`MapParser`, GameDesign §5): `@objectives x,y …` for objective tiles, `@seats N` for the most seats the map takes (default 2), and `@deploy P1 x1,y1-x2,y2 …` for each seat's deploy zone (rectangles, corners included). A map without `@deploy` lines gives P1 and P2 the back `deployColumns` columns. Matches have 2–4 seats with optional teams; write rules and tools for "opponents" (`GameState.Opponents`, `AreEnemies`), not "the opponent".
+
 ## Godot
 
 - Editor binary: `C:\Users\alex\code\godot\godot4.7.2\Godot_v4.7.2-stable_mono_win64.exe`

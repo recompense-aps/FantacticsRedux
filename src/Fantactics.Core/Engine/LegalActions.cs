@@ -97,7 +97,7 @@ public sealed record LegalActions(
     private static ImmutableArray<ActionOption> ActionOptionsFor(GameState state, int unitId)
     {
         Unit unit = state.Units[unitId];
-        List<Unit> enemies = state.FieldUnits.Where(other => other.Owner != unit.Owner).ToList();
+        List<Unit> enemies = state.FieldUnits.Where(other => state.AreEnemies(other, unit)).ToList();
 
         IEnumerable<ActionOption> attacks = enemies
             .Select(enemy => (Enemy: enemy, Kind: CombatRules.BasicAttackKind(state, unit, enemy)))

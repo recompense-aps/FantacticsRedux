@@ -17,12 +17,14 @@ namespace Fantactics.Client.Logic.Menus;
 /// <param name="Seed">Rules seed, or <c>null</c> for a random one.</param>
 /// <param name="DraftAs">Bot profile that drafts and places for human seats (skip the draft), or <c>null</c>.</param>
 /// <param name="Out">File to keep the match in, or <c>null</c> for the default (see <c>MatchOpener.New</c>).</param>
+/// <param name="Teams">Each seat's team, or <c>null</c> for everyone on a team of their own.</param>
 public sealed record NewMatchForm(
     string Map,
     ImmutableSortedDictionary<Seat, SeatForm> Seats,
     ulong? Seed,
     string? DraftAs,
-    string? Out)
+    string? Out,
+    ImmutableSortedDictionary<Seat, int>? Teams = null)
 {
     /// <summary>A human P1 against <c>bot:captain@easy</c> on the first map, under the rules' budget and cap.</summary>
     public static NewMatchForm Defaults(RulesConfig rules) => new(
@@ -43,6 +45,23 @@ public sealed record NewMatchForm(
         if (!MapLibrary.Names.Contains(Map))
         {
             problems.Add($"Unknown map '{Map}'.");
+        }
+        else if (MapLibrary.Load(Map) is { } map)
+        {
+            if (Seats.Count < 2 || Seats.Count > map.Seats)
+            {
+                problems.Add($"{Map} takes 2 to {map.Seats} players.");
+            }
+
+            problems.AddRange(Seats.Keys
+                .Where(seat => !map.HasDeployZone(seat))
+                .Select(seat => $"{Map} has no deploy zone for {seat}."));
+        }
+
+        if (Teams is { } teams
+            && Seats.Keys.Select(seat => teams.GetValueOrDefault(seat, seat.OwnTeam())).Distinct().Count() < 2)
+        {
+            problems.Add("At least two teams must play.");
         }
 
         foreach ((Seat seat, SeatForm form) in Seats)
@@ -88,7 +107,8 @@ public sealed record NewMatchForm(
             .ToImmutableSortedDictionary(pair => pair.Key, pair => pair.Value.Budget)),
         OrNull(Seats
             .Where(pair => pair.Value.StartingCap != rules.StartingCap)
-            .ToImmutableSortedDictionary(pair => pair.Key, pair => pair.Value.StartingCap)));
+            .ToImmutableSortedDictionary(pair => pair.Key, pair => pair.Value.StartingCap)),
+        Teams);
 
     /// <summary>Changes one seat's settings.</summary>
     public NewMatchForm WithSeat(Seat seat, Func<SeatForm, SeatForm> change) => this with

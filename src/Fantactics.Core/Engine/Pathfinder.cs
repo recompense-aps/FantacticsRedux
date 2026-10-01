@@ -21,7 +21,7 @@ public static class Pathfinder
         }
 
         HashSet<Point> enemyTiles = state.FieldUnits
-            .Where(other => other.Owner != unit.Owner)
+            .Where(other => state.AreEnemies(other, unit))
             .Select(other => other.Position)
             .ToHashSet();
         HashSet<Point> occupied = state.FieldUnits.Select(other => other.Position).ToHashSet();
@@ -86,7 +86,7 @@ public static class Pathfinder
     public static ImmutableArray<Point>? CheapestPath(GameState state, Unit unit, Point from, Point to)
     {
         HashSet<Point> enemyTiles = state.FieldUnits
-            .Where(other => other.Owner != unit.Owner && other.Position != to)
+            .Where(other => state.AreEnemies(other, unit) && other.Position != to)
             .Select(other => other.Position)
             .ToHashSet();
         Dictionary<Point, int> best = new() { [from] = 0 };

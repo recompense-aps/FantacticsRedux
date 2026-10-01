@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Fantactics.Client.Logic.Board;
 using Fantactics.Client.Logic.Launch;
 using Fantactics.Client.Logic.Session;
 using Fantactics.Core;
@@ -67,6 +68,65 @@ public class SessionTests
     }
 
     [Fact]
+    public void ThirdAndFourthSeatsAndTeamsComeFromTheLaunchOptions()
+    {
+        RulesConfig rules = RulesConfig.Default;
+        LaunchArgs args = LaunchArgs.Parse(
+        [
+            "--map", "crossroads", "--p3", "bot:random", "--p4", "llm", "--p3-races", "Goblins", "--teams", "1,2,1,2",
+        ]);
+
+        MatchSetup setup = args.Form(rules).ToSetup(rules, 1);
+
+        Assert.True(args.NewMatch);
+        Assert.Equal([Seat.P1, Seat.P2, Seat.P3, Seat.P4], setup.Seats.Keys);
+        Assert.Equal("llm", setup.Seats[Seat.P4]);
+        Assert.Equal(
+            new Dictionary<Seat, int> { [Seat.P1] = 1, [Seat.P2] = 2, [Seat.P3] = 1, [Seat.P4] = 2 },
+            setup.Teams!);
+        Assert.Equal(["Goblins"], setup.AllowedRaces![Seat.P3]);
+        Assert.Empty(args.Form(rules).Problems(rules, _ => true));
+        Assert.NotEmpty(LaunchArgs.Parse(["--p3", "llm"]).Form(rules).Problems(rules, _ => true));
+        Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--p4", "llm"]).Form(rules));
+        Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--teams", "1,2,1"]).Form(rules));
+        Assert.Throws<ArgumentException>(() => LaunchArgs.Parse(["--teams", "1,x"]));
+    }
+
+    [Fact]
+    public async Task AFourSeatSessionShowsEveryPlayer()
+    {
+        MatchSetup setup = new(
+            "crossroads",
+            6,
+            new Dictionary<Seat, string>
+            {
+                [Seat.P1] = "human",
+                [Seat.P2] = "bot:captain@easy",
+                [Seat.P3] = "bot:captain@easy",
+                [Seat.P4] = "bot:captain@easy",
+            }.ToImmutableSortedDictionary());
+        LocalMatch match = new(new MatchHost(RulesConfig.Default, setup), States.CreateBot);
+        ClientSession session = new(match, RulesConfig.Default, States.CreateBot, "captain");
+        TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.Updated += update =>
+        {
+            if (update.Legal?.Decision is SubmitMoveOrdersDecision)
+            {
+                ready.TrySetResult();
+            }
+        };
+
+        await session.StartAsync();
+
+        Assert.Same(ready.Task, await Task.WhenAny(ready.Task, Task.Delay(TimeSpan.FromSeconds(10))));
+        PlayerView view = session.Current.View;
+        Assert.Equal(
+            ["P1 · you", "P2 · enemy", "P3 · enemy", "P4 · enemy"],
+            HudText.Players(view).Select(line => string.Join(" · ", line.Text.Split(" · ").Take(2))));
+        Assert.DoesNotContain("–", HudText.Status(view, RulesConfig.Default));
+    }
+
+    [Fact]
     public void SavesGoToTheRepoPlaytestsFolderInDevelopment()
     {
         string project = Path.Combine(RepoRoot(), "src", "Fantactics.Client");
@@ -113,7 +173,7 @@ public class SessionTests
         }
 
         Seat first = session.Shown;
-        Seat second = first.Opponent();
+        Seat second = first == Seat.P1 ? Seat.P2 : Seat.P1;
         await session.SubmitAsync(Core.Commands.SubmitMoveOrders.HoldAll);
 
         Assert.Equal(second, session.Shown);

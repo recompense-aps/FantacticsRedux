@@ -9,9 +9,6 @@ namespace Fantactics.Client.Match.Board;
 /// <summary>A placeholder unit token: an owner-colored disc with the type's initials, an HP bar, and markers.</summary>
 public partial class UnitToken : Node2D
 {
-    private static readonly Color _p1Color = new("3b82f6");
-    private static readonly Color _p2Color = new("dc2626");
-
     private TokenModel? _model;
 
     /// <summary>The unit shown, in the viewing seat's ids.</summary>
@@ -30,7 +27,7 @@ public partial class UnitToken : Node2D
             DrawArc(Vector2.Zero, 14, 0, Mathf.Tau, 24, Colors.Yellow, 2);
         }
 
-        Color body = model.Owner == Seat.P1 ? _p1Color : _p2Color;
+        Color body = SeatColors.Of(model.Owner);
         DrawCircle(Vector2.Zero, 11, body);
         DrawArc(Vector2.Zero, 11, 0, Mathf.Tau, 24, model.Mine ? Colors.White : Colors.Black, 1);
         string initials = model.Type.Length > 2 ? model.Type[..2] : model.Type;

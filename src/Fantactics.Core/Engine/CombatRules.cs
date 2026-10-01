@@ -49,7 +49,9 @@ public static class CombatRules
         return Math.Min(
             state.Rules.SupportCap,
             state.FieldUnits.Count(unit =>
-                unit.Owner == attacker.Owner && unit.Id != attacker.Id && unit.Position.IsAdjacentTo(target.Position)));
+                !state.AreEnemies(unit, attacker)
+                && unit.Id != attacker.Id
+                && unit.Position.IsAdjacentTo(target.Position)));
     }
 
     /// <summary>
@@ -60,7 +62,7 @@ public static class CombatRules
     {
         UnitDefinition definition = state.DefinitionOf(attacker);
         int distance = attacker.Position.DistanceTo(target.Position);
-        if (target.Owner == attacker.Owner || distance < definition.MinRange || distance > definition.MaxRange)
+        if (!state.AreEnemies(target, attacker) || distance < definition.MinRange || distance > definition.MaxRange)
         {
             return null;
         }
@@ -87,7 +89,7 @@ public static class CombatRules
     public static int EffectiveBloodthirst(GameState state, Unit unit)
     {
         bool inWarCry = state.FieldUnits.Any(other =>
-            other.Owner == unit.Owner
+            !state.AreEnemies(other, unit)
             && other.Id != unit.Id
             && UnitRules.SharesRace(state, other, unit)
             && UnitRules.Trait(state, other, TraitIds.WarCry) is int radius and > 0

@@ -15,35 +15,37 @@ public static class RaceText
         allowed is null ? "any" : string.Join(", ", allowed);
 
     /// <summary>
-    /// Parses both seats' race lists (see <see cref="ParseAllowed"/>) into a match setup's allowed races; <c>null</c>
-    /// when both seats may draft every race.
+    /// Parses each seat's race list (see <see cref="ParseAllowed(string?, IEnumerable{string})"/>) into a match setup's
+    /// allowed races; <c>null</c> when every seat may draft every race.
     /// </summary>
     /// <exception cref="SimException">A race is unknown.</exception>
     public static ImmutableSortedDictionary<Seat, ImmutableSortedSet<string>>? ParseAllowed(
-        string? p1,
-        string? p2,
-        IEnumerable<string> knownRaces) =>
-        BySeat(ParseAllowed(p1, knownRaces), ParseAllowed(p2, knownRaces));
+        IReadOnlyDictionary<Seat, string?> lists,
+        IEnumerable<string> knownRaces)
+    {
+        List<string> known = [.. knownRaces];
+        return BySeat(lists.ToDictionary(pair => pair.Key, pair => ParseAllowed(pair.Value, known)));
+    }
 
     /// <summary>
-    /// A match setup's allowed races from each seat's list (<c>null</c> for any); <c>null</c> when both are.
+    /// A two-player match setup's allowed races from each seat's list (<c>null</c> for any); <c>null</c> when both
+    /// are.
     /// </summary>
     public static ImmutableSortedDictionary<Seat, ImmutableSortedSet<string>>? BySeat(
         ImmutableSortedSet<string>? p1,
-        ImmutableSortedSet<string>? p2)
+        ImmutableSortedSet<string>? p2) =>
+        BySeat(new Dictionary<Seat, ImmutableSortedSet<string>?> { [Seat.P1] = p1, [Seat.P2] = p2 });
+
+    /// <summary>
+    /// A match setup's allowed races from each seat's list (<c>null</c> for any); <c>null</c> when every list is.
+    /// </summary>
+    public static ImmutableSortedDictionary<Seat, ImmutableSortedSet<string>>? BySeat(
+        IReadOnlyDictionary<Seat, ImmutableSortedSet<string>?> lists)
     {
-        var bySeat = ImmutableSortedDictionary.CreateBuilder<Seat, ImmutableSortedSet<string>>();
-        if (p1 is not null)
-        {
-            bySeat[Seat.P1] = p1;
-        }
-
-        if (p2 is not null)
-        {
-            bySeat[Seat.P2] = p2;
-        }
-
-        return bySeat.Count == 0 ? null : bySeat.ToImmutable();
+        ImmutableSortedDictionary<Seat, ImmutableSortedSet<string>> bySeat = lists
+            .Where(pair => pair.Value is not null)
+            .ToImmutableSortedDictionary(pair => pair.Key, pair => pair.Value!);
+        return bySeat.IsEmpty ? null : bySeat;
     }
 
     /// <summary>

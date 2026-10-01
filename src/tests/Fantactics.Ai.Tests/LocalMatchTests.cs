@@ -24,7 +24,7 @@ public class LocalMatchTests
     public async Task HotseatWithAutoSkipPlaysToTheEndAndOnlyShowsSeatIds(int seed)
     {
         LocalMatch match = Match((ulong)seed, "human", "human");
-        List<IGameConnection> seats = [.. SeatExtensions.All.Select(match.Connect)];
+        List<IGameConnection> seats = [.. SeatExtensions.TwoPlayer.Select(match.Connect)];
         foreach (IGameConnection seat in seats)
         {
             await seat.SetAutoSkipAsync(true);
@@ -53,8 +53,8 @@ public class LocalMatchTests
     public async Task QueuedActionsPlayWhenTheirSlotComesUp()
     {
         LocalMatch match = Match(4, "human", "human");
-        List<IGameConnection> seats = [.. SeatExtensions.All.Select(match.Connect)];
-        Dictionary<Seat, RandomAgent> players = SeatExtensions.All.ToDictionary(seat => seat, seat => new RandomAgent((int)seat));
+        List<IGameConnection> seats = [.. SeatExtensions.TwoPlayer.Select(match.Connect)];
+        Dictionary<Seat, RandomAgent> players = SeatExtensions.TwoPlayer.ToDictionary(seat => seat, seat => new RandomAgent((int)seat));
         (IGameConnection Seat, int UnitId)? queued = null;
         ConcurrentQueue<(Seat Seat, SeatUpdate Update)> updates = [];
         foreach (IGameConnection seat in seats)
@@ -104,8 +104,8 @@ public class LocalMatchTests
     public async Task ASavedMatchResumesBranchesAndCanBeHandedToBots()
     {
         LocalMatch original = Match(6, "human", "human");
-        List<IGameConnection> seats = [.. SeatExtensions.All.Select(original.Connect)];
-        Dictionary<Seat, RandomAgent> players = SeatExtensions.All.ToDictionary(seat => seat, seat => new RandomAgent((int)seat));
+        List<IGameConnection> seats = [.. SeatExtensions.TwoPlayer.Select(original.Connect)];
+        Dictionary<Seat, RandomAgent> players = SeatExtensions.TwoPlayer.ToDictionary(seat => seat, seat => new RandomAgent((int)seat));
         for (int step = 0; step < 40; step++)
         {
             IGameConnection owing = seats.First(seat => seat.Current.Legal is not null);

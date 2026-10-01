@@ -8,7 +8,8 @@ namespace Fantactics.Client.Logic.Launch;
 
 /// <summary>
 /// Command-line options for jumping straight into a match (everything after <c>--</c> on the Godot command line):
-/// <c>--new</c> with <c>--p1/--p2</c> seat labels, <c>--load &lt;file&gt;</c>, <c>--saves &lt;dir&gt;</c>, and
+/// <c>--new</c> with <c>--p1</c> to <c>--p4</c> seat labels, <c>--load &lt;file&gt;</c>,
+/// <c>--saves &lt;dir&gt;</c>, and
 /// <c>--autoplay</c> for the headless smoke run. With none of them, the game opens its menu. Every option is
 /// described in <c>notes/LaunchOptions.md</c>; keep it in step with <see cref="Parse"/>.
 /// </summary>
@@ -70,6 +71,23 @@ public sealed record LaunchArgs(
     /// <summary>P2's starting cap (<c>--p2-starting-cap</c>), overriding <see cref="StartingCap"/>.</summary>
     public int? P2StartingCap { get; init; }
 
+    /// <summary>Who plays P3 (<c>--p3</c>), or <c>null</c> for no third seat.</summary>
+    public string? P3 { get; init; }
+
+    /// <summary>Who plays P4 (<c>--p4</c>), or <c>null</c> for no fourth seat.</summary>
+    public string? P4 { get; init; }
+
+    /// <summary>Races P3 may draft (<c>--p3-races</c>), or <c>null</c> for any.</summary>
+    public ImmutableSortedSet<string>? P3Races { get; init; }
+
+    /// <summary>Races P4 may draft (<c>--p4-races</c>), or <c>null</c> for any.</summary>
+    public ImmutableSortedSet<string>? P4Races { get; init; }
+
+    /// <summary>
+    /// Each seat's team in seat order (<c>--teams 1,2,1,2</c>), or <c>null</c> for everyone on a team of their own.
+    /// </summary>
+    public ImmutableArray<int>? Teams { get; init; }
+
     /// <summary>Whether the options go straight into a match.</summary>
     public bool SkipsMenu => NewMatch || Load is not null || Autoplay;
 
@@ -91,6 +109,11 @@ public sealed record LaunchArgs(
                 "--p2" => result with { P2 = Value(), NewMatch = true },
                 "--p1-races" => result with { P1Races = Races(Value()) },
                 "--p2-races" => result with { P2Races = Races(Value()) },
+                "--p3" => result with { P3 = Value(), NewMatch = true },
+                "--p4" => result with { P4 = Value(), NewMatch = true },
+                "--p3-races" => result with { P3Races = Races(Value()) },
+                "--p4-races" => result with { P4Races = Races(Value()) },
+                "--teams" => result with { Teams = TeamList(Value()) },
                 "--budget" => result with { Budget = Points(option, Value()) },
                 "--p1-budget" => result with { P1Budget = Points(option, Value()) },
                 "--p2-budget" => result with { P2Budget = Points(option, Value()) },
@@ -119,16 +142,50 @@ public sealed record LaunchArgs(
     }
 
     /// <summary>The new match these options describe, with the rules' budget and cap where none was given.</summary>
-    public NewMatchForm Form(RulesConfig rules) => new(
-        Map,
-        ImmutableSortedDictionary.CreateRange([
+    /// <exception cref="ArgumentException">
+    /// <c>--p4</c> is given without <c>--p3</c>, or the teams don't fit.
+    /// </exception>
+    public NewMatchForm Form(RulesConfig rules)
+    {
+        if (P4 is not null && P3 is null)
+        {
+            throw new ArgumentException("Give --p3 before --p4: seats are filled in order.");
+        }
+
+        List<KeyValuePair<Seat, SeatForm>> seats =
+        [
             KeyValuePair.Create(Seat.P1, new SeatForm(
                 P1, P1Races, P1Budget ?? Budget ?? rules.DraftBudget, P1StartingCap ?? StartingCap ?? rules.StartingCap)),
             KeyValuePair.Create(Seat.P2, new SeatForm(
-                P2, P2Races, P2Budget ?? Budget ?? rules.DraftBudget, P2StartingCap ?? StartingCap ?? rules.StartingCap))]),
-        Seed,
-        DraftAs,
-        Out);
+                P2, P2Races, P2Budget ?? Budget ?? rules.DraftBudget, P2StartingCap ?? StartingCap ?? rules.StartingCap)),
+        ];
+        if (P3 is not null)
+        {
+            seats.Add(KeyValuePair.Create(Seat.P3, new SeatForm(
+                P3, P3Races, Budget ?? rules.DraftBudget, StartingCap ?? rules.StartingCap)));
+        }
+
+        if (P4 is not null)
+        {
+            seats.Add(KeyValuePair.Create(Seat.P4, new SeatForm(
+                P4, P4Races, Budget ?? rules.DraftBudget, StartingCap ?? rules.StartingCap)));
+        }
+
+        if (Teams is { } teams && teams.Length != seats.Count)
+        {
+            throw new ArgumentException($"--teams needs one team per seat ({seats.Count}).");
+        }
+
+        return new NewMatchForm(
+            Map,
+            ImmutableSortedDictionary.CreateRange(seats),
+            Seed,
+            DraftAs,
+            Out,
+            Teams is { } list
+                ? seats.Zip(list, (seat, team) => KeyValuePair.Create(seat.Key, team)).ToImmutableSortedDictionary()
+                : null);
+    }
 
     /// <summary>A positive number of draft points.</summary>
     /// <exception cref="ArgumentException">The value isn't a positive whole number.</exception>
@@ -136,6 +193,16 @@ public sealed record LaunchArgs(
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out int points) && points > 0
             ? points
             : throw new ArgumentException($"{option} needs a positive whole number.");
+
+    /// <summary>A comma-separated list of team numbers, one per seat in seat order.</summary>
+    /// <exception cref="ArgumentException">A team isn't a positive whole number.</exception>
+    private static ImmutableArray<int> TeamList(string value) =>
+        [.. value
+            .Split(',', StringSplitOptions.TrimEntries)
+            .Select(team =>
+                int.TryParse(team, NumberStyles.None, CultureInfo.InvariantCulture, out int number) && number > 0
+                    ? number
+                    : throw new ArgumentException("--teams needs positive whole numbers, e.g. 1,2,1,2."))];
 
     /// <summary>A menu screen name.</summary>
     /// <exception cref="ArgumentException">It isn't one of the menu screens.</exception>

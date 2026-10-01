@@ -54,12 +54,12 @@ internal static class DraftRules
             $"'{duplicateUnique}' is unique: at most one per army.");
     }
 
-    /// <summary>Creates every drafted unit once both drafts are in, then moves on to placement.</summary>
+    /// <summary>Creates every drafted unit once every draft is in, then moves on to placement.</summary>
     public static GameState Resolve(GameState state)
     {
         int nextId = state.NextUnitId;
         ImmutableSortedDictionary<int, Unit>.Builder units = state.Units.ToBuilder();
-        foreach (Seat seat in SeatExtensions.All)
+        foreach (Seat seat in state.Seats)
         {
             var draft = (SubmitDraft)state.PendingOrders[seat];
             IEnumerable<(string Type, UnitLocation Location)> drafted = draft.Starting

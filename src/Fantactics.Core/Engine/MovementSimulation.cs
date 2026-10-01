@@ -23,6 +23,7 @@ internal sealed class MovementSimulation
     private readonly Dictionary<int, int> _arrivedAtTick = [];
     private readonly HashSet<Point> _contested = [];
     private readonly List<PendingClash> _clashes = [];
+    private readonly Dictionary<Seat, int> _teams;
 
     /// <summary>Prepares a simulation.</summary>
     /// <param name="state">State after arrivals, before movement.</param>
@@ -37,6 +38,7 @@ internal sealed class MovementSimulation
         _remaining = paths.ToDictionary(pair => pair.Key, pair => new Queue<Point>(pair.Value));
         _traveled = paths.ToDictionary(pair => pair.Key, pair => new List<Point> { _positions[pair.Key] });
         _active = new SortedSet<int>(paths.Keys);
+        _teams = state.Seats.ToDictionary(seat => seat, state.TeamOf);
     }
 
     /// <summary>Final positions by unit id.</summary>
@@ -124,7 +126,7 @@ internal sealed class MovementSimulation
             }
 
             int? other = _positions
-                .Where(pair => pair.Value == intents[id] && Owner(pair.Key) != Owner(id))
+                .Where(pair => pair.Value == intents[id] && AreEnemies(pair.Key, id))
                 .Select(pair => (int?)pair.Key)
                 .FirstOrDefault();
             if (other is int enemy
@@ -137,7 +139,9 @@ internal sealed class MovementSimulation
         }
     }
 
-    /// <summary>Marks clashes for tiles both sides try to enter. Returns whether any unit was stopped.</summary>
+    /// <summary>
+    /// Marks clashes for tiles units of two or more teams try to enter. Returns whether any unit was stopped.
+    /// </summary>
     private bool MarkSameTileContests(int tick, Dictionary<int, Point> intents, SortedDictionary<int, StopReason> stops)
     {
         // A tile someone is staying on can't be contested: enemies of the occupant are blocked instead.
@@ -150,26 +154,35 @@ internal sealed class MovementSimulation
         bool stopped = false;
         foreach (IGrouping<Point, int> group in groups)
         {
-            Dictionary<Seat, List<int>> bySeat = group
-                .GroupBy(Owner)
-                .ToDictionary(
-                    seatGroup => seatGroup.Key,
-                    seatGroup => seatGroup
-                        .OrderByDescending(BaseInitiative)
-                        .ThenBy(id => id)
-                        .ToList());
-            if (bySeat.Count < 2)
+            List<List<int>> byTeam = group
+                .GroupBy(Team)
+                .OrderBy(teamGroup => teamGroup.Key)
+                .Select(teamGroup => teamGroup
+                    .OrderByDescending(BaseInitiative)
+                    .ThenBy(id => id)
+                    .ToList())
+                .ToList();
+            if (byTeam.Count < 2)
             {
                 continue;
             }
 
-            // Friendly collisions settle first: only each side's fastest unit contests the tile.
-            foreach (int id in bySeat.Values.SelectMany(ids => ids.Skip(1)))
+            // Friendly collisions settle first: only each team's fastest unit contests the tile.
+            foreach (int id in byTeam.SelectMany(ids => ids.Skip(1)))
             {
                 stops[id] = StopReason.Blocked;
             }
 
-            MarkContest(tick, bySeat[Seat.P1][0], bySeat[Seat.P2][0], group.Key, stops);
+            List<int> contenders = [.. byTeam.Select(ids => ids[0])];
+            if (contenders.Count == 2)
+            {
+                MarkContest(tick, contenders[0], contenders[1], group.Key, stops);
+            }
+            else
+            {
+                MarkMultiWayContest(tick, contenders, group.Key, stops);
+            }
+
             stopped = true;
         }
 
@@ -204,8 +217,53 @@ internal sealed class MovementSimulation
             _contested.Add(contested);
         }
 
-        _clashes.Add(new PendingClash(tick, a, b, tile));
+        _clashes.Add(new PendingClash(tick, a, b, tile, []));
         _events.Add(new ClashMarked(tick, a, b, tile));
+    }
+
+    /// <summary>
+    /// Three or more teams contest <paramref name="tile"/> (GameDesign §4.1). Slippery units step aside; if two or
+    /// more others remain, they fight in turn, highest initiative first (ties in tie order), and the survivor of each
+    /// fight takes on the next.
+    /// </summary>
+    private void MarkMultiWayContest(
+        int tick,
+        List<int> contenders,
+        Point tile,
+        SortedDictionary<int, StopReason> stops)
+    {
+        List<Seat> tieOrder = [.. _state.TieOrder];
+        List<int> ordered = contenders
+            .OrderByDescending(BaseInitiative)
+            .ThenBy(id => tieOrder.IndexOf(Owner(id)))
+            .ToList();
+        List<int> fighters = ordered
+            .Where(id => !UnitRules.HasTrait(_state, _state.Units[id], TraitIds.Slippery))
+            .ToList();
+        foreach (int slippery in ordered.Except(fighters))
+        {
+            stops[slippery] = StopReason.Blocked;
+            int enemy = fighters.Count > 0 ? fighters[0] : ordered.First(id => id != slippery);
+            _events.Add(new ClashAvoided(tick, slippery, enemy));
+        }
+
+        if (fighters.Count < 2)
+        {
+            // One fighter left walks onto the tile unopposed.
+            return;
+        }
+
+        foreach (int id in fighters)
+        {
+            stops[id] = StopReason.Clash;
+        }
+
+        _contested.Add(tile);
+        _clashes.Add(new PendingClash(tick, fighters[0], fighters[1], tile, [.. fighters.Skip(2)]));
+        foreach (int challenger in fighters.Skip(1))
+        {
+            _events.Add(new ClashMarked(tick, fighters[0], challenger, tile));
+        }
     }
 
     /// <summary>Stops units whose next tile holds an enemy that isn't leaving. Returns whether any unit was stopped.</summary>
@@ -221,7 +279,7 @@ internal sealed class MovementSimulation
             {
                 bool enemyStays = _positions.Any(pair =>
                     pair.Value == intents[id]
-                    && Owner(pair.Key) != Owner(id)
+                    && AreEnemies(pair.Key, id)
                     && (!intents.ContainsKey(pair.Key) || stops.ContainsKey(pair.Key)));
                 if (enemyStays)
                 {
@@ -325,11 +383,15 @@ internal sealed class MovementSimulation
 
     private HashSet<int> AdjacentEnemies(int id, IReadOnlyDictionary<int, Point> positions) =>
         positions
-            .Where(pair => Owner(pair.Key) != Owner(id) && pair.Value.IsAdjacentTo(positions[id]))
+            .Where(pair => AreEnemies(pair.Key, id) && pair.Value.IsAdjacentTo(positions[id]))
             .Select(pair => pair.Key)
             .ToHashSet();
 
     private Seat Owner(int id) => _state.Units[id].Owner;
+
+    private int Team(int id) => _teams[Owner(id)];
+
+    private bool AreEnemies(int a, int b) => Team(a) != Team(b);
 
     private int BaseInitiative(int id) => _state.DefinitionOf(_state.Units[id]).Initiative;
 }
