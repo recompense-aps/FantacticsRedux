@@ -106,8 +106,8 @@ public partial class MatchHud : Control
                 Text = text,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                ThemeTypeVariation = "Caption",
             };
-            line.AddThemeFontSizeOverride("font_size", 14);
             line.AddThemeColorOverride("font_color", SeatColors.Of(seat).Lightened(0.35f));
             _players.AddChild(line);
         }

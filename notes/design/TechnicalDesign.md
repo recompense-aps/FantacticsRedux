@@ -107,6 +107,7 @@ The Godot project is a thin presentation layer. Everything about playing a match
 ```
 App/Main.tscn            root: launch options, settings, one screen at a time (menus or a match), --autoplay
 Menus/                   MainMenu, NewMatchScreen (+ SeatColumn per seat), LoadScreen, SettingsScreen
+Assets/Theme/Default.tres  the project theme (gui/theme/custom): panels, margins, spacing, font sizes, text colors
 Common/                  GodotConversions (Point <-> Vector2I, tile size 32), MainThread
 Match/MatchScreen.tscn   one match: queues updates, plays them, snaps board and HUD to the view, forwards input to DecisionInput
 Match/Board/             BoardView (TileMapLayer + BoardOverlay + tokens), UnitToken, PlaceholderTiles
@@ -119,6 +120,7 @@ Debug/DebugPanel.tscn     F1: state hash, god view, seat controllers, quicksave/
 ```
 
 - **Playback never has the final word.** After an update's beats play, the board snaps to the update's `PlayerView`, so a wrong or missing animation can't leave the board in a wrong state. Skipping just stops early.
+- **One theme:** all UI styling lives in `Assets/Theme/Default.tres`, set as the project theme so every Control gets it (the root `Main` is a plain `Node`, so a theme on a node wouldn't reach screens or the settings `CanvasLayer`). Base types carry the common look (`PanelContainer` panel, `MarginContainer` padding); anything else is a type variation (`Title`, `HeaderLarge/Medium/Small`, `Caption`, `ErrorLabel`, `MutedLabel`, `DimLabel`, `NoticeLabel`, `MenuRows`, `CompactPanel`, …) that scenes and code pick with `theme_type_variation`. Scenes don't use `theme_override_*` or `modulate` for text color; the only per-node colors left are data: the HUD's seat-colored player lines and the board's floating text.
 - **Placeholder art:** terrain is a runtime-built `TileSet` (one flat color per `Terrain`, atlas tile = terrain index), and units are drawn discs. Real art swaps the `TileSet` and token scene without changing code that uses them.
 - **Launch options** (after `--` on the Godot command line) skip the menu: seats and draft limits for a new match, `--load`, `--saves`, `--autoplay` (the headless smoke test), `--screenshot`, and more. The full list with recipes is in [LaunchOptions.md](../LaunchOptions.md).
 - **Hotseat curtain:** when the shown seat changes to another human seat, the session raises `ShownChanged`, and the match screen puts a curtain into its playback queue. Updates behind the curtain wait until the next player dismisses it, so nothing of their view (or the last player's) shows in between. The Settings screen can turn the curtain off.

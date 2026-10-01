@@ -13,8 +13,6 @@ namespace Fantactics.Client.Match.Draft;
 /// </summary>
 public partial class DraftPanel : PanelContainer
 {
-    private static readonly Color _dim = new(0.72f, 0.72f, 0.78f);
-
     [Export]
     private Label _summary = null!;
 
@@ -90,7 +88,7 @@ public partial class DraftPanel : PanelContainer
         Clear(_catalog);
         foreach (IGrouping<string, DraftUnitOption> race in draft.Options.Units.GroupBy(unit => unit.Race))
         {
-            _catalog.AddChild(new Label { Text = race.Key, ThemeTypeVariation = "HeaderMedium" });
+            _catalog.AddChild(new Label { Text = race.Key, ThemeTypeVariation = "HeaderSmall" });
             foreach (DraftUnitOption unit in race.OrderBy(unit => unit.Cost).ThenBy(unit => unit.Type))
             {
                 _catalog.AddChild(CatalogRow(draft, unit, rules.Units[unit.Type]));
@@ -133,10 +131,9 @@ public partial class DraftPanel : PanelContainer
         {
             Text = $"{UnitText.Tags(unit)}\n{UnitText.Stats(stats)}" + (features.Length > 0 ? $" · {features}" : ""),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            Modulate = _dim,
+            ThemeTypeVariation = "DimCaption",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
-        details.AddThemeFontSizeOverride("font_size", 13);
         row.AddChild(details);
         row.AddChild(Button(
             "+ Start",
@@ -159,7 +156,7 @@ public partial class DraftPanel : PanelContainer
         Clear(box);
         if (types.Count == 0)
         {
-            box.AddChild(new Label { Text = "(none)", Modulate = _dim });
+            box.AddChild(new Label { Text = "(none)", ThemeTypeVariation = "DimLabel" });
             return;
         }
 

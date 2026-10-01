@@ -85,7 +85,7 @@ mouse_filter = 2
 
 [node name="Problems" type="Label" parent="Bottom"]
 layout_mode = 2
-modulate = Color(1, 0.5, 0.5, 1)
+theme_type_variation = &"ErrorLabel"
 
 [node name="Submit" type="Button" parent="Bottom"]
 layout_mode = 2
@@ -115,7 +115,7 @@ offset_right = 300.0
 offset_bottom = 30.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_font_sizes/font_size = 32
+theme_type_variation = &"HeaderLarge"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -129,6 +129,6 @@ offset_top = 6.0
 offset_right = -8.0
 offset_bottom = 48.0
 grow_horizontal = 0
-modulate = Color(1, 0.85, 0.4, 1)
+theme_type_variation = &"NoticeLabel"
 horizontal_alignment = 2
 autowrap_mode = 3

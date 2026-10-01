@@ -1,11 +1,6 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://Debug/DebugPanel.cs" id="1_debug"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.11, 0.11, 0.13, 0.97)
-corner_radius_top_left = 4
-corner_radius_bottom_left = 4
 
 [node name="DebugPanel" type="PanelContainer" node_paths=PackedStringArray("_hash", "_godView", "_p1", "_p2", "_p3Label", "_p3", "_p4Label", "_p4", "_quicksave", "_quickload", "_saves", "_timeline", "_events", "_hidden")]
 anchors_preset = 11
@@ -17,7 +12,7 @@ offset_top = 60.0
 offset_bottom = -52.0
 grow_horizontal = 0
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+theme_type_variation = &"DebugPanel"
 script = ExtResource("1_debug")
 _hash = NodePath("Margin/Rows/Hash")
 _godView = NodePath("Margin/Rows/GodView")
@@ -36,10 +31,7 @@ _hidden = NodePath("Margin/Rows/Hidden")
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 6
+theme_type_variation = &"TightMargin"
 
 [node name="Rows" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
@@ -50,7 +42,7 @@ text = "Debug (F1)"
 
 [node name="Hash" type="Label" parent="Margin/Rows"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
+theme_type_variation = &"Caption"
 
 [node name="GodView" type="CheckBox" parent="Margin/Rows"]
 layout_mode = 2
@@ -119,8 +111,8 @@ text = "Saves (double-click to load)"
 [node name="Saves" type="ItemList" parent="Margin/Rows"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_type_variation = &"CaptionList"
 focus_mode = 0
-theme_override_font_sizes/font_size = 12
 
 [node name="TimelineLabel" type="Label" parent="Margin/Rows"]
 layout_mode = 2
@@ -129,8 +121,8 @@ text = "Timeline (double-click to branch after it)"
 [node name="Timeline" type="ItemList" parent="Margin/Rows"]
 layout_mode = 2
 size_flags_vertical = 3
+theme_type_variation = &"CaptionList"
 focus_mode = 0
-theme_override_font_sizes/font_size = 12
 
 [node name="EventsLabel" type="Label" parent="Margin/Rows"]
 layout_mode = 2
@@ -139,10 +131,10 @@ text = "Events"
 [node name="Events" type="ItemList" parent="Margin/Rows"]
 layout_mode = 2
 size_flags_vertical = 3
+theme_type_variation = &"CaptionList"
 focus_mode = 0
-theme_override_font_sizes/font_size = 11
 
 [node name="Hidden" type="Label" parent="Margin/Rows"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
+theme_type_variation = &"Caption"
 autowrap_mode = 3

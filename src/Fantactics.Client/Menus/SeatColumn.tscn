@@ -5,7 +5,7 @@
 [node name="SeatColumn" type="VBoxContainer" node_paths=PackedStringArray("_title", "_controller", "_difficulty", "_races", "_budget", "_startingCap")]
 custom_minimum_size = Vector2(260, 0)
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
+theme_type_variation = &"MenuRows"
 script = ExtResource("1_seat")
 _title = NodePath("Title")
 _controller = NodePath("Grid/Controller")
@@ -16,7 +16,7 @@ _startingCap = NodePath("Grid/StartingCap")
 
 [node name="Title" type="Label" parent="."]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_type_variation = &"HeaderSmall"
 text = "P1"
 
 [node name="Grid" type="GridContainer" parent="."]

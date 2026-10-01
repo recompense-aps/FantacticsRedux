@@ -1,0 +1,73 @@
+[gd_resource type="Theme" load_steps=4 format=3]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.1, 0.1, 0.12, 0.97)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_compact"]
+bg_color = Color(0.1, 0.1, 0.12, 0.97)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_debug"]
+bg_color = Color(0.11, 0.11, 0.13, 0.97)
+corner_radius_top_left = 4
+corner_radius_bottom_left = 4
+
+[resource]
+default_font_size = 16
+Caption/base_type = &"Label"
+Caption/font_sizes/font_size = 13
+CaptionList/base_type = &"ItemList"
+CaptionList/font_sizes/font_size = 12
+CompactMargin/base_type = &"MarginContainer"
+CompactMargin/constants/margin_bottom = 8
+CompactMargin/constants/margin_left = 10
+CompactMargin/constants/margin_right = 10
+CompactMargin/constants/margin_top = 8
+CompactPanel/base_type = &"PanelContainer"
+CompactPanel/styles/panel = SubResource("StyleBoxFlat_compact")
+DebugPanel/base_type = &"PanelContainer"
+DebugPanel/styles/panel = SubResource("StyleBoxFlat_debug")
+DimCaption/base_type = &"Label"
+DimCaption/colors/font_color = Color(0.72, 0.72, 0.78, 1)
+DimCaption/font_sizes/font_size = 13
+DimLabel/base_type = &"Label"
+DimLabel/colors/font_color = Color(0.72, 0.72, 0.78, 1)
+ErrorLabel/base_type = &"Label"
+ErrorLabel/colors/font_color = Color(1, 0.5, 0.5, 1)
+FloatText/base_type = &"Label"
+FloatText/font_sizes/font_size = 10
+HeaderLarge/base_type = &"Label"
+HeaderLarge/font_sizes/font_size = 32
+HeaderMedium/base_type = &"Label"
+HeaderMedium/font_sizes/font_size = 22
+HeaderSmall/base_type = &"Label"
+HeaderSmall/font_sizes/font_size = 18
+MarginContainer/constants/margin_bottom = 12
+MarginContainer/constants/margin_left = 16
+MarginContainer/constants/margin_right = 16
+MarginContainer/constants/margin_top = 12
+MenuRows/base_type = &"VBoxContainer"
+MenuRows/constants/separation = 8
+MutedLabel/base_type = &"Label"
+MutedLabel/colors/font_color = Color(0.6, 0.6, 0.65, 1)
+NoticeLabel/base_type = &"Label"
+NoticeLabel/colors/font_color = Color(1, 0.85, 0.4, 1)
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_panel")
+SpacedColumns/base_type = &"HBoxContainer"
+SpacedColumns/constants/separation = 16
+SpacedRows/base_type = &"VBoxContainer"
+SpacedRows/constants/separation = 16
+TightMargin/base_type = &"MarginContainer"
+TightMargin/constants/margin_bottom = 6
+TightMargin/constants/margin_left = 6
+TightMargin/constants/margin_right = 6
+TightMargin/constants/margin_top = 6
+Title/base_type = &"Label"
+Title/font_sizes/font_size = 48
