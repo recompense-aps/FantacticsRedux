@@ -51,9 +51,10 @@ public partial class BoardView : Node2D
     /// <inheritdoc />
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventMouseMotion)
+        // Tiles come from the event's own position rather than the OS pointer, so pushed input (--drive) lands too.
+        if (@event is InputEventMouseMotion motion)
         {
-            Point tile = GodotConversions.TileAt(GetLocalMousePosition());
+            Point tile = TileUnder(motion);
             if (tile != _hovered)
             {
                 _hovered = tile;
@@ -62,10 +63,9 @@ public partial class BoardView : Node2D
         }
         else if (@event.IsActionPressed("confirm") || @event.IsActionPressed("cancel"))
         {
-            if (@event is InputEventMouseButton)
+            if (@event is InputEventMouseButton button)
             {
-                Point tile = GodotConversions.TileAt(GetLocalMousePosition());
-                EmitSignal(SignalName.TileClicked, tile.ToCell(), @event.IsActionPressed("cancel"));
+                EmitSignal(SignalName.TileClicked, TileUnder(button).ToCell(), @event.IsActionPressed("cancel"));
                 GetViewport().SetInputAsHandled();
             }
         }
@@ -134,6 +134,13 @@ public partial class BoardView : Node2D
         tween.Chain().TweenCallback(Callable.From(label.QueueFree));
         return tween;
     }
+
+    /// <summary>The screen (viewport) position of a tile's center, where a click on it lands.</summary>
+    public Vector2 ScreenPositionOf(Point tile) => GetGlobalTransformWithCanvas() * tile.TileCenter();
+
+    /// <summary>The tile under a mouse event, in this board's space.</summary>
+    private Point TileUnder(InputEventMouse mouse) =>
+        GodotConversions.TileAt(((InputEventMouse)MakeInputLocal(mouse)).Position);
 
     private UnitToken TokenFor(int unitId)
     {

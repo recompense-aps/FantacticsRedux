@@ -119,6 +119,26 @@ public partial class MatchScreen : Node
     /// <summary>Whether an animation, a submit in flight, the curtain, or the menu is in the way of input.</summary>
     private bool Busy => _player.IsPlaying || _submitting || _curtain.IsUp || _menu.IsOpen;
 
+    /// <summary>
+    /// The update on screen when it's waiting on input from a human seat (nothing playing or queued, the curtain
+    /// down, the menu closed); otherwise <c>null</c>.
+    /// </summary>
+    public SeatUpdate? AwaitingInput =>
+        !Busy && !_pumping && _pending.Count == 0 && _current is { Legal: not null, View.Outcome: null } current
+            && ReferenceEquals(current, _session.Current) && _session.IsHuman(current.View.Seat)
+            ? current
+            : null;
+
+    /// <summary>The update on screen, whether or not it waits on input.</summary>
+    public SeatUpdate? Current => _current;
+
+    /// <summary>The line the prompt shows: the last input problem, or what the shown seat is asked to do.</summary>
+    public string PromptLine => _input?.Message
+        ?? (_current is SeatUpdate update ? HudText.Prompt(update, LabelOf) : "");
+
+    /// <summary>The hotseat curtain's ready button text while the curtain is up; otherwise <c>null</c>.</summary>
+    public string? CurtainButton => _curtain.IsUp ? _curtain.ReadyText : null;
+
     /// <summary>Gives the screen its match. Call before adding it to the tree.</summary>
     /// <param name="open">The match.</param>
     /// <param name="saves">Where quicksaves go and saves are listed from.</param>

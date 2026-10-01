@@ -1,5 +1,6 @@
 using Fantactics.Ai;
 using Fantactics.Ai.Profiles;
+using Fantactics.Client.Logic.Drive;
 using Fantactics.Client.Logic.Launch;
 using Fantactics.Client.Logic.Menus;
 using Fantactics.Client.Logic.Session;
@@ -19,14 +20,15 @@ namespace Fantactics.Client.App;
 /// <summary>
 /// The root: reads the launch options and settings, owns the services, and shows one screen at a time (the main
 /// menu, the new-match and load screens, or a match), with the settings screen on top when open. Launch options that
-/// name a match skip the menu (see <c>notes/LaunchOptions.md</c>). With <c>--autoplay</c> it plays bots to the end and
-/// quits with exit code 0 (1 on failure, 2 on timeout), the headless smoke test.
+/// name a match skip the menu (see <c>notes/LaunchOptions.md</c>). The smoke runs quit with exit code 0 when the match
+/// ends (1 on a failure, a logged error, or an unassigned export; 2 on timeout): <c>--autoplay</c> plays bots to the
+/// end, and <c>--drive</c> plays the human seats through the <see cref="InputDriver"/>'s synthetic input.
 /// </summary>
 public partial class Main : Node
 {
     private const string SettingsPath = "user://settings.json";
     private const string QuickMatchBot = "captain";
-    private static readonly TimeSpan _autoplayTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan _smokeTimeout = TimeSpan.FromMinutes(5);
 
     private readonly RulesConfig _rules = RulesConfig.Default;
     private LaunchArgs _args = LaunchArgs.None;
@@ -34,6 +36,11 @@ public partial class Main : Node
     private ClientSettings _settings = new();
     private OpenMatch? _open;
     private Node? _screen;
+    private SmokeLogger? _logger;
+    private bool _exiting;
+
+    [Export]
+    private InputDriver _driver = null!;
 
     [Export]
     private PackedScene _matchScene = null!;
@@ -77,6 +84,16 @@ public partial class Main : Node
                 ProjectSettings.GlobalizePath("user://saves"),
                 OS.HasFeature("template")));
         _settingsScreen.Changed += () => ApplySettings(_settingsScreen.Settings);
+        if (_args.IsSmokeRun)
+        {
+            WatchForErrors();
+        }
+
+        if (_args.Drive)
+        {
+            _driver.Failed += message => Exit(1, $"Drive failed: {message}");
+            _driver.Start(_args.SkipsMenu ? [] : InputPlan.Menu(_args.Menu), _args.Shots);
+        }
 
         if (!_args.SkipsMenu)
         {
@@ -116,13 +133,18 @@ public partial class Main : Node
             };
         }
 
-        if (_args.Autoplay)
+        if (_args.IsSmokeRun)
         {
-            GetTree().CreateTimer(_autoplayTimeout.TotalSeconds).Timeout += () =>
-            {
-                GD.PrintErr("Autoplay timed out.");
-                GetTree().Quit(2);
-            };
+            GetTree().CreateTimer(_smokeTimeout.TotalSeconds).Timeout += () => Exit(2, "The smoke run timed out.");
+        }
+    }
+
+    /// <inheritdoc />
+    public override void _Process(double delta)
+    {
+        if (_logger?.TryTake(out string error) == true)
+        {
+            Exit(1, $"Error logged during the smoke run: {error}");
         }
     }
 
@@ -255,7 +277,7 @@ public partial class Main : Node
         screen.Initialize(
             next,
             _opener.Saves,
-            _args.Autoplay ? _settings with { Speed = 0 } : _settings with { Speed = _args.Speed ?? _settings.Speed },
+            _args.IsSmokeRun ? _settings with { Speed = 0 } : _settings with { Speed = _args.Speed ?? _settings.Speed },
             ApplySettings,
             Controllers);
         screen.MatchFinished += Finished;
@@ -267,6 +289,11 @@ public partial class Main : Node
         screen.MainMenuRequested += ShowMainMenu;
         screen.QuitRequested += () => GetTree().Quit();
         Swap(screen, next);
+        if (_args.Drive)
+        {
+            _driver.Drive(screen, next.Session);
+        }
+
         if (_args.Debug)
         {
             screen.ToggleDebug();
@@ -286,18 +313,68 @@ public partial class Main : Node
     private void Finished(string result)
     {
         GD.Print(result);
-        if (_args.Autoplay)
+        if (_args.Drive)
         {
-            GetTree().Quit(0);
+            GD.Print(_driver.Summary);
+        }
+
+        if (_args.IsSmokeRun)
+        {
+            Exit(0);
         }
     }
 
     private void Failed(string message)
     {
         GD.PrintErr(message);
-        if (_args.Autoplay)
+        if (_args.IsSmokeRun)
         {
-            GetTree().Quit(1);
+            Exit(1);
         }
+    }
+
+    /// <summary>
+    /// Fails the smoke run on any error Godot logs from here on, and on any node of this project that enters the tree
+    /// with a required <c>[Export]</c> left unassigned (checking the nodes already in it, too).
+    /// </summary>
+    private void WatchForErrors()
+    {
+        _logger = new SmokeLogger();
+        OS.AddLogger(_logger);
+        GetTree().NodeAdded += CheckExports;
+        Stack<Node> nodes = new([this]);
+        while (nodes.TryPop(out Node? node))
+        {
+            CheckExports(node);
+            foreach (Node child in node.GetChildren())
+            {
+                nodes.Push(child);
+            }
+        }
+    }
+
+    private void CheckExports(Node node)
+    {
+        if (ExportCheck.Missing(node).FirstOrDefault() is string missing)
+        {
+            Exit(1, $"An [Export] isn't assigned in the scene: {missing}");
+        }
+    }
+
+    /// <summary>Quits with <paramref name="code"/> (the first exit wins), printing why when it's a failure.</summary>
+    private void Exit(int code, string? message = null)
+    {
+        if (_exiting)
+        {
+            return;
+        }
+
+        _exiting = true;
+        if (message is not null)
+        {
+            GD.PrintErr(message);
+        }
+
+        GetTree().Quit(code);
     }
 }
