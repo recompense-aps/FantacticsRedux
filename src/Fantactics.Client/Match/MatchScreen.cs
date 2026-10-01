@@ -53,16 +53,12 @@ public partial class MatchScreen : Node
     private ClientSettings _settings = new();
     private Action<ClientSettings> _saveSettings = _ => { };
     private SeatUpdate? _current;
-    private DraftBuilder? _draft;
-    private PlacementBuilder? _placement;
-    private MoveOrderBuilder? _moves;
-    private ActionPicker? _actions;
+    private DecisionInput? _input;
     private bool _pumping;
     private bool _finished;
     private DateTime? _llmSince;
     private int _llmSeconds = -1;
     private bool _submitting;
-    private string? _message;
 
     [Export]
     private BoardView _board = null!;
@@ -388,17 +384,7 @@ public partial class MatchScreen : Node
         _current = update;
         _llmSince = update.Legal is null && update.View.Outcome is null && WaitingOnLlm(update) ? DateTime.UtcNow : null;
         _llmSeconds = -1;
-        _message = null;
-        _draft = update.Legal is { Decision: DraftArmyDecision, Draft: DraftOptions draft } ? new DraftBuilder(draft) : null;
-        _placement = update.Legal is { Decision: PlaceStartingArmyDecision, Placement: PlacementOptions placement }
-            ? new PlacementBuilder(update.View, placement)
-            : null;
-        _moves = update.Legal is { Decision: SubmitMoveOrdersDecision, Moves: MoveOptions moves }
-            ? new MoveOrderBuilder(update.View, moves)
-            : null;
-        _actions = update.Legal is { Decision: ChooseUnitActionDecision decision } legal
-            ? new ActionPicker(update.View, decision.UnitId, legal.Actions)
-            : null;
+        _input = new DecisionInput(update);
         Redraw();
         RefreshDebug();
 
@@ -421,66 +407,29 @@ public partial class MatchScreen : Node
 
     private void Redraw()
     {
-        if (_current is not SeatUpdate update)
+        if (_current is not SeatUpdate update || _input is not DecisionInput input)
         {
             return;
         }
 
         BoardModel model = _debug.GodView
             ? GodView.Build(_session.Match.State, update.View.Seat, _board.Hovered)
-            : BoardModel.Build(update.View, _session.Rules, _moves, _actions, _board.Hovered, _placement);
+            : BoardModel.Build(update.View, _session.Rules, input.Moves, input.Actions, _board.Hovered, input.Placement);
         _board.Render(model);
-        _hud.ShowStatus(HudText.Status(update.View, _session.Rules), _message ?? HudText.Prompt(update, LabelOf));
+        _hud.ShowStatus(HudText.Status(update.View, _session.Rules), input.Message ?? HudText.Prompt(update, LabelOf));
         _hud.ShowPlayers(update.View.Phase == Phase.Draft ? [] : HudText.Players(update.View));
         _hud.ShowHint(model.Hint);
 
-        _draftPanel.Visible = _draft is not null;
-        if (_draft is not null)
+        _draftPanel.Visible = input.Draft is not null;
+        if (input.Draft is not null)
         {
-            _draftPanel.Show(_draft, _session.Rules, OpponentLimits(update.View), _message);
+            _draftPanel.Show(input.Draft, _session.Rules, OpponentLimits(update.View), input.Message);
         }
 
-        List<(string, string)> actions = [];
-        if (_actions is not null)
-        {
-            actions.AddRange(_actions.Abilities.Select((ability, slot) =>
-                (slot.ToString(CultureInfo.InvariantCulture), $"{slot + 1} {ability}")));
-            if (_actions.Wait is not null)
-            {
-                actions.Add(("wait", "Wait (W)"));
-            }
-
-            if (_actions.Delay is not null)
-            {
-                actions.Add(("delay", "Delay (D)"));
-            }
-        }
-
-        if (_placement is not null)
-        {
-            actions.Add(("suggest", "Auto-place"));
-        }
-
-        _hud.ShowActions(actions);
-        _hud.ShowRoster(Roster());
-        IReadOnlyList<string>? problems = _placement?.Problems ?? _moves?.Problems;
+        _hud.ShowActions(input.ActionButtons);
+        _hud.ShowRoster(input.Roster);
+        IReadOnlyList<string>? problems = input.SubmitProblems;
         _hud.ShowSubmit(problems is not null, problems is null ? "" : string.Join(" ", problems));
-    }
-
-    /// <summary>Roster buttons: starting units to place, or reserve units that can deploy.</summary>
-    private IReadOnlyList<(int UnitId, string Label, bool Chosen)> Roster()
-    {
-        if (_placement is PlacementBuilder placement)
-        {
-            return [.. placement.Options.UnitIds.Select(id => (
-                id,
-                placement.Placed.ContainsKey(id) ? $"{placement.TypeOf(id)} ✓" : placement.TypeOf(id),
-                id == placement.Selected))];
-        }
-
-        return _moves is MoveOrderBuilder moves
-            ? [.. moves.DeployOptions.Select(d => (d.UnitId, $"{d.Type} ({d.Cost})", moves.Deploys.ContainsKey(d.UnitId)))]
-            : [];
     }
 
     /// <summary>Fills the debug panel, if it is open.</summary>
@@ -510,11 +459,8 @@ public partial class MatchScreen : Node
         {
             _menu.Close();
         }
-        else if (_moves?.Selected is not null || _actions?.Ability is not null || _placement?.Selected is not null)
+        else if (_input?.Cancel() == true)
         {
-            _moves?.Deselect();
-            _actions?.ClearAbility();
-            _placement?.Deselect();
             RedrawIfIdle();
         }
         else
@@ -573,86 +519,9 @@ public partial class MatchScreen : Node
 
     private void OnTileClicked(Vector2I cell, bool secondary)
     {
-        if (_current is not SeatUpdate update || Busy || _debug.GodView)
+        if (_input is not null && !Busy && !_debug.GodView)
         {
-            return;
-        }
-
-        Point tile = cell.ToPoint();
-        Unit? mine = update.View.Units.FirstOrDefault(u => u.IsOnField && u.Owner == update.View.Seat && u.Position == tile);
-        _message = null;
-        if (_placement is not null)
-        {
-            ClickForPlacement(tile, secondary);
-        }
-        else if (_moves is not null)
-        {
-            ClickForMoves(tile, mine, secondary);
-        }
-        else if (_actions is not null)
-        {
-            if (secondary)
-            {
-                _actions.ClearAbility();
-            }
-            else if (_actions.OptionAt(tile) is ActionOption option)
-            {
-                Submit(option.Command);
-                return;
-            }
-        }
-
-        Redraw();
-    }
-
-    /// <summary>
-    /// Left click: place the picked unit (swapping with one already there), or pick up a placed unit when none is
-    /// picked. Right click: take a placed unit off the board.
-    /// </summary>
-    private void ClickForPlacement(Point tile, bool secondary)
-    {
-        PlacementBuilder placement = _placement ?? throw new InvalidOperationException("No placement is being built.");
-        int? there = placement.UnitAt(tile);
-        if (secondary)
-        {
-            if (there is int unit)
-            {
-                placement.Clear(unit);
-            }
-        }
-        else if (placement.Selected is null && there is int unit)
-        {
-            placement.Select(unit);
-        }
-        else
-        {
-            _message = placement.Choose(tile);
-        }
-    }
-
-    private void ClickForMoves(Point tile, Unit? mine, bool secondary)
-    {
-        MoveOrderBuilder moves = _moves ?? throw new InvalidOperationException("No move orders are being built.");
-        if (secondary)
-        {
-            int? arriving = moves.Deploys.FirstOrDefault(d => d.Value == tile).Key;
-            if (mine is not null || arriving is > 0)
-            {
-                moves.Clear(mine?.Id ?? arriving ?? 0);
-            }
-
-            moves.Deselect();
-        }
-        else if (moves.Selected is not null && moves.Choose(tile) is string problem)
-        {
-            if (mine is null || !moves.Select(mine.Id))
-            {
-                _message = problem;
-            }
-        }
-        else if (moves.Selected is null && mine is not null && !moves.Select(mine.Id))
-        {
-            _message = $"{mine.Type} can't move this turn.";
+            SubmitOrRedraw(_input.Click(cell.ToPoint(), secondary));
         }
     }
 
@@ -663,53 +532,28 @@ public partial class MatchScreen : Node
             return;
         }
 
-        if (action == "suggest")
+        if (action == DecisionInput.SuggestAction)
         {
             Suggest();
-            return;
         }
-
-        if (_actions is null)
+        else if (_input is not null)
         {
-            return;
-        }
-
-        ActionOption? option = action switch
-        {
-            "wait" => _actions.Wait,
-            "delay" => _actions.Delay,
-            _ => _actions.SelectAbility(int.Parse(action, CultureInfo.InvariantCulture)),
-        };
-        if (option is not null)
-        {
-            Submit(option.Command);
-        }
-        else
-        {
-            Redraw();
+            SubmitOrRedraw(_input.Action(action));
         }
     }
 
     private void OnRosterUnit(int unitId)
     {
-        if (_placement is not null)
-        {
-            _placement.Select(unitId);
-        }
-        else
-        {
-            _moves?.Select(unitId);
-        }
-
+        _input?.ChooseRosterUnit(unitId);
         Redraw();
     }
 
     /// <summary>Changes the draft and shows any problem the change ran into.</summary>
     private void ChangeDraft(Func<DraftBuilder, string?> change)
     {
-        if (_draft is not null && !Busy)
+        if (_input is not null && !Busy)
         {
-            _message = change(_draft);
+            _input.ChangeDraft(change);
             Redraw();
         }
     }
@@ -717,43 +561,31 @@ public partial class MatchScreen : Node
     /// <summary>Fills the draft or placement with what a bot would choose; the player can still change it.</summary>
     private void Suggest()
     {
-        if (Busy)
+        if (_input is not null && !Busy)
         {
-            return;
+            _input.Suggest(_session.Suggest(SuggestProfile, Random.Shared.Next()));
+            Redraw();
         }
-
-        switch (_session.Suggest(SuggestProfile, Random.Shared.Next()))
-        {
-            case SubmitDraft draft:
-                _draft?.Load(draft);
-                break;
-            case PlaceStartingArmy placement:
-                _placement?.Load(placement);
-                break;
-        }
-
-        _message = null;
-        Redraw();
     }
 
     private void SubmitOrders()
     {
-        if (Busy)
+        if (!Busy && _input?.Submit() is ICommand command)
         {
-            return;
+            Submit(command);
         }
+    }
 
-        if (_draft is { Problems.Count: 0 })
+    /// <summary>Submits what input chose, or redraws when it chose nothing yet.</summary>
+    private void SubmitOrRedraw(ICommand? command)
+    {
+        if (command is not null)
         {
-            Submit(_draft.Build());
+            Submit(command);
         }
-        else if (_placement is { Problems.Count: 0 })
+        else
         {
-            Submit(_placement.Build());
-        }
-        else if (_moves is { Problems.Count: 0 })
-        {
-            Submit(_moves.Build());
+            Redraw();
         }
     }
 
@@ -766,7 +598,7 @@ public partial class MatchScreen : Node
             {
                 MainThread.Post(() =>
                 {
-                    _message = violation.Message;
+                    _input?.Reject(violation);
                     Redraw();
                 });
             }
