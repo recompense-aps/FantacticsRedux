@@ -125,8 +125,8 @@ public partial class BoardView : Node2D
             Position = tile.TileCenter() + new Vector2(-16, -20),
             Size = new Vector2(32, 12),
             HorizontalAlignment = HorizontalAlignment.Center,
+            ThemeTypeVariation = "FloatText",
         };
-        label.AddThemeFontSizeOverride("font_size", 10);
         _effects.AddChild(label);
         Tween tween = CreateTween().SetParallel();
         tween.TweenProperty(label, "position:y", label.Position.Y - 12, seconds);
