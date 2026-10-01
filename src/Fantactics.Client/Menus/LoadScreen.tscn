@@ -1,13 +1,6 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://Menus/LoadScreen.cs" id="1_load"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.1, 0.1, 0.12, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
 
 [node name="LoadScreen" type="Control" node_paths=PackedStringArray("_folderLabel", "_list", "_seat", "_message", "_back", "_load")]
 layout_mode = 3
@@ -43,27 +36,22 @@ grow_vertical = 2
 
 [node name="Panel" type="PanelContainer" parent="Center"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="Margin" type="MarginContainer" parent="Center/Panel"]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 12
 
 [node name="Rows" type="VBoxContainer" parent="Center/Panel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_type_variation = &"MenuRows"
 
 [node name="Title" type="Label" parent="Center/Panel/Margin/Rows"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"HeaderMedium"
 text = "Load a match"
 
 [node name="Folder" type="Label" parent="Center/Panel/Margin/Rows"]
 layout_mode = 2
-modulate = Color(0.6, 0.6, 0.65, 1)
+theme_type_variation = &"MutedLabel"
 
 [node name="List" type="ItemList" parent="Center/Panel/Margin/Rows"]
 custom_minimum_size = Vector2(720, 360)
@@ -72,7 +60,7 @@ layout_mode = 2
 [node name="Message" type="Label" parent="Center/Panel/Margin/Rows"]
 custom_minimum_size = Vector2(720, 0)
 layout_mode = 2
-modulate = Color(1, 0.5, 0.5, 1)
+theme_type_variation = &"ErrorLabel"
 autowrap_mode = 3
 
 [node name="Buttons" type="HBoxContainer" parent="Center/Panel/Margin/Rows"]
