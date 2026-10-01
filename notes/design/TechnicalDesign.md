@@ -94,7 +94,7 @@ The Godot project is a thin presentation layer. Everything about playing a match
 
 | Folder | Contents |
 |---|---|
-| `Input/` | `DraftBuilder` (starting army and reserve within the budget, starting cap, and unique limits, checked as the engine checks them), `PlacementBuilder` (pick a unit, click a deploy tile; a taken tile swaps), `MoveOrderBuilder` (click a unit, then a highlighted destination; the engine's cheapest path; arrivals for reserve units; joint problems before Submit) and `ActionPicker` (click an enemy to attack, 1–9 for abilities, Wait/Delay). All four build only from `LegalActions`, so they can only produce legal commands. |
+| `Input/` | `DraftBuilder` (starting army and reserve within the budget, starting cap, and unique limits, checked as the engine checks them), `PlacementBuilder` (pick a unit, click a deploy tile; a taken tile swaps), `MoveOrderBuilder` (click a unit, then a highlighted destination; the engine's cheapest path; arrivals for reserve units; joint problems before Submit) and `ActionPicker` (click an enemy to attack, 1–9 for abilities, Wait/Delay). All four build only from `LegalActions`, so they can only produce legal commands. `DecisionInput` holds the builder for the decision an update asks for and routes clicks, keys, roster and draft buttons, Esc, and Submit to it; it returns a command when one is ready and lists the HUD's action, roster, and Submit state. |
 | `Playback/` | `TimelineBuilder`: an update's events → `Beat`s of `Step`s (one movement tick's steps play together). Every event type maps to a step or is explicitly ignored, and a test enforces that. |
 | `Board/` | `BoardModel` (tokens, tile highlights, order arrows, hover hint: a pure function of the view and input state, including units placed so far), `HudText`, and `UnitText` (race, class, and stat lines for the draft). |
 | `Session/` | `ClientSession` (a connection per seat, which seat is shown, hotseat switching, autosave, the quick start where a bot drafts and places for human seats, and `Suggest`, a bot's draft or placement to fill the screen), `MatchOpener` (new, load, branch, share; see §4), `SaveLocations`, and `SaveSummary` (a file's turn and seats without replaying it). |
@@ -108,7 +108,7 @@ The Godot project is a thin presentation layer. Everything about playing a match
 App/Main.tscn            root: launch options, settings, one screen at a time (menus or a match), --autoplay
 Menus/                   MainMenu, NewMatchScreen (+ SeatColumn per seat), LoadScreen, SettingsScreen
 Common/                  GodotConversions (Point <-> Vector2I, tile size 32), MainThread
-Match/MatchScreen.tscn   one match: queues updates, plays them, then snaps board and HUD to the view
+Match/MatchScreen.tscn   one match: queues updates, plays them, snaps board and HUD to the view, forwards input to DecisionInput
 Match/Board/             BoardView (TileMapLayer + BoardOverlay + tokens), UnitToken, PlaceholderTiles
 Match/Hud/               MatchHud (status, prompt, hint, action bar, roster for deploys and placement, Submit, speed, menu, banner)
 Match/Draft/             DraftPanel (every draftable unit by race, the army so far, budget and cap, Bot pick)
