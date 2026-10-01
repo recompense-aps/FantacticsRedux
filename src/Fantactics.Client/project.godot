@@ -25,6 +25,10 @@ window/stretch/aspect="expand"
 project/assembly_name="Fantactics.Client"
 project/solution_directory="../"
 
+[gui]
+
+theme/custom="res://Assets/Theme/Default.tres"
+
 [input]
 
 confirm={
