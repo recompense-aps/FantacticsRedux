@@ -10,7 +10,7 @@ namespace Fantactics.Client.Logic.Launch;
 /// Command-line options for jumping straight into a match (everything after <c>--</c> on the Godot command line):
 /// <c>--new</c> with <c>--p1</c> to <c>--p4</c> seat labels, <c>--load &lt;file&gt;</c>,
 /// <c>--saves &lt;dir&gt;</c>, and
-/// <c>--autoplay</c> for the headless smoke run. With none of them, the game opens its menu. Every option is
+/// <c>--autoplay</c> and <c>--drive</c> for the headless smoke runs. With none of them, the game opens its menu. Every option is
 /// described in <c>notes/LaunchOptions.md</c>; keep it in step with <see cref="Parse"/>.
 /// </summary>
 /// <param name="NewMatch">Start a new match.</param>
@@ -88,6 +88,18 @@ public sealed record LaunchArgs(
     /// </summary>
     public ImmutableArray<int>? Teams { get; init; }
 
+    /// <summary>
+    /// Play the human seats through synthetic clicks and key presses (<c>--drive</c>), starting from the menu unless
+    /// a match option is given, and quit when the match ends (exit code 0).
+    /// </summary>
+    public bool Drive { get; init; }
+
+    /// <summary>Where <c>--drive</c> saves screenshots at key points (<c>--shots &lt;dir&gt;</c>), or <c>null</c>.</summary>
+    public string? Shots { get; init; }
+
+    /// <summary>Whether this is a smoke run (<c>--autoplay</c> or <c>--drive</c>) that quits with an exit code.</summary>
+    public bool IsSmokeRun => Autoplay || Drive;
+
     /// <summary>Whether the options go straight into a match.</summary>
     public bool SkipsMenu => NewMatch || Load is not null || Autoplay;
 
@@ -128,12 +140,24 @@ public sealed record LaunchArgs(
                 "--out" => result with { Out = Value() },
                 "--saves" => result with { Saves = Value() },
                 "--autoplay" => result with { Autoplay = true },
+                "--drive" => result with { Drive = true },
+                "--shots" => result with { Shots = Value() },
                 "--speed" => result with { Speed = double.Parse(Value(), CultureInfo.InvariantCulture) },
                 "--screenshot" => result with { Screenshot = Value() },
                 "--debug" => result with { Debug = true },
                 "--menu" => result with { Menu = MenuScreen(Value()) },
                 _ => throw new ArgumentException($"Unknown option '{option}'."),
             };
+        }
+
+        if (result.Drive && result.Autoplay)
+        {
+            throw new ArgumentException("--drive and --autoplay don't go together: --drive plays human seats by input.");
+        }
+
+        if (result.Drive && result.Menu is not ("main" or "new"))
+        {
+            throw new ArgumentException("--drive starts from the main menu or --menu new.");
         }
 
         return result.Autoplay && result.Load is null && !result.NewMatch
