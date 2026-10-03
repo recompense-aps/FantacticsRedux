@@ -7,6 +7,9 @@ namespace Fantactics.Client.Logic.Board;
 /// <summary>How unit types are described in the draft and in tooltips.</summary>
 public static partial class UnitText
 {
+    /// <summary>Words a title keeps lowercase after its first word.</summary>
+    private static readonly HashSet<string> _minorWords = ["A", "An", "And", "Of", "The", "To", "In", "On"];
+
     /// <summary>Race, classes, and uniqueness, e.g. <c>Elves · Ranged · unique</c>.</summary>
     public static string Tags(DraftUnitOption unit) =>
         string.Join(" · ", [unit.Race, .. unit.Classes, .. unit.Unique ? ["unique"] : Array.Empty<string>()]);
@@ -29,8 +32,13 @@ public static partial class UnitText
         return string.Join("; ", new[] { abilities, traits }.Where(part => part.Length > 0));
     }
 
-    /// <summary>Splits an identifier into words: <c>PinningShot</c> → <c>Pinning Shot</c>.</summary>
-    public static string Words(string identifier) => CamelBoundary().Replace(identifier, " ");
+    /// <summary>
+    /// Splits an identifier into words, as a title: <c>PinningShot</c> → <c>Pinning Shot</c>,
+    /// <c>OutOfTheCaves</c> → <c>Out of the Caves</c>.
+    /// </summary>
+    public static string Words(string identifier) => string.Join(' ', CamelBoundary()
+        .Split(identifier)
+        .Select((word, index) => index > 0 && _minorWords.Contains(word) ? word.ToLowerInvariant() : word));
 
     [GeneratedRegex("(?<=[a-z])(?=[A-Z])")]
     private static partial Regex CamelBoundary();

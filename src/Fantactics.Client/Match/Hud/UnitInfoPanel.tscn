@@ -1,0 +1,47 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Match/Hud/UnitInfoPanel.cs" id="1_info"]
+
+[node name="UnitInfoPanel" type="PanelContainer" node_paths=PackedStringArray("_name", "_tags", "_stats", "_notes", "_lines")]
+visible = false
+mouse_filter = 2
+theme_type_variation = &"CompactPanel"
+script = ExtResource("1_info")
+_name = NodePath("Margin/Rows/Name")
+_tags = NodePath("Margin/Rows/Tags")
+_stats = NodePath("Margin/Rows/Stats")
+_notes = NodePath("Margin/Rows/Notes")
+_lines = NodePath("Margin/Rows/Lines")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"CompactMargin"
+
+[node name="Rows" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Name" type="Label" parent="Margin/Rows"]
+layout_mode = 2
+theme_type_variation = &"HeaderSmall"
+text = "Unit"
+
+[node name="Tags" type="Label" parent="Margin/Rows"]
+layout_mode = 2
+theme_type_variation = &"DimCaption"
+autowrap_mode = 3
+
+[node name="Stats" type="Label" parent="Margin/Rows"]
+layout_mode = 2
+theme_type_variation = &"Caption"
+autowrap_mode = 3
+
+[node name="Notes" type="Label" parent="Margin/Rows"]
+layout_mode = 2
+theme_type_variation = &"Caption"
+autowrap_mode = 3
+
+[node name="Lines" type="VBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+mouse_filter = 2

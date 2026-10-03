@@ -69,7 +69,7 @@ public class UnitInfoTests
         UnitInfo info = UnitInfo.Of(tank, _rules, 1, TurnState.Empty, "enemy");
 
         Assert.Equal(
-            ["Bloodthirst 3", "Braced", "Mountain Born", "Out Of The Caves", "Retaliate"],
+            ["Bloodthirst 3", "Braced", "Mountain Born", "Out of the Caves", "Retaliate"],
             info.Traits.Select(trait => trait.Title));
         Assert.Contains("Heals 3 HP", info.Traits[0].Description);
         Assert.Equal("P2 · enemy · Goblins · Defender", info.Tags);

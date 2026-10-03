@@ -452,6 +452,7 @@ public partial class MatchScreen : Node
         _hud.ShowStatus(HudText.Status(update.View, _session.Rules), input.Message ?? HudText.Prompt(update, LabelOf));
         _hud.ShowPlayers(update.View.Phase == Phase.Draft ? [] : HudText.Players(update.View));
         _hud.ShowHint(model.Hint);
+        _hud.ShowUnitInfo(input.Draft is null ? model.Info : null);
 
         _draftPanel.Visible = input.Draft is not null;
         if (input.Draft is not null)
