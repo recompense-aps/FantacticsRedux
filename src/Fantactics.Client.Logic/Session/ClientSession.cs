@@ -1,3 +1,4 @@
+using Fantactics.Client.Logic.Log;
 using Fantactics.Core;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
@@ -20,6 +21,7 @@ public sealed class ClientSession
     private readonly Func<string, int, IPlayerAgent> _botFactory;
     private readonly string? _draftAs;
     private readonly Dictionary<Seat, IGameConnection> _connections;
+    private readonly Dictionary<Seat, EventLog> _logs;
     private readonly string? _autosave;
     private readonly object _switching = new();
     private int _shown;
@@ -49,6 +51,7 @@ public sealed class ClientSession
         _botFactory = botFactory;
         _draftAs = draftAs;
         _connections = match.State.Seats.ToDictionary(seat => seat, match.Connect);
+        _logs = _connections.ToDictionary(pair => pair.Key, pair => new EventLog(pair.Value.Current.View));
         Seat[] humans = [.. _connections.Keys.Where(IsHuman)];
         _shown = (int)(shown
             ?? humans.FirstOrDefault(seat => _connections[seat].Current.Legal is not null, humans.DefaultIfEmpty(Seat.P1).First()));
@@ -81,6 +84,12 @@ public sealed class ClientSession
 
     /// <summary>Whether a person at this machine plays <paramref name="seat"/>.</summary>
     public bool IsHuman(Seat seat) => Match.ControllerOf(seat).Kind == SeatControllerKind.Human;
+
+    /// <summary>
+    /// The player's log for the seat <paramref name="update"/> was for, up to and including it. Each seat keeps its own
+    /// log of every update it received, so a hotseat switch neither repeats nor misses anything.
+    /// </summary>
+    public IReadOnlyList<LogLine> LogFor(SeatUpdate update) => _logs[update.View.Seat].Through(update);
 
     /// <summary>Lets bots move first if they owe decisions, then runs the quick start for human seats.</summary>
     public async Task StartAsync()
@@ -125,6 +134,7 @@ public sealed class ClientSession
 
     private void OnUpdated(Seat seat, SeatUpdate update)
     {
+        _logs[seat].Append(update);
         QuickStart(seat, update);
         if (_autosave is not null && update.View.Turn != _savedTurn)
         {
