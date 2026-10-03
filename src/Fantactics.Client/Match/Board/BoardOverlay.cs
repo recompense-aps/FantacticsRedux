@@ -11,6 +11,8 @@ public partial class BoardOverlay : Node2D
 {
     private static readonly Color _objective = new(1, 0.84f, 0, 0.9f);
     private static readonly Color _reachable = new(1, 1, 1, 0.25f);
+    private static readonly Color _arrival = new(0.55f, 0.95f, 1, 0.3f);
+    private static readonly Color _arrivalEdge = new(0.55f, 0.95f, 1, 0.9f);
     private static readonly Color _path = new(1, 1, 0.4f, 0.9f);
     private static readonly Color _target = new(1, 0.2f, 0.2f, 0.9f);
     private static readonly Color _selected = new(1, 1, 0, 1);
@@ -29,6 +31,12 @@ public partial class BoardOverlay : Node2D
             if ((mark & TileMark.Reachable) != 0)
             {
                 DrawRect(rect, _reachable);
+            }
+
+            if ((mark & TileMark.Arrival) != 0)
+            {
+                DrawRect(rect, _arrival);
+                DrawRect(rect.Grow(-1), _arrivalEdge, false, 1);
             }
 
             if ((mark & TileMark.Objective) != 0)

@@ -100,7 +100,7 @@ public static class HudText
 
     /// <summary>The movement prompt's nudge to deploy, when a reserve unit is affordable this turn.</summary>
     private static string ReservesReady(MoveOptions? moves) => moves is { Deploys.IsEmpty: false }
-        ? $" Reserves ready (Command {moves.Command}): pick one under Deploy, then a green tile."
+        ? $" Reserves ready (Command {moves.Command}): pick one under Deploy, then an outlined tile."
         : "";
 
     private static string Races(ImmutableSortedDictionary<string, int> drafted) =>

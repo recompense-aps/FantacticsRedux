@@ -31,6 +31,9 @@ public partial class MatchHud : Control
     private HBoxContainer _actions = null!;
 
     [Export]
+    private Label _rosterTitle = null!;
+
+    [Export]
     private HBoxContainer _reserve = null!;
 
     [Export]
@@ -186,9 +189,14 @@ public partial class MatchHud : Control
         Refill(_actions, actions.Select(a => (a.Label, (Action)(() => EmitSignal(SignalName.ActionPressed, a.Action)), false)));
     }
 
-    /// <summary>Shows roster buttons (reserve units to deploy, or starting units to place): (unit, label, chosen).</summary>
-    public void ShowRoster(IReadOnlyList<(int UnitId, string Label, bool Chosen)> units)
+    /// <summary>
+    /// Shows roster buttons (reserve units to deploy, or starting units to place) as (unit, label, chosen), after
+    /// <paramref name="title"/>; an empty title is hidden.
+    /// </summary>
+    public void ShowRoster(string title, IReadOnlyList<(int UnitId, string Label, bool Chosen)> units)
     {
+        _rosterTitle.Text = title;
+        _rosterTitle.Visible = title.Length > 0;
         Refill(_reserve, units.Select(u => (u.Label, (Action)(() => EmitSignal(SignalName.UnitPressed, u.UnitId)), u.Chosen)));
     }
 
