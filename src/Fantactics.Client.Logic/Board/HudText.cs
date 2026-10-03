@@ -70,7 +70,8 @@ public static class HudText
             PlaceStartingArmyDecision => "Place your starting army: click a highlighted tile for each unit."
                 + EnemyDrafts(view),
             SubmitMoveOrdersDecision =>
-                "Move orders: click a unit, then a tile. Right-click clears. Enter submits.",
+                "Move orders: click a unit, then a tile. Right-click clears. Enter submits."
+                + ReservesReady(update.Legal.Moves),
             ChooseUnitActionDecision decision =>
                 $"{TypeOf(view, decision.UnitId)} acts: click a red target, 1–9 for abilities, W to wait, D to delay.",
             _ => "Waiting for " + string.Join(" and ", view.PendingDecisions
@@ -96,6 +97,11 @@ public static class HudText
                 + ".",
         };
     }
+
+    /// <summary>The movement prompt's nudge to deploy, when a reserve unit is affordable this turn.</summary>
+    private static string ReservesReady(MoveOptions? moves) => moves is { Deploys.IsEmpty: false }
+        ? $" Reserves ready (Command {moves.Command}): pick one under Deploy, then an outlined tile."
+        : "";
 
     private static string Races(ImmutableSortedDictionary<string, int> drafted) =>
         string.Join(", ", drafted.Select(pair => $"{pair.Key} {pair.Value}"));

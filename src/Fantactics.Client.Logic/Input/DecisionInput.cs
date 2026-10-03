@@ -101,6 +101,17 @@ public sealed class DecisionInput
     }
 
     /// <summary>
+    /// The label before the roster buttons: <c>Place:</c> during placement, <c>Deploy (Command N):</c> when reserve
+    /// units can deploy (N is the Command left after the chosen deploys), otherwise empty.
+    /// </summary>
+    public string RosterTitle => this switch
+    {
+        { Placement: not null } => "Place:",
+        { Moves: { DeployOptions.IsEmpty: false } moves } => $"Deploy (Command {moves.CommandLeft}):",
+        _ => "",
+    };
+
+    /// <summary>
     /// What stops the placement or move orders from being submitted (empty when ready), or <c>null</c> when this
     /// decision has no Submit button on the HUD.
     /// </summary>

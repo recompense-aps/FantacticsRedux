@@ -21,4 +21,7 @@ public enum TileMark
 
     /// <summary>The selected or acting unit stands here.</summary>
     Selected = 16,
+
+    /// <summary>A reserve unit that can still deploy could arrive here.</summary>
+    Arrival = 32,
 }

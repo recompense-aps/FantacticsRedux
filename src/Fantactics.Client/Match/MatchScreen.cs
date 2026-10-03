@@ -460,7 +460,7 @@ public partial class MatchScreen : Node
         }
 
         _hud.ShowActions(input.ActionButtons);
-        _hud.ShowRoster(input.Roster);
+        _hud.ShowRoster(input.RosterTitle, input.Roster);
         IReadOnlyList<string>? problems = input.SubmitProblems;
         _hud.ShowSubmit(problems is not null, problems is null ? "" : string.Join(" ", problems));
     }
