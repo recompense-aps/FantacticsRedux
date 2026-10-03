@@ -65,6 +65,7 @@ public sealed record BoardModel(
         Mark(tokens.Where(t => t.Acting && t.Mine).Select(t => t.Tile), TileMark.Selected);
         if (moves is not null)
         {
+            Mark(moves.Selected is null ? moves.ArrivalTiles : [], TileMark.Arrival);
             Mark(moves.Targets, TileMark.Reachable);
             Mark(tokens.Where(t => t.Id == moves.Selected && t.Mine).Select(t => t.Tile), TileMark.Selected);
             Mark(hover is Point tile ? moves.Preview(tile) : [], TileMark.Path);
@@ -84,7 +85,13 @@ public sealed record BoardModel(
             Mark(actions.Targets, TileMark.Target);
         }
 
-        return new BoardModel(tokens, marks.ToImmutableDictionary(), ArrowsFor(view, moves), HintFor(view, rules, actions, hover));
+        string? hint = HintFor(view, rules, actions, hover);
+        if (hover is Point hovered && marks.GetValueOrDefault(hovered).HasFlag(TileMark.Arrival))
+        {
+            hint += " · reserve arrival tile: pick a unit under Deploy";
+        }
+
+        return new BoardModel(tokens, marks.ToImmutableDictionary(), ArrowsFor(view, moves), hint);
     }
 
     /// <summary>Starting units placed so far (or already submitted), which aren't on the field yet.</summary>

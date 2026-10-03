@@ -43,6 +43,20 @@ public sealed class MoveOrderBuilder
     /// <summary>Command left after the chosen deploys.</summary>
     public int CommandLeft => _options.Command - _deploys.Keys.Sum(id => DeployOf(id).Cost);
 
+    /// <summary>
+    /// Reserve units that could still be given an arrival: not chosen yet, affordable with <see cref="CommandLeft"/>,
+    /// and with arrivals left this turn.
+    /// </summary>
+    public IEnumerable<DeployOption> ReadyToDeploy => _deploys.Count >= _options.MaxArrivals
+        ? []
+        : _options.Deploys.Where(d => !_deploys.ContainsKey(d.UnitId) && d.Cost <= CommandLeft);
+
+    /// <summary>Free tiles where at least one of <see cref="ReadyToDeploy"/> could arrive.</summary>
+    public IEnumerable<Point> ArrivalTiles => ReadyToDeploy
+        .SelectMany(d => d.Tiles)
+        .Distinct()
+        .Where(tile => !_deploys.ContainsValue(tile));
+
     /// <summary>Whether <see cref="Selected"/> is a reserve unit.</summary>
     public bool IsDeploying => Selected is int id && _options.Deploys.Any(d => d.UnitId == id);
 
