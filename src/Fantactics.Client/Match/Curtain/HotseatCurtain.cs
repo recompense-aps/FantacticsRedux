@@ -22,6 +22,9 @@ public partial class HotseatCurtain : ColorRect
     /// <summary>Whether the curtain is up.</summary>
     public bool IsUp => Visible;
 
+    /// <summary>The ready button's text.</summary>
+    public string ReadyText => _ready.Text;
+
     /// <inheritdoc />
     public override void _Ready()
     {

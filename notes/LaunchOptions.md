@@ -79,6 +79,10 @@ In a match, F5 quicksaves to `quick.json` and F9 loads it. The debug panel (F1) 
 | `--menu <main\|new\|load\|settings>` | Open this menu screen instead of the main menu. Pair it with `--screenshot` to check a menu's layout. |
 | `--screenshot <png>` | Save a picture of the screen after about 4 seconds, then quit with code 0. Use it to check layout without looking. |
 | `--autoplay` | The smoke test: human seats become `bot:captain@easy` (`llm` seats stay), animations are instant, and the match plays to the end. Exit code 0 when it finishes, 1 on a failure, 2 after a 5-minute timeout. With no other options it starts a new bot-vs-bot match; with `--load` it finishes that file. |
+| `--drive` | The input smoke test: human seats stay human and are played only through synthetic input, the way a person would: clicks on the real buttons and board tiles, and the keys bound to InputMap actions (Enter, Esc, W, D, 1–9). A `bot:captain@easy` picks each answer. With no match options it starts at the main menu and clicks **New match…** then **Start** (`--menu new` starts at the second); with `--p1`…`--p4` or `--load` it starts in that match. Hotseat curtains are clicked through. Animations are instant; exit codes as for `--autoplay`, and it prints how many decisions it drove. It fails, naming the step, when a button it needs isn't there or a decision is still on screen 10 s after its input ran. Can't be combined with `--autoplay`. |
+| `--shots <dir>` | With `--drive`, save a screenshot into `<dir>` the first time each screen comes up (main menu, new match, draft, placement, orders, action, curtain; numbered in order). Needs a window, so leave out `--headless`. |
+
+Both smoke tests also fail (exit code 1) when Godot logs any error, such as an exception in a node script, or when a node's required `[Export]` (one not declared nullable) is still unassigned when it enters the tree.
 
 ## Recipes
 
@@ -109,6 +113,13 @@ In a match, F5 quicksaves to `quick.json` and F9 loads it. The debug panel (F1) 
 
 # Headless smoke test
 --headless --path src/Fantactics.Client -- --autoplay
+
+# Input smoke tests: from the main menu, and hotseat with curtains
+--headless --path src/Fantactics.Client -- --drive
+--headless --path src/Fantactics.Client -- --drive --p1 human --p2 human
+
+# Drive with a window and keep screenshots of each screen
+--path src/Fantactics.Client -- --drive --shots playtests/shots
 
 # Check the draft screen's layout
 --path src/Fantactics.Client -- --p2 bot:captain --seed 3 --screenshot shot.png

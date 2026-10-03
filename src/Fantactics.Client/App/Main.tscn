@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://App/Main.cs" id="1_main"]
 [ext_resource type="PackedScene" path="res://Match/MatchScreen.tscn" id="2_match"]
@@ -6,16 +6,21 @@
 [ext_resource type="PackedScene" path="res://Menus/NewMatchScreen.tscn" id="4_new"]
 [ext_resource type="PackedScene" path="res://Menus/LoadScreen.tscn" id="5_load"]
 [ext_resource type="PackedScene" path="res://Menus/SettingsScreen.tscn" id="6_settings"]
+[ext_resource type="Script" path="res://App/InputDriver.cs" id="7_driver"]
 
-[node name="Main" type="Node" node_paths=PackedStringArray("_settingsScreen")]
+[node name="Main" type="Node" node_paths=PackedStringArray("_settingsScreen", "_driver")]
 script = ExtResource("1_main")
 _matchScene = ExtResource("2_match")
 _mainMenuScene = ExtResource("3_menu")
 _newMatchScene = ExtResource("4_new")
 _loadScene = ExtResource("5_load")
 _settingsScreen = NodePath("SettingsLayer/SettingsScreen")
+_driver = NodePath("InputDriver")
 
 [node name="SettingsLayer" type="CanvasLayer" parent="."]
 layer = 10
 
 [node name="SettingsScreen" parent="SettingsLayer" instance=ExtResource("6_settings")]
+
+[node name="InputDriver" type="Node" parent="."]
+script = ExtResource("7_driver")

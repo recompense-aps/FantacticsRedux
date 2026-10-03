@@ -63,9 +63,10 @@ Always run:
 
 Also run these when relevant:
 
-- The client (`src/Fantactics.Client`) was touched: the Godot smoke test,
-  `<console binary> --headless --path src/Fantactics.Client -- --autoplay`. Run `--import` first if scenes or
-  assets changed. For layout changes, take a `--screenshot` and look at it.
+- The client (`src/Fantactics.Client`) was touched: the Godot smoke tests,
+  `<console binary> --headless --path src/Fantactics.Client -- --autoplay` and `... -- --drive` (human input
+  through the real buttons and keys). Run `--import` first if scenes or assets changed. For layout changes, take a
+  `--screenshot` (or `--drive --shots <dir>`, windowed) and look at it.
 - Bots or Core hot paths were touched: the Ai tests already cover determinism and legal-actions agreement.
   Add a short `fantactics-sim run` if strength or speed is part of the exit criterion.
 
