@@ -170,6 +170,7 @@ public partial class MatchScreen : Node
         _hud.UnitPressed += OnRosterUnit;
         _hud.SpeedPressed += CycleSpeed;
         _hud.MenuPressed += OpenMenu;
+        _hud.LogPressed += ToggleLog;
         _draftPanel.AddPressed += (type, reserve) => ChangeDraft(draft => draft.Add(type, reserve));
         _draftPanel.RemovePressed += (type, reserve) => ChangeDraft(draft =>
         {
@@ -274,6 +275,10 @@ public partial class MatchScreen : Node
         {
             ToggleDebug();
         }
+        else if (@event.IsActionPressed("toggle_log"))
+        {
+            ToggleLog();
+        }
         else if (@event.IsActionPressed("quicksave"))
         {
             Quicksave();
@@ -311,6 +316,13 @@ public partial class MatchScreen : Node
     {
         _debug.Visible = !_debug.Visible;
         RefreshDebug();
+    }
+
+    /// <summary>Shows or hides the player's log, refitting the board to the space left.</summary>
+    public void ToggleLog()
+    {
+        _hud.ShowLogPanel(_hud.LogWidth <= 0);
+        FitCamera();
     }
 
     /// <summary>Uses changed settings (from the settings screen).</summary>
@@ -402,6 +414,7 @@ public partial class MatchScreen : Node
         }
 
         _current = update;
+        _hud.ShowLog(_session.LogFor(update));
         _llmSince = update.Legal is null && update.View.Outcome is null && WaitingOnLlm(update) ? DateTime.UtcNow : null;
         _llmSeconds = -1;
         _input = new DecisionInput(update);
@@ -646,9 +659,10 @@ public partial class MatchScreen : Node
             return;
         }
 
-        float zoom = Mathf.Min(viewport.X / (board.X + 32), (viewport.Y - HudTop - HudBottom) / board.Y);
+        float left = _hud.LogWidth;
+        float zoom = Mathf.Min((viewport.X - left) / (board.X + 32), (viewport.Y - HudTop - HudBottom) / board.Y);
         _camera.Zoom = new Vector2(zoom, zoom);
-        _camera.Position = board / 2 - new Vector2(0, (HudTop - HudBottom) / 2 / zoom);
+        _camera.Position = board / 2 - new Vector2(left / 2 / zoom, (HudTop - HudBottom) / 2 / zoom);
     }
 
     /// <summary>Where the match is saved, any resume warning, and how to hand an LLM seat to Claude.</summary>

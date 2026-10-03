@@ -1,4 +1,4 @@
-﻿using System.Collections.Immutable;
+using System.Collections.Immutable;
 using Fantactics.Client.Logic.Board;
 using Fantactics.Core;
 using Fantactics.Core.Events;
@@ -67,7 +67,7 @@ public static class EventText
             {
                 Flush(lines, moves, placed, names, turn);
                 turn = gameEvent is TurnStarted started ? started.Turn : turn;
-                lines.Add(new LogLine(turn, line));
+                lines.Add(new LogLine(turn, line, Heading: gameEvent is TurnStarted));
             }
         }
 

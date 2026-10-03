@@ -89,6 +89,7 @@ public class EventLogTests
             ],
             lines.Select(line => (line.Turn, line.Text)));
         Assert.Equal("P1 Spearman", names[4]);
+        Assert.Equal(["Turn 2"], lines.Where(line => line.Heading).Select(line => line.Text));
     }
 
     [Fact]

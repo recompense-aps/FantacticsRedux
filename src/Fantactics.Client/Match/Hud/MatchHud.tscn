@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://Match/Hud/MatchHud.cs" id="1_hud"]
 
-[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_players", "_hint", "_actions", "_reserve", "_problems", "_submit", "_speed", "_menu", "_banner", "_notice")]
+[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_players", "_hint", "_actions", "_reserve", "_problems", "_submit", "_speed", "_menu", "_banner", "_notice", "_log", "_logScroll", "_logLines", "_logButton")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -23,6 +23,10 @@ _speed = NodePath("Bottom/Speed")
 _menu = NodePath("Bottom/Menu")
 _banner = NodePath("Banner")
 _notice = NodePath("Notice")
+_log = NodePath("Log")
+_logScroll = NodePath("Log/Margin/Scroll")
+_logLines = NodePath("Log/Margin/Scroll/Lines")
+_logButton = NodePath("Bottom/Log")
 
 [node name="Top" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -55,6 +59,29 @@ offset_right = -8.0
 offset_bottom = 140.0
 grow_horizontal = 0
 mouse_filter = 2
+
+[node name="Log" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 60.0
+offset_right = 288.0
+offset_bottom = -52.0
+grow_vertical = 2
+theme_type_variation = &"CompactPanel"
+
+[node name="Margin" type="MarginContainer" parent="Log"]
+layout_mode = 2
+theme_type_variation = &"CompactMargin"
+
+[node name="Scroll" type="ScrollContainer" parent="Log/Margin"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Lines" type="VBoxContainer" parent="Log/Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="Bottom" type="HBoxContainer" parent="."]
 layout_mode = 1
@@ -91,6 +118,13 @@ theme_type_variation = &"ErrorLabel"
 layout_mode = 2
 focus_mode = 0
 text = "Submit (Enter)"
+
+[node name="Log" type="Button" parent="Bottom"]
+layout_mode = 2
+focus_mode = 0
+toggle_mode = true
+button_pressed = true
+text = "Log (L)"
 
 [node name="Speed" type="Button" parent="Bottom"]
 layout_mode = 2

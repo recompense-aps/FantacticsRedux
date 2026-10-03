@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Hosting;
 using Fantactics.Core.State;
@@ -45,7 +45,7 @@ public sealed class EventLog
             _names.Learn(update.View);
             if (update.View.Phase != _phase && EventText.PhaseLine(update.View.Phase) is string phaseLine)
             {
-                _lines.Add(new LogLine(update.View.Turn, phaseLine));
+                _lines.Add(new LogLine(update.View.Turn, phaseLine, Heading: true));
             }
 
             _phase = update.View.Phase;
