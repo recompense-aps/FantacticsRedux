@@ -12,10 +12,13 @@ public static partial class UnitText
         string.Join(" · ", [unit.Race, .. unit.Classes, .. unit.Unique ? ["unique"] : Array.Empty<string>()]);
 
     /// <summary>Combat stats, e.g. <c>HP 7 · ATK 4 · DEF 1 · MOV 4 · RNG 2–3 · INI 5</c>.</summary>
-    public static string Stats(UnitDefinition unit)
+    public static string Stats(UnitDefinition unit) => $"HP {unit.Hp} · {CombatStats(unit)}";
+
+    /// <summary>Stats besides HP, e.g. <c>ATK 4 · DEF 1 · MOV 4 · RNG 2–3 · INI 5</c>.</summary>
+    public static string CombatStats(UnitDefinition unit)
     {
         string range = unit.MinRange == unit.MaxRange ? $"{unit.MaxRange}" : $"{unit.MinRange}–{unit.MaxRange}";
-        return $"HP {unit.Hp} · ATK {unit.Attack} · DEF {unit.Defense} · MOV {unit.Movement} · RNG {range} · INI {unit.Initiative}";
+        return $"ATK {unit.Attack} · DEF {unit.Defense} · MOV {unit.Movement} · RNG {range} · INI {unit.Initiative}";
     }
 
     /// <summary>Abilities and traits in words, e.g. <c>Pinning Shot; Forest Stride, Slippery</c>, or empty.</summary>
