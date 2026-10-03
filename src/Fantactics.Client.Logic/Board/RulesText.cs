@@ -16,7 +16,8 @@ public static class RulesText
     public static string Ability(string id, AbilityDefinition ability) => id switch
     {
         AbilityIds.PinningShot => $"A basic attack that also Roots the target for {Turns(ability.Duration)}.",
-        AbilityIds.Mend => $"Heal an ally {ability.Amount} HP and remove Slowed and Rooted.",
+        AbilityIds.Mend => (ability.AllyScope == AllyScope.OwnRace ? "Heal another friendly unit of its race " : "Heal another friendly unit ")
+            + $"{ability.Amount} HP and remove Slowed and Rooted.",
         AbilityIds.Overgrowth => "Turn a Plains, Road, or Hills tile into Forest, even an occupied one.",
         AbilityIds.Entangle =>
             $"Root every enemy standing in Forest within {ability.MaxRange} tiles for {Turns(ability.Duration)}.",
@@ -55,7 +56,7 @@ public static class RulesText
         TraitIds.Bloodthirst => $"Heals {value} HP after its attack deals damage (not in clashes).",
         TraitIds.Reckless => "+1 Attack in clashes.",
         TraitIds.Crush => "Ignores the target's terrain Defense bonus.",
-        TraitIds.Hamstring => $"Its attacks Slow the target for {Turns(value)}.",
+        TraitIds.Hamstring => $"Its attacks (not clash strikes) Slow the target for {Turns(value)}.",
         TraitIds.WarCry => $"Aura: other friendly units of its race within {value} tiles get +1 Bloodthirst.",
         TraitIds.Forestwalk => "Forest costs 1 Movement.",
         TraitIds.CanopySight => "Forest doesn't block its line of sight.",
