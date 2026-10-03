@@ -1,4 +1,5 @@
 using Fantactics.Client.Common;
+using Fantactics.Client.Logic.Log;
 using Fantactics.Core;
 using Godot;
 
@@ -6,11 +7,14 @@ namespace Fantactics.Client.Match.Hud;
 
 /// <summary>
 /// The match HUD: status and prompt lines, the player list (with more than two players), the hovered tile's hint,
-/// the action bar, roster buttons (deploys, placement), the Submit button, the speed toggle, the menu button, and a
-/// banner. It only shows what it's given and reports button presses.
+/// the action bar, roster buttons (deploys, placement), the Submit button, the speed toggle, the menu button, a
+/// banner, and the player's log on the left. It only shows what it's given and reports button presses.
 /// </summary>
 public partial class MatchHud : Control
 {
+    private LogLine? _lastLogLine;
+    private int _logCount;
+
     [Export]
     private Label _status = null!;
 
@@ -47,6 +51,18 @@ public partial class MatchHud : Control
     [Export]
     private Label _notice = null!;
 
+    [Export]
+    private Control _log = null!;
+
+    [Export]
+    private ScrollContainer _logScroll = null!;
+
+    [Export]
+    private VBoxContainer _logLines = null!;
+
+    [Export]
+    private Button _logButton = null!;
+
     /// <summary>Submit was pressed.</summary>
     [Signal]
     public delegate void SubmitPressedEventHandler();
@@ -67,12 +83,21 @@ public partial class MatchHud : Control
     [Signal]
     public delegate void MenuPressedEventHandler();
 
+    /// <summary>The log button was pressed.</summary>
+    [Signal]
+    public delegate void LogPressedEventHandler();
+
+    /// <summary>Screen pixels the log panel takes on the left, including its gap from the edge; 0 when hidden.</summary>
+    public float LogWidth => _log.Visible ? _log.OffsetRight : 0;
+
     /// <inheritdoc />
     public override void _Ready()
     {
         _submit.Pressed += () => EmitSignal(SignalName.SubmitPressed);
         _speed.Pressed += () => EmitSignal(SignalName.SpeedPressed);
         _menu.Pressed += () => EmitSignal(SignalName.MenuPressed);
+        _logButton.Pressed += () => EmitSignal(SignalName.LogPressed);
+        _logScroll.GetVScrollBar().Changed += ScrollLogToEnd;
         _banner.Visible = false;
     }
 
@@ -111,6 +136,45 @@ public partial class MatchHud : Control
             line.AddThemeColorOverride("font_color", SeatColors.Of(seat).Lightened(0.35f));
             _players.AddChild(line);
         }
+    }
+
+    /// <summary>
+    /// Shows the player's log, scrolled to the newest line. When <paramref name="lines"/> continues what's shown,
+    /// only the new lines are added.
+    /// </summary>
+    public void ShowLog(IReadOnlyList<LogLine> lines)
+    {
+        bool continues = _logCount > 0 && lines.Count >= _logCount && ReferenceEquals(lines[_logCount - 1], _lastLogLine);
+        if (!continues)
+        {
+            foreach (Node child in _logLines.GetChildren())
+            {
+                _logLines.RemoveChild(child);
+                child.QueueFree();
+            }
+
+            _logCount = 0;
+        }
+
+        foreach (LogLine line in lines.Skip(_logCount))
+        {
+            _logLines.AddChild(new Label
+            {
+                Text = line.Text,
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                ThemeTypeVariation = line.Heading ? "LogHeading" : "Caption",
+            });
+        }
+
+        _logCount = lines.Count;
+        _lastLogLine = lines.Count > 0 ? lines[^1] : null;
+    }
+
+    /// <summary>Shows or hides the log panel.</summary>
+    public void ShowLogPanel(bool visible)
+    {
+        _log.Visible = visible;
+        _logButton.SetPressedNoSignal(visible);
     }
 
     /// <summary>Sets the hint for the hovered tile.</summary>
@@ -167,6 +231,8 @@ public partial class MatchHud : Control
         tween.TweenInterval(seconds);
         tween.TweenProperty(_notice, "modulate:a", 0f, 1);
     }
+
+    private void ScrollLogToEnd() => _logScroll.ScrollVertical = (int)_logScroll.GetVScrollBar().MaxValue;
 
     private static void Refill(HBoxContainer box, IEnumerable<(string Label, Action Pressed, bool Chosen)> buttons)
     {
