@@ -80,7 +80,7 @@ public sealed class SavesTests : IDisposable
         Assert.Equal(15, timeline[^1].Turn);
         Assert.StartsWith("T1 #", DebugText.Line(open.Session.Match.Events.First(e => e.Turn == 1)));
         Assert.Contains("turn 15", DebugText.Summary(path));
-        Assert.Contains("not a match file", DebugText.Summary(Path.Combine(_folder, "missing.json")));
+        Assert.Contains("file not found", DebugText.Summary(Path.Combine(_folder, "missing.json")));
     }
 
     private MatchOpener Opener() => new(RulesConfig.Default, States.CreateBot, new SaveLocations(_folder));

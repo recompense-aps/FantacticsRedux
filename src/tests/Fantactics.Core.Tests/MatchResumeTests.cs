@@ -121,6 +121,18 @@ public class MatchResumeTests
         Assert.Equal(15, follower.Commands.Count);
     }
 
+    [Theory]
+    [InlineData("""{"formatVersion":99,"rulesVersion":"9.0.0","rulesConfigHash":"","setup":{"map":"riverford","seed":1,"seats":{"P1":"human","P2":"human"}},"commands":[]}""", "newer version")]
+    [InlineData("""{"formatVersion":2,"rulesVersion":"0.7.0","rulesConfigHash":"","commands":[]}""", "no setup")]
+    [InlineData("""{"formatVersion":2,"rulesVersion":"0.7.0","rulesConfigHash":"","setup":{"map":"riverford","seed":1,"seats":{}},"commands":[]}""", "no setup")]
+    [InlineData("""{"formatVersion":2,"rulesVersion":"0.7.0","rulesConfigHash":"","setup":{"map":"riverford","seed":1,"seats":{"P1":"human","P2":"human"}}}""", "no command list")]
+    public void IncompleteOrNewerRecordsAreRejectedWithAPlainReason(string json, string reason)
+    {
+        JsonException ex = Assert.Throws<JsonException>(() => MatchRecord.FromJson(json, RulesConfig.Default));
+
+        Assert.Contains(reason, ex.Message);
+    }
+
     private static string Json<T>(T value) => JsonSerializer.Serialize(value, CoreJson.Options);
 
     /// <summary>The record as if the rules had changed after it was made: a recorded hash no longer matches.</summary>

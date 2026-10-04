@@ -36,11 +36,30 @@ public sealed record MatchRecord(
     public const int CurrentFormatVersion = 2;
 
     /// <summary>Parses a record from JSON, attaching <paramref name="rules"/> to its states.</summary>
-    /// <exception cref="JsonException">The JSON is malformed.</exception>
+    /// <exception cref="JsonException">
+    /// The JSON is malformed, is missing the setup or the commands, or is in a newer format than this version reads.
+    /// </exception>
     public static MatchRecord FromJson(string json, RulesConfig rules)
     {
         MatchRecord record = JsonSerializer.Deserialize<MatchRecord>(json, CoreJson.Options)
             ?? throw new JsonException("Match record is empty.");
+        if (record.FormatVersion > CurrentFormatVersion)
+        {
+            throw new JsonException($"The match record was saved by a newer version of Fantactics (format "
+                + $"{record.FormatVersion}; this version reads up to {CurrentFormatVersion}).");
+        }
+
+        // The serializer leaves missing constructor parameters null (or default), whatever their annotations say.
+        if (record.Setup?.Map is null || record.Setup.Seats is null || record.Setup.Seats.IsEmpty)
+        {
+            throw new JsonException("The match record has no setup (map and seats).");
+        }
+
+        if (record.Commands.IsDefault)
+        {
+            throw new JsonException("The match record has no command list.");
+        }
+
         return record with
         {
             Start = record.Start is GameState start ? GameStateJson.Attach(start, rules) : null,

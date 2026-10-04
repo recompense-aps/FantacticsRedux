@@ -1,6 +1,5 @@
 using Fantactics.Client.Logic.Session;
 using Fantactics.Core;
-using Fantactics.Protocol.Connections;
 using Godot;
 
 namespace Fantactics.Client.Menus;
@@ -11,6 +10,9 @@ namespace Fantactics.Client.Menus;
 /// </summary>
 public partial class LoadScreen : Control
 {
+    /// <summary>The <see cref="LoadChosen"/> seat for "the human seat that's to move" (hotseat).</summary>
+    public const int SeatToMove = -1;
+
     private IReadOnlyList<SaveSummary> _saves = [];
     private string _folder = "";
 
@@ -32,7 +34,10 @@ public partial class LoadScreen : Control
     [Export]
     private Button _load = null!;
 
-    /// <summary>Load <paramref name="path"/>, showing <paramref name="seat"/> (a <see cref="Seat"/>) first.</summary>
+    /// <summary>
+    /// Load <paramref name="path"/>, showing <paramref name="seat"/> (a <see cref="Seat"/>, or <see cref="SeatToMove"/>)
+    /// first.
+    /// </summary>
     [Signal]
     public delegate void LoadChosenEventHandler(string path, int seat);
 
@@ -53,11 +58,7 @@ public partial class LoadScreen : Control
     public override void _Ready()
     {
         _folderLabel.Text = _folder;
-        foreach (Seat seat in Enum.GetValues<Seat>())
-        {
-            _seat.AddItem($"Play as {seat}", (int)seat);
-        }
-
+        _seat.Visible = false;
         foreach (SaveSummary save in _saves)
         {
             int index = _list.AddItem($"{save.Modified:yyyy-MM-dd HH:mm}  {save.Text}");
@@ -79,17 +80,14 @@ public partial class LoadScreen : Control
     {
         SaveSummary save = _saves[index];
         _load.Disabled = !save.Readable;
-        Seat human = save.Seats
-            .Where(pair => SeatController.Parse(pair.Value).Kind == SeatControllerKind.Human)
-            .Select(pair => pair.Key)
-            .DefaultIfEmpty(Seat.P1)
-            .First();
-        foreach (Seat seat in Enum.GetValues<Seat>())
+        _seat.Clear();
+        foreach (SeatChoice choice in save.SeatChoices)
         {
-            _seat.SetItemDisabled(_seat.GetItemIndex((int)seat), !save.Seats.ContainsKey(seat));
+            _seat.AddItem(choice.Label, choice.Seat is Seat seat ? (int)seat : SeatToMove);
         }
 
-        _seat.Select(_seat.GetItemIndex((int)human));
+        _seat.Visible = save.SeatChoices.Count > 0;
+        _seat.Select(save.DefaultSeatChoice);
         _message.Text = "";
     }
 
