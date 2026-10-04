@@ -45,40 +45,6 @@ public static class BeliefState
                 UnitLocation.Reserve,
                 default(Point),
                 rules.Units[guess.Type].Hp));
-        ImmutableSortedDictionary<int, Unit> units = view.Units
-            .Concat(guessed)
-            .ToImmutableSortedDictionary(unit => unit.Id, unit => unit);
-
-        ImmutableSortedDictionary<Seat, PlayerState> players = view.Players.Values.ToImmutableSortedDictionary(
-            summary => summary.Seat,
-            summary => new PlayerState(
-                summary.Seat,
-                summary.Command,
-                summary.DestroyedValue,
-                summary.ObjectivePoints,
-                summary.AllowedRaces,
-                summary.DraftedRaces,
-                summary.DraftBudget,
-                summary.StartingCap,
-                summary.TeamNumber == summary.Seat.OwnTeam() ? null : summary.TeamNumber,
-                summary.Eliminated ? view.Turn : null));
-
-        ImmutableSortedDictionary<Seat, ICommand> pending = view.MyPendingOrders is ICommand mine
-            ? ImmutableSortedDictionary<Seat, ICommand>.Empty.Add(view.Seat, mine)
-            : ImmutableSortedDictionary<Seat, ICommand>.Empty;
-
-        return new GameState(
-            rules,
-            view.Map,
-            view.Turn,
-            view.Phase,
-            view.TiePriority,
-            players,
-            units,
-            pending,
-            view.TurnState,
-            RngState: 0,
-            NextUnitId: units.IsEmpty ? 1 : units.Keys.Max() + 1,
-            view.Outcome);
+        return view.ToState(rules, guessed);
     }
 }
