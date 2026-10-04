@@ -59,7 +59,8 @@ public sealed class LoadTests : IDisposable
     {
         string path = Write("map.json", Edit(Saved(4), root => root["setup"]!["map"] = "atlantis"));
 
-        Assert.Contains("uses the map 'atlantis'", LoadError(path));
+        Assert.Equal("Can't load map.json: uses the map 'atlantis', which this version doesn't have.", LoadError(path));
+        Assert.False(SaveSummary.Read(path).Readable);
     }
 
     [Fact]

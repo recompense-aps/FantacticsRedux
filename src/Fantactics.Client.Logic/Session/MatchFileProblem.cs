@@ -1,9 +1,13 @@
 using System.Text.Json;
+using Fantactics.Core.Maps;
 using Fantactics.Core.Records;
 
 namespace Fantactics.Client.Logic.Session;
 
-/// <summary>Why a JSON file can't be loaded as a match, judged from its JSON alone (before reading the record).</summary>
+/// <summary>
+/// Why a JSON file can't be loaded as a match, judged from its JSON alone (before reading the record): it isn't a
+/// match, it's in a newer format, or its map isn't one this version has.
+/// </summary>
 public static class MatchFileProblem
 {
     /// <summary>The file's JSON isn't a match record.</summary>
@@ -18,21 +22,27 @@ public static class MatchFileProblem
     /// <summary>The problem with <paramref name="root"/>, or <c>null</c> if it looks like a match record.</summary>
     public static string? Of(JsonElement root)
     {
-        bool looksLikeMatch = root.ValueKind == JsonValueKind.Object
-            && root.TryGetProperty("setup", out JsonElement setup)
-            && setup.ValueKind == JsonValueKind.Object
-            && setup.TryGetProperty("seats", out JsonElement seats)
-            && seats.ValueKind == JsonValueKind.Object;
-        if (!looksLikeMatch)
+        if (root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty("setup", out JsonElement setup)
+            || setup.ValueKind != JsonValueKind.Object
+            || !setup.TryGetProperty("seats", out JsonElement seats)
+            || seats.ValueKind != JsonValueKind.Object)
         {
             return NotAMatch;
         }
 
-        return root.TryGetProperty("formatVersion", out JsonElement format)
+        if (root.TryGetProperty("formatVersion", out JsonElement format)
             && format.ValueKind == JsonValueKind.Number
             && format.TryGetInt32(out int version)
-            && version > MatchRecord.CurrentFormatVersion
-                ? Newer
+            && version > MatchRecord.CurrentFormatVersion)
+        {
+            return Newer;
+        }
+
+        return setup.TryGetProperty("map", out JsonElement map)
+            && map.ValueKind == JsonValueKind.String
+            && !MapLibrary.Names.Contains(map.GetString())
+                ? $"uses the map '{map.GetString()}', which this version doesn't have"
                 : null;
     }
 

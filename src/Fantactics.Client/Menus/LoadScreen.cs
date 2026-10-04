@@ -58,7 +58,7 @@ public partial class LoadScreen : Control
     public override void _Ready()
     {
         _folderLabel.Text = _folder;
-        _seat.Disabled = true;
+        _seat.Visible = false;
         foreach (SaveSummary save in _saves)
         {
             int index = _list.AddItem($"{save.Modified:yyyy-MM-dd HH:mm}  {save.Text}");
@@ -86,7 +86,7 @@ public partial class LoadScreen : Control
             _seat.AddItem(choice.Label, choice.Seat is Seat seat ? (int)seat : SeatToMove);
         }
 
-        _seat.Disabled = save.SeatChoices.Count == 0;
+        _seat.Visible = save.SeatChoices.Count > 0;
         _seat.Select(save.DefaultSeatChoice);
         _message.Text = "";
     }

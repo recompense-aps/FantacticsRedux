@@ -2,7 +2,6 @@ using System.Text.Json;
 using Fantactics.Core;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Hosting;
-using Fantactics.Core.Maps;
 using Fantactics.Core.Players;
 using Fantactics.Core.Records;
 using Fantactics.Core.Rules;
@@ -130,11 +129,6 @@ public sealed class MatchOpener(RulesConfig rules, Func<string, int, IPlayerAgen
             or KeyNotFoundException)
         {
             throw Failed(path, $"part of it can't be read. {ex.Message}{otherRules}", ex);
-        }
-
-        if (!MapLibrary.Names.Contains(record.Setup.Map))
-        {
-            throw Failed(path, $"it uses the map '{record.Setup.Map}', which this version doesn't have.");
         }
 
         try
