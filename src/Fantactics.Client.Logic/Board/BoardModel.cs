@@ -13,7 +13,7 @@ namespace Fantactics.Client.Logic.Board;
 /// tile, and the unit the info panel describes. A pure function of the seat's view and the input state, rebuilt whenever either changes.
 /// </summary>
 /// <param name="Tokens">Units on the field.</param>
-/// <param name="Marks">Highlighted tiles.</param>
+/// <param name="Marks">Highlighted tiles, including the enemy threats shown (<see cref="ThreatOverlay"/>).</param>
 /// <param name="Arrows">Move and deploy orders to draw.</param>
 /// <param name="Hint">What hovering the tile would do or shows, if anything.</param>
 /// <param name="Info">
@@ -34,13 +34,17 @@ public sealed record BoardModel(
     /// <param name="actions">The action being picked in the action phase, if any.</param>
     /// <param name="hover">The tile under the pointer, if any.</param>
     /// <param name="placement">The starting placement being built, if any.</param>
+    /// <param name="threats">
+    /// Whether to show every enemy's threats. A hovered enemy's threats are shown either way, and only theirs.
+    /// </param>
     public static BoardModel Build(
         PlayerView view,
         RulesConfig rules,
         MoveOrderBuilder? moves,
         ActionPicker? actions,
         Point? hover,
-        PlacementBuilder? placement = null)
+        PlacementBuilder? placement = null,
+        bool threats = false)
     {
         ImmutableHashSet<int> acting = [.. view.PendingDecisions.OfType<ChooseUnitActionDecision>().Select(d => d.UnitId)];
         ImmutableArray<TokenModel> tokens = [.. view.Units
@@ -67,6 +71,9 @@ public sealed record BoardModel(
             }
         }
 
+        ThreatOverlay threat = ThreatsFor(view, rules, tokens, hover, threats);
+        Mark(threat.Move, TileMark.ThreatMove);
+        Mark(threat.Attack, TileMark.ThreatAttack);
         Mark(tokens.Where(t => t.Acting && t.Mine).Select(t => t.Tile), TileMark.Selected);
         if (moves is not null)
         {
@@ -102,6 +109,23 @@ public sealed record BoardModel(
             ArrowsFor(view, moves),
             hint,
             InfoFor(view, rules, tokens, moves, placement, hover));
+    }
+
+    /// <summary>The hovered enemy's threats, else every enemy's when <paramref name="all"/> is set, else none.</summary>
+    private static ThreatOverlay ThreatsFor(
+        PlayerView view,
+        RulesConfig rules,
+        ImmutableArray<TokenModel> tokens,
+        Point? hover,
+        bool all)
+    {
+        IEnumerable<TokenModel> enemies = tokens.Where(token => view.AreEnemies(token.Owner, view.Seat));
+        List<int> hovered = enemies
+            .Where(token => token.Tile == hover)
+            .Select(token => token.Id)
+            .ToList();
+        IEnumerable<int> shown = hovered.Count > 0 ? hovered : all ? enemies.Select(token => token.Id) : [];
+        return ThreatOverlay.For(view, rules, shown);
     }
 
     /// <summary>Describes the hovered unit, else the selected one, else the acting one (the viewer's first).</summary>

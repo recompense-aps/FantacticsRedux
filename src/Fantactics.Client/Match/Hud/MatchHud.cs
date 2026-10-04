@@ -35,7 +35,7 @@ public partial class MatchHud : Control
     private Label _rosterTitle = null!;
 
     [Export]
-    private HBoxContainer _reserve = null!;
+    private HFlowContainer _reserve = null!;
 
     [Export]
     private Label _problems = null!;
@@ -59,6 +59,9 @@ public partial class MatchHud : Control
     private Control _side = null!;
 
     [Export]
+    private Control _bottom = null!;
+
+    [Export]
     private UnitInfoPanel _unitInfo = null!;
 
     [Export]
@@ -72,6 +75,9 @@ public partial class MatchHud : Control
 
     [Export]
     private Button _logButton = null!;
+
+    [Export]
+    private Button _threatsButton = null!;
 
     /// <summary>Submit was pressed.</summary>
     [Signal]
@@ -97,8 +103,19 @@ public partial class MatchHud : Control
     [Signal]
     public delegate void LogPressedEventHandler();
 
+    /// <summary>The threats button was pressed.</summary>
+    [Signal]
+    public delegate void ThreatsPressedEventHandler();
+
+    /// <summary>The bottom bar changed height (the roster wrapped onto another row, or back).</summary>
+    [Signal]
+    public delegate void BottomResizedEventHandler();
+
     /// <summary>Screen pixels the log panel takes on the left, including its gap from the edge; 0 when hidden.</summary>
     public float LogWidth => _log.Visible ? _side.OffsetRight : 0;
+
+    /// <summary>Screen pixels the bottom bar takes, including its gap from the edge.</summary>
+    public float BottomHeight => GetViewportRect().Size.Y - _bottom.GetGlobalRect().Position.Y;
 
     /// <inheritdoc />
     public override void _Ready()
@@ -107,6 +124,8 @@ public partial class MatchHud : Control
         _speed.Pressed += () => EmitSignal(SignalName.SpeedPressed);
         _menu.Pressed += () => EmitSignal(SignalName.MenuPressed);
         _logButton.Pressed += () => EmitSignal(SignalName.LogPressed);
+        _threatsButton.Pressed += () => EmitSignal(SignalName.ThreatsPressed);
+        _bottom.Resized += () => EmitSignal(SignalName.BottomResized);
         _logScroll.GetVScrollBar().Changed += ScrollLogToEnd;
         _banner.Visible = false;
     }
@@ -187,6 +206,9 @@ public partial class MatchHud : Control
         _logButton.SetPressedNoSignal(visible);
     }
 
+    /// <summary>Shows whether every enemy's threats are on the board.</summary>
+    public void ShowThreats(bool on) => _threatsButton.SetPressedNoSignal(on);
+
     /// <summary>Describes a unit above the log, or hides the description for <c>null</c>.</summary>
     public void ShowUnitInfo(UnitInfo? info) => _unitInfo.Describe(info);
 
@@ -252,7 +274,7 @@ public partial class MatchHud : Control
 
     private void ScrollLogToEnd() => _logScroll.ScrollVertical = (int)_logScroll.GetVScrollBar().MaxValue;
 
-    private static void Refill(HBoxContainer box, IEnumerable<(string Label, Action Pressed, bool Chosen)> buttons)
+    private static void Refill(Container box, IEnumerable<(string Label, Action Pressed, bool Chosen)> buttons)
     {
         foreach (Node child in box.GetChildren())
         {

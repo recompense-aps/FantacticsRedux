@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Maps;
+using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
 namespace Fantactics.Core.Engine;
@@ -88,5 +89,50 @@ public sealed record PlayerView(
             state.PendingOrders.GetValueOrDefault(seat) is ICommand mine ? ids.ToView(mine) : null,
             [.. GameEngine.PendingDecisions(state).Select(ids.ToView)],
             state.Outcome);
+    }
+
+    /// <summary>
+    /// Builds a <see cref="GameState"/> holding only what this view shows (other seats' reserves and orders are
+    /// missing), so tools can run engine queries such as <see cref="Pathfinder"/> without seeing hidden information.
+    /// </summary>
+    /// <param name="rules">Rules in effect (a view doesn't carry them).</param>
+    /// <param name="extraUnits">Units to add that the view doesn't show, such as guessed reserves.</param>
+    public GameState ToState(RulesConfig rules, IEnumerable<Unit>? extraUnits = null)
+    {
+        ImmutableSortedDictionary<int, Unit> units = Units
+            .Concat(extraUnits ?? [])
+            .ToImmutableSortedDictionary(unit => unit.Id, unit => unit);
+
+        ImmutableSortedDictionary<Seat, PlayerState> players = Players.Values.ToImmutableSortedDictionary(
+            summary => summary.Seat,
+            summary => new PlayerState(
+                summary.Seat,
+                summary.Command,
+                summary.DestroyedValue,
+                summary.ObjectivePoints,
+                summary.AllowedRaces,
+                summary.DraftedRaces,
+                summary.DraftBudget,
+                summary.StartingCap,
+                summary.TeamNumber == summary.Seat.OwnTeam() ? null : summary.TeamNumber,
+                summary.Eliminated ? Turn : null));
+
+        ImmutableSortedDictionary<Seat, ICommand> pending = MyPendingOrders is ICommand mine
+            ? ImmutableSortedDictionary<Seat, ICommand>.Empty.Add(Seat, mine)
+            : ImmutableSortedDictionary<Seat, ICommand>.Empty;
+
+        return new GameState(
+            rules,
+            Map,
+            Turn,
+            Phase,
+            TiePriority,
+            players,
+            units,
+            pending,
+            TurnState,
+            RngState: 0,
+            NextUnitId: units.IsEmpty ? 1 : units.Keys.Max() + 1,
+            Outcome);
     }
 }
