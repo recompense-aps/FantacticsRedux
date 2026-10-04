@@ -9,18 +9,23 @@ using Fantactics.Core.State;
 namespace Fantactics.Client.Logic.Board;
 
 /// <summary>
-/// Everything the board draws besides terrain: unit tokens, tile highlights, order arrows, and a hint for the
-/// hovered tile. A pure function of the seat's view and the input state, rebuilt whenever either changes.
+/// Everything the board draws besides terrain (unit tokens, tile highlights, order arrows), a hint for the hovered
+/// tile, and the unit the info panel describes. A pure function of the seat's view and the input state, rebuilt whenever either changes.
 /// </summary>
 /// <param name="Tokens">Units on the field.</param>
 /// <param name="Marks">Highlighted tiles.</param>
 /// <param name="Arrows">Move and deploy orders to draw.</param>
 /// <param name="Hint">What hovering the tile would do or shows, if anything.</param>
+/// <param name="Info">
+/// The unit the info panel describes: the hovered one, else the one selected for orders or placement, else the one
+/// acting; <c>null</c> for none.
+/// </param>
 public sealed record BoardModel(
     ImmutableArray<TokenModel> Tokens,
     ImmutableDictionary<Point, TileMark> Marks,
     ImmutableArray<OrderArrow> Arrows,
-    string? Hint)
+    string? Hint,
+    UnitInfo? Info = null)
 {
     /// <summary>Builds the model.</summary>
     /// <param name="view">The seat's view.</param>
@@ -91,7 +96,36 @@ public sealed record BoardModel(
             hint += " · reserve arrival tile: pick a unit under Deploy";
         }
 
-        return new BoardModel(tokens, marks.ToImmutableDictionary(), ArrowsFor(view, moves), hint);
+        return new BoardModel(
+            tokens,
+            marks.ToImmutableDictionary(),
+            ArrowsFor(view, moves),
+            hint,
+            InfoFor(view, rules, tokens, moves, placement, hover));
+    }
+
+    /// <summary>Describes the hovered unit, else the selected one, else the acting one (the viewer's first).</summary>
+    private static UnitInfo? InfoFor(
+        PlayerView view,
+        RulesConfig rules,
+        ImmutableArray<TokenModel> tokens,
+        MoveOrderBuilder? moves,
+        PlacementBuilder? placement,
+        Point? hover)
+    {
+        int? hovered = hover is Point tile
+            ? tokens
+                .Where(token => token.Tile == tile)
+                .Select(token => (int?)token.Id)
+                .FirstOrDefault()
+            : null;
+        int? acting = view.PendingDecisions
+            .OfType<ChooseUnitActionDecision>()
+            .OrderBy(decision => decision.Seat != view.Seat)
+            .Select(decision => (int?)decision.UnitId)
+            .FirstOrDefault();
+        int? shown = hovered ?? moves?.Selected ?? placement?.Selected ?? acting;
+        return view.Units.FirstOrDefault(unit => unit.Id == shown) is Unit unit ? UnitInfo.Of(view, rules, unit) : null;
     }
 
     /// <summary>Starting units placed so far (or already submitted), which aren't on the field yet.</summary>

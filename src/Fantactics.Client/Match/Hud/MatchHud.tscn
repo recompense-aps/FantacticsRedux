@@ -1,8 +1,9 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://Match/Hud/MatchHud.cs" id="1_hud"]
+[ext_resource type="PackedScene" path="res://Match/Hud/UnitInfoPanel.tscn" id="2_info"]
 
-[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_players", "_hint", "_actions", "_rosterTitle", "_reserve", "_problems", "_submit", "_speed", "_menu", "_banner", "_notice", "_log", "_logScroll", "_logLines", "_logButton")]
+[node name="MatchHud" type="Control" node_paths=PackedStringArray("_status", "_prompt", "_players", "_hint", "_actions", "_rosterTitle", "_reserve", "_problems", "_submit", "_speed", "_menu", "_banner", "_notice", "_side", "_unitInfo", "_log", "_logScroll", "_logLines", "_logButton")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -24,9 +25,11 @@ _speed = NodePath("Bottom/Speed")
 _menu = NodePath("Bottom/Menu")
 _banner = NodePath("Banner")
 _notice = NodePath("Notice")
-_log = NodePath("Log")
-_logScroll = NodePath("Log/Margin/Scroll")
-_logLines = NodePath("Log/Margin/Scroll/Lines")
+_side = NodePath("Side")
+_unitInfo = NodePath("Side/UnitInfo")
+_log = NodePath("Side/Log")
+_logScroll = NodePath("Side/Log/Margin/Scroll")
+_logLines = NodePath("Side/Log/Margin/Scroll/Lines")
 _logButton = NodePath("Bottom/Log")
 
 [node name="Top" type="VBoxContainer" parent="."]
@@ -61,7 +64,7 @@ offset_bottom = 140.0
 grow_horizontal = 0
 mouse_filter = 2
 
-[node name="Log" type="PanelContainer" parent="."]
+[node name="Side" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 9
 anchor_bottom = 1.0
@@ -70,17 +73,25 @@ offset_top = 60.0
 offset_right = 288.0
 offset_bottom = -52.0
 grow_vertical = 2
+mouse_filter = 2
+
+[node name="UnitInfo" parent="Side" instance=ExtResource("2_info")]
+layout_mode = 2
+
+[node name="Log" type="PanelContainer" parent="Side"]
+layout_mode = 2
+size_flags_vertical = 3
 theme_type_variation = &"CompactPanel"
 
-[node name="Margin" type="MarginContainer" parent="Log"]
+[node name="Margin" type="MarginContainer" parent="Side/Log"]
 layout_mode = 2
 theme_type_variation = &"CompactMargin"
 
-[node name="Scroll" type="ScrollContainer" parent="Log/Margin"]
+[node name="Scroll" type="ScrollContainer" parent="Side/Log/Margin"]
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="Lines" type="VBoxContainer" parent="Log/Margin/Scroll"]
+[node name="Lines" type="VBoxContainer" parent="Side/Log/Margin/Scroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 

@@ -47,6 +47,14 @@ public static class GodView
                 : state.Map[tile].ToString()
             : null;
         ImmutableDictionary<Point, TileMark> marks = state.Map.Objectives.ToImmutableDictionary(t => t, _ => TileMark.Objective);
-        return new BoardModel(tokens, marks, arrows, hint);
+        UnitInfo? info = hover is Point at && state.Map.Contains(at) && state.UnitAt(at) is Unit hovered
+            ? UnitInfo.Of(
+                hovered,
+                rules,
+                state.Turn,
+                state.TurnState,
+                hovered.Owner == shown ? "yours" : state.AreEnemies(hovered.Owner, shown) ? "enemy" : "ally")
+            : null;
+        return new BoardModel(tokens, marks, arrows, hint, info);
     }
 }

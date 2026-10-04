@@ -1,4 +1,5 @@
 using Fantactics.Client.Common;
+using Fantactics.Client.Logic.Board;
 using Fantactics.Client.Logic.Log;
 using Fantactics.Core;
 using Godot;
@@ -8,7 +9,7 @@ namespace Fantactics.Client.Match.Hud;
 /// <summary>
 /// The match HUD: status and prompt lines, the player list (with more than two players), the hovered tile's hint,
 /// the action bar, roster buttons (deploys, placement), the Submit button, the speed toggle, the menu button, a
-/// banner, and the player's log on the left. It only shows what it's given and reports button presses.
+/// banner, and on the left the unit info panel above the player's log. It only shows what it's given and reports button presses.
 /// </summary>
 public partial class MatchHud : Control
 {
@@ -55,6 +56,12 @@ public partial class MatchHud : Control
     private Label _notice = null!;
 
     [Export]
+    private Control _side = null!;
+
+    [Export]
+    private UnitInfoPanel _unitInfo = null!;
+
+    [Export]
     private Control _log = null!;
 
     [Export]
@@ -91,7 +98,7 @@ public partial class MatchHud : Control
     public delegate void LogPressedEventHandler();
 
     /// <summary>Screen pixels the log panel takes on the left, including its gap from the edge; 0 when hidden.</summary>
-    public float LogWidth => _log.Visible ? _log.OffsetRight : 0;
+    public float LogWidth => _log.Visible ? _side.OffsetRight : 0;
 
     /// <inheritdoc />
     public override void _Ready()
@@ -179,6 +186,9 @@ public partial class MatchHud : Control
         _log.Visible = visible;
         _logButton.SetPressedNoSignal(visible);
     }
+
+    /// <summary>Describes a unit above the log, or hides the description for <c>null</c>.</summary>
+    public void ShowUnitInfo(UnitInfo? info) => _unitInfo.Describe(info);
 
     /// <summary>Sets the hint for the hovered tile.</summary>
     public void ShowHint(string? hint) => _hint.Text = hint ?? "";
