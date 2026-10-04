@@ -24,4 +24,10 @@ public enum TileMark
 
     /// <summary>A reserve unit that can still deploy could arrive here.</summary>
     Arrival = 32,
+
+    /// <summary>A shown enemy can move here next turn.</summary>
+    ThreatMove = 64,
+
+    /// <summary>A shown enemy could attack here next turn but can't move here.</summary>
+    ThreatAttack = 128,
 }
