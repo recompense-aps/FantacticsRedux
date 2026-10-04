@@ -1,5 +1,8 @@
+using System.Text.Json;
 using Fantactics.Core;
+using Fantactics.Core.Engine;
 using Fantactics.Core.Hosting;
+using Fantactics.Core.Maps;
 using Fantactics.Core.Players;
 using Fantactics.Core.Records;
 using Fantactics.Core.Rules;
@@ -32,10 +35,18 @@ public sealed class MatchOpener(RulesConfig rules, Func<string, int, IPlayerAgen
     /// <param name="path">The file.</param>
     /// <param name="shown">The seat to show first.</param>
     /// <param name="relabel">Changes seat labels on load (e.g. bots for every seat in autoplay).</param>
-    /// <exception cref="MatchResumeException">The file doesn't replay and has no snapshot.</exception>
+    /// <exception cref="MatchLoadException">
+    /// The file is missing, isn't a match file this version reads, doesn't continue (it no longer replays and has no
+    /// snapshot), or has no seat <paramref name="shown"/>; the message says which, naming the file.
+    /// </exception>
     public OpenMatch Load(string path, Seat? shown = null, Func<string, string>? relabel = null)
     {
-        MatchHost host = MatchHost.Resume(rules, MatchFiles.Read(path, rules));
+        MatchHost host = Resume(path);
+        if (shown is Seat seatShown && !host.Setup.Seats.ContainsKey(seatShown))
+        {
+            throw Failed(path, $"it has no seat {seatShown}.");
+        }
+
         foreach ((Seat seat, string label) in host.Setup.Seats)
         {
             host.SetSeatLabel(seat, relabel?.Invoke(label) ?? label);
@@ -59,6 +70,87 @@ public sealed class MatchOpener(RulesConfig rules, Func<string, int, IPlayerAgen
         string file = saves.NewMatchFile(DateTime.Now);
         current.Session.SaveTo(file);
         return Load(file, current.Session.Shown);
+    }
+
+    private static MatchLoadException Failed(string path, string reason, Exception? inner = null) =>
+        new($"Can't load {Path.GetFileName(path)}: {reason}", inner);
+
+    /// <summary>A match file's record and where it continues from, every failure turned into a readable one.</summary>
+    private MatchHost Resume(string path)
+    {
+        string json;
+        try
+        {
+            json = File.ReadAllText(path);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            throw Failed(path, "the file no longer exists.", ex);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw Failed(path, $"the file couldn't be read. {ex.Message}", ex);
+        }
+
+        string? rulesVersion;
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+            if (MatchFileProblem.Of(document.RootElement) is string problem)
+            {
+                throw Failed(path, $"{problem}.");
+            }
+
+            rulesVersion = MatchFileProblem.RulesVersionOf(document.RootElement);
+        }
+        catch (JsonException ex)
+        {
+            throw Failed(
+                path,
+                $"{MatchFileProblem.NotJson} (line {ex.LineNumber + 1}); it may be cut short or corrupted.",
+                ex);
+        }
+
+        string otherRules = rulesVersion is not null && rulesVersion != GameEngine.RulesVersion
+            ? $" It was saved with rules {rulesVersion}; this is {GameEngine.RulesVersion}."
+            : "";
+        MatchRecord record;
+        try
+        {
+            record = MatchRecord.FromJson(json, rules);
+        }
+        catch (JsonException ex)
+        {
+            string detail = ex.Path is string field
+                ? $"the value at {field} (line {ex.LineNumber + 1}) is invalid."
+                : ex.Message;
+            throw Failed(path, detail + otherRules, ex);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException or ArgumentException
+            or KeyNotFoundException)
+        {
+            throw Failed(path, $"part of it can't be read. {ex.Message}{otherRules}", ex);
+        }
+
+        if (!MapLibrary.Names.Contains(record.Setup.Map))
+        {
+            throw Failed(path, $"it uses the map '{record.Setup.Map}', which this version doesn't have.");
+        }
+
+        try
+        {
+            return MatchHost.Resume(rules, record);
+        }
+        catch (MatchResumeException ex)
+        {
+            throw Failed(path, $"the match can't be continued. {ex.Message}", ex);
+        }
+        // A hand-edited snapshot can leave fields out (the serializer leaves them null) or contradict itself.
+        catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or ArgumentException
+            or NullReferenceException)
+        {
+            throw Failed(path, $"its saved position is invalid. {ex.Message}{otherRules}", ex);
+        }
     }
 
     private static bool HasLlm(MatchSetup setup) =>

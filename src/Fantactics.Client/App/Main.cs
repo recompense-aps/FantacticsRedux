@@ -228,7 +228,8 @@ public partial class Main : Node
         screen.BackPressed += ShowMainMenu;
         screen.LoadChosen += (path, seat) =>
         {
-            if (OpenMatch(() => _opener.Load(path, (Seat)seat)) is string error)
+            Seat? shown = seat == LoadScreen.SeatToMove ? null : (Seat)seat;
+            if (OpenMatch(() => _opener.Load(path, shown)) is string error)
             {
                 screen.ShowError(error);
             }
@@ -262,8 +263,8 @@ public partial class Main : Node
         {
             next = open();
         }
-        catch (Exception ex) when (ex is MatchResumeException or IOException or System.Text.Json.JsonException
-            or ArgumentException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is MatchLoadException or MatchResumeException or IOException
+            or System.Text.Json.JsonException or ArgumentException or UnauthorizedAccessException)
         {
             return ex.Message;
         }
