@@ -37,8 +37,8 @@ public partial class MatchScreen : Node
     /// <summary>Screen pixels the HUD takes at the top (status and prompt lines).</summary>
     private const float HudTop = 64;
 
-    /// <summary>Screen pixels the HUD takes at the bottom (buttons).</summary>
-    private const float HudBottom = 52;
+    /// <summary>Screen pixels kept clear between the board and the HUD's bottom bar.</summary>
+    private const float HudBottomGap = 8;
 
     /// <summary>The bot profile behind "Bot pick" and "Auto-place".</summary>
     private const string SuggestProfile = "captain";
@@ -59,6 +59,7 @@ public partial class MatchScreen : Node
     private DateTime? _llmSince;
     private int _llmSeconds = -1;
     private bool _submitting;
+    private bool _threats;
 
     [Export]
     private BoardView _board = null!;
@@ -171,6 +172,8 @@ public partial class MatchScreen : Node
         _hud.SpeedPressed += CycleSpeed;
         _hud.MenuPressed += OpenMenu;
         _hud.LogPressed += ToggleLog;
+        _hud.ThreatsPressed += ToggleThreats;
+        _hud.BottomResized += FitCamera;
         _draftPanel.AddPressed += (type, reserve) => ChangeDraft(draft => draft.Add(type, reserve));
         _draftPanel.RemovePressed += (type, reserve) => ChangeDraft(draft =>
         {
@@ -279,6 +282,10 @@ public partial class MatchScreen : Node
         {
             ToggleLog();
         }
+        else if (@event.IsActionPressed("toggle_threats"))
+        {
+            ToggleThreats();
+        }
         else if (@event.IsActionPressed("quicksave"))
         {
             Quicksave();
@@ -323,6 +330,14 @@ public partial class MatchScreen : Node
     {
         _hud.ShowLogPanel(_hud.LogWidth <= 0);
         FitCamera();
+    }
+
+    /// <summary>Shows or hides every enemy's threats on the board (a hovered enemy's show either way).</summary>
+    public void ToggleThreats()
+    {
+        _threats = !_threats;
+        _hud.ShowThreats(_threats);
+        RedrawIfIdle();
     }
 
     /// <summary>Uses changed settings (from the settings screen).</summary>
@@ -447,7 +462,14 @@ public partial class MatchScreen : Node
 
         BoardModel model = _debug.GodView
             ? GodView.Build(_session.Match.State, update.View.Seat, _board.Hovered)
-            : BoardModel.Build(update.View, _session.Rules, input.Moves, input.Actions, _board.Hovered, input.Placement);
+            : BoardModel.Build(
+                update.View,
+                _session.Rules,
+                input.Moves,
+                input.Actions,
+                _board.Hovered,
+                input.Placement,
+                _threats);
         _board.Render(model);
         _hud.ShowStatus(HudText.Status(update.View, _session.Rules), input.Message ?? HudText.Prompt(update, LabelOf));
         _hud.ShowPlayers(update.View.Phase == Phase.Draft ? [] : HudText.Players(update.View));
@@ -661,9 +683,10 @@ public partial class MatchScreen : Node
         }
 
         float left = _hud.LogWidth;
-        float zoom = Mathf.Min((viewport.X - left) / (board.X + 32), (viewport.Y - HudTop - HudBottom) / board.Y);
+        float bottom = _hud.BottomHeight + HudBottomGap;
+        float zoom = Mathf.Min((viewport.X - left) / (board.X + 32), (viewport.Y - HudTop - bottom) / board.Y);
         _camera.Zoom = new Vector2(zoom, zoom);
-        _camera.Position = board / 2 - new Vector2(left / 2 / zoom, (HudTop - HudBottom) / 2 / zoom);
+        _camera.Position = board / 2 - new Vector2(left / 2 / zoom, (HudTop - bottom) / 2 / zoom);
     }
 
     /// <summary>Where the match is saved, any resume warning, and how to hand an LLM seat to Claude.</summary>
