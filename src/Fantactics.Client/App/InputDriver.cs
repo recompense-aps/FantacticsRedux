@@ -43,6 +43,8 @@ public partial class InputDriver : Node
     private ClientSession? _session;
     private SeatUpdate? _answered;
     private string _answeredName = "";
+    private string? _handoff;
+    private int _handoffs;
     private double _waited;
     private int _frames;
 
@@ -152,8 +154,12 @@ public partial class InputDriver : Node
     {
         if (screen.CurtainButton is string ready)
         {
-            _steps.Enqueue(InputStep.Shot("curtain"));
+            // Every handoff gets its own shots: the curtain, the first frames after it lifts (while the next
+            // seat's update plays), and the board once it waits on input, to check nothing of either seat leaks.
+            _handoff = $"{++_handoffs:000}-{_session?.Shown}";
+            _steps.Enqueue(InputStep.Shot($"curtain-{_handoff}"));
             _steps.Enqueue(InputStep.Button(ready));
+            _steps.Enqueue(InputStep.Shot($"lifted-{_handoff}"));
             return;
         }
 
@@ -173,6 +179,12 @@ public partial class InputDriver : Node
         if (screen.AwaitingInput is not { Legal: LegalActions legal } update || _session is null)
         {
             return;
+        }
+
+        if (_handoff is not null)
+        {
+            Screenshot($"shown-{_handoff}");
+            _handoff = null;
         }
 
         if (!_bots.TryGetValue(update.View.Seat, out IPlayerAgent? bot))
@@ -303,7 +315,7 @@ public partial class InputDriver : Node
         }
 
         Directory.CreateDirectory(_shots);
-        string path = Path.Combine(_shots, $"{_shotsTaken.Count:00}-{name}.png");
+        string path = Path.Combine(_shots, $"{_shotsTaken.Count:000}-{name}.png");
         GetViewport().GetTexture().GetImage().SavePng(path);
     }
 

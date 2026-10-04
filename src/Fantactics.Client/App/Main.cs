@@ -277,7 +277,7 @@ public partial class Main : Node
         screen.Initialize(
             next,
             _opener.Saves,
-            _args.IsSmokeRun ? _settings with { Speed = 0 } : _settings with { Speed = _args.Speed ?? _settings.Speed },
+            _settings with { Speed = _args.Speed ?? (_args.IsSmokeRun ? 0 : _settings.Speed) },
             ApplySettings,
             Controllers);
         screen.MatchFinished += Finished;
