@@ -57,8 +57,8 @@ Every seat may draft units of every race unless you limit it. Budget and cap opt
 
 | Option | Meaning |
 |---|---|
-| `--load <file>` | Continue a match file: an autosave, a quicksave (`quick.json`), a branch (`<name>.b<seq>.json`), or a `fantactics-sim` match file. |
-| `--as <P1\|P2\|P3\|P4>` | The seat to show first. Defaults to the first `human` seat. |
+| `--load <file>` | Continue a match file: an autosave, a quicksave (`quick.json`), a branch (`<name>.b<seq>.json`), or a `fantactics-sim` match file. A file that can't load (not JSON, not a match, a newer format, an unknown map, or a history that no longer replays with no snapshot) prints why and exits with code 1. |
+| `--as <P1\|P2\|P3\|P4>` | The seat to show first; it must be one of the file's seats. Defaults to the first `human` seat that owes a decision, or else the first `human` seat (P1 when there's none). |
 
 Loading replays the file's command log and checks it against its snapshot. If the snapshot was hand-edited, or the rules have changed so the log no longer replays, the match continues from the snapshot and a warning appears in the top right (TechnicalDesign §4). A file with an `llm` seat is played on that file, shared with the CLI. Any other file loads into memory: playing on autosaves to `autosave.json` and leaves the loaded file unchanged.
 

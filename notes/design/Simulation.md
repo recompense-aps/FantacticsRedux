@@ -110,7 +110,7 @@ A `MatchRecord` is a JSON file:
 ```
 
 - **Replay** folds `Apply` over the commands, starting from the setup (or from `start`, for a match continued from a saved position). A hash mismatch reports **rules drift** at that `seq`.
-- **Format 2 (2026-09-28)** added `start` and `snapshot`, so the record is also the save file (TechnicalDesign §4). Every save writes `snapshot`. Loading (`MatchResume`) keeps the history when it replays and ends at the snapshot. Otherwise it continues from the snapshot and drops the history, with a warning: when the rules changed (the history no longer replays), or when the snapshot was edited by hand (how to set up a test position). Format 1 files still load.
+- **Format 2 (2026-09-28)** added `start` and `snapshot`, so the record is also the save file (TechnicalDesign §4). Every save writes `snapshot`. Loading (`MatchResume`) keeps the history when it replays and ends at the snapshot. Otherwise it continues from the snapshot and drops the history, with a warning: when the rules changed (the history no longer replays), or when the snapshot was edited by hand (how to set up a test position). Format 1 files still load. Files with a newer `formatVersion` than the reader's, or without `setup` or `commands`, are refused with a plain reason.
 - **Uses:** saves, reconnects, bug reports, and golden regression tests.
 - **`note`** is optional free text (a bot's or LLM's reasoning), kept for post-game review. It's never part of the opponent's view.
 - **Records stay JSON, not TOON (§6.2).** The LLM never reads the record (§6.1), so a compact format would save no tokens there. JSON also matches how Core commands serialize (System.Text.Json), diffs cleanly for golden replays, and any tool can read it.
