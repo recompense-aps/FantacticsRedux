@@ -28,9 +28,10 @@ SIM="dotnet src/Fantactics.Sim/bin/Debug/net8.0/fantactics-sim.dll"
 ```
 
 Create a match if you weren't given one (defaults: P1 llm, P2 bot:random, map riverford). Both seats draft from
-every race's units; the draft table shows each unit's race and classes. Race auras and abilities (War Cry, Mend) only
-reach units of the same race. Limit a seat with `--p1-races Elves` (comma-separated). After both drafts, your view
-shows how many units of each race each opponent drafted.
+every race's units; the draft table shows each unit's race and classes. Uniques are one per army, and an army may
+have at most one Leader-class unit (`too-many-leaders`). Race auras and abilities (War Cry, Mend) only reach units of
+the same race. Limit a seat with `--p1-races Elves` (comma-separated). After both drafts, your view shows how many
+units of each race each opponent drafted.
 
 Matches can have up to four seats with teams (e.g. `new --map crossroads --p3 bot:captain --p4 bot:captain --teams
 1,2,1,2`). Your view then lists every `opponents` entry and your `allies`; units' `side` names the owner (`P3 enemy`,
