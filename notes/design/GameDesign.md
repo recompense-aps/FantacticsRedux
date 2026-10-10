@@ -214,7 +214,7 @@ damage = max(1, Attack + Support − (Defense + terrain Defense))
 
 - **Open pool** (decided 2026-09-28, rules 0.6.0): players draft from **every race's units**. There's no race pick. A mono-race army is one strategy among others, rewarded by race auras and race-scoped abilities (RacesAndUnits §2.4). This replaces race-locked drafting.
 - **The map is known before the draft**, so drafting for terrain (Elves on forest-heavy maps, Goblins on mountains) is part of the strategy.
-- Each player spends a **draft budget** (first pass: **40 points**) on units at their Cost (RacesAndUnits §3.2, §4.2). A match setup can override the budget and the starting cap for each seat separately (handicaps, asymmetric modes such as Helm's Deep); each seat's Rout threshold (§4.5) follows its own budget. Unique limits apply to the whole draft. There's no cap on Mage-class units beyond each mage being Unique.
+- Each player spends a **draft budget** (first pass: **40 points**) on units at their Cost (RacesAndUnits §3.2, §4.2). A match setup can override the budget and the starting cap for each seat separately (handicaps, asymmetric modes such as Helm's Deep); each seat's Rout threshold (§4.5) follows its own budget. Unique limits apply to the whole draft, and so does the **Leader limit**: at most one Leader-class unit per army (RacesAndUnits §2.5; decided 2026-10-10, not enforced yet, ALE-93). There's no cap on Mage-class units beyond each mage being Unique.
 - Up to the **starting cap** (first pass: **30 points**) is deployed on the map at the start. Everything else goes into the **reserve**, off the map.
 - A player doesn't have to fill the cap. Starting lighter means a larger reserve.
 - **Draft reveal:** after both drafts lock in and before placement, each player sees the other's **races and unit count per race** for the whole draft (e.g. "Goblins ×5, Elves ×2"), but not the unit types or the split between starting army and reserve.
@@ -398,7 +398,7 @@ Races are unit tags, not army choices: armies are drafted from a shared pool (§
 | Race | Identity | Race mechanic (draft) | Mage ability (draft) |
 |---|---|---|---|
 | Humans | Well-rounded, mechanical | Workers reshape land; healing | Heal / "light" magic |
-| Elves | Ranged, mobile, fragile | Forest mobility / invisibility | Druid: grow forest, entangle |
+| Elves | Ranged, mobile, fragile | Forest mobility / invisibility | Ysolde (Druid): grow forest, entangle |
 | Dwarves | Defensive, siege | Fortify over time; tunnels | Create/remove mountains, dwarf-only tunnels |
 | Goblins | Swarm, cheap | Mountain movement; health gain on attack | Spawn two basic goblins |
 | Undead | Attrition | Units return after N turns; raised units become Undead hybrids | Necromancer: raise fallen units |
@@ -416,7 +416,7 @@ A strong contrast to prove out the core systems: **few, fragile, ranged units th
 | Army shape | Small, elite, fragile | Large, cheap, expendable |
 | Range | Mostly ranged | Mostly melee |
 | Home terrain | Forest (no movement penalty; invisible inside?) | Mountains (better movement than other races) |
-| Race mechanic (draft) | Stealth and movement in forests | Health gain on attack (the Tank heals heavily; the War Lord boosts the rate) |
+| Race mechanic (draft) | Stealth and movement in forests | Health gain on attack (the Tank heals heavily; Grukk, the War Lord, boosts the rate) |
 | Mage (draft) | TBD | Spawn two basic goblins |
 | Wants to | Kite: shoot, then fall back into cover | Close the gap and surround |
 | Key threats | Slow/root effects (Goblin Mauler) that stop kiting | Movement-limiting shots (Elven specialist) that stall the rush |
@@ -424,7 +424,7 @@ A strong contrast to prove out the core systems: **few, fragile, ranged units th
 **Candidate MVP units** (from [UnitIdeas](../og/UnitIdeas.md)):
 
 - **Elves:** Archer, Ranger, Herbalist, Scout, plus a movement-limiting specialist
-- **Goblins:** Rusher, Wolf Rider, Bruiser, Tank, Mauler, War Lord
+- **Goblins:** Rusher, Wolf Rider, Bruiser, Tank, Mauler, Grukk Skullsplitter (War Lord)
 
 **What this matchup tests:** terrain move costs and defense, ranged vs melee and counterattacks, healing, movement-control effects, and (if forest invisibility makes the cut) the first bit of hidden information. Under the open draft it also tests the first mixed armies: mono-Elf, mono-Goblin, and Elf/Goblin mixes should all be viable (Simulation §7).
 
@@ -506,3 +506,4 @@ Answer inline or move decisions into the [Decision Log](#decision-log).
 | 2026-09-28 | Open draft: armies draft from every race's units; race becomes a unit tag alongside classes (Mage, Ranged, Beast/Mounted, Defender); race unity is rewarded by positional auras and race-scoped abilities | Replaces race-locked drafting. Race mechanics affect their own race unless an ability says otherwise; the map is known before the draft; after the draft each side sees the other's races and unit counts; no Mage cap beyond Unique; multi-race units come from the Necromancer raising fallen units (worth 0, Summoned, both races' traits in full); Wizards dissolve into the Mage class. Balance target: mono and mixed armies both viable, two-race armies the most common winners. See §4.4, §6, RacesAndUnits §2.4 |
 | 2026-09-28 | Draft budget and starting cap configurable per seat by the match setup | The rules' 40 / 30 stay the defaults; each seat routs against its own budget; set with `--budget`/`--p1-budget`/`--starting-cap` and similar in the CLI and client (Simulation §6.1, TechnicalDesign §2.5). No rules-version bump: default matches play exactly as before |
 | 2026-09-28 | Open draft implemented (rules 0.6.0) | Setups keep an optional per-seat race filter (`race-not-allowed`) for mono-race tournaments and old records; Mend and War Cry now reach only their own race; tournaments report results by army shape and race mix. The first runs show the open-draft Captain always drafting Elf shooters plus a Grunt (Simulation §10) |
+| 2026-10-10 | Named unique characters (ALE-89): every Unique unit is a named character with a name, an optional epithet, and a role; Druid, War Lord, and Shaman become Ysolde of the Deepwood, Grukk Skullsplitter, and Mother Gristle; at most one Leader-class unit per army | Type ids stay (`Druid`, `WarLord`, `Shaman`) so records, variants, bot profiles, and CLI commands keep working; new characters use their short name as id. Full name in the info panel and draft, short name in the log, tooltips, and CLI. Mirror drafts allowed. Leader becomes a class (Grukk); Mages stay uncapped. Not in the engine yet (ALE-90–93). See §4.4, RacesAndUnits §2.4, §2.5 |
