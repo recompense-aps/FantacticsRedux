@@ -12,8 +12,8 @@ Proposed final roster: **seven races**. Races are unit tags, not army choices: p
 
 | Race | Identity | Home terrain | Race mechanic | Mage | Status |
 |---|---|---|---|---|---|
-| [Elves](#3-elves) | Few, fragile, ranged, mobile | Forest | Forest movement and sight; hidden in forest (later) | Druid: grows forest, entangles | **MVP, detailed** |
-| [Goblins](#4-goblins) | Many, cheap, melee swarm | Mountains | Bloodthirst (heal on attack); mountain movement | Shaman: summons Grunts | **MVP, detailed** |
+| [Elves](#3-elves) | Few, fragile, ranged, mobile | Forest | Forest movement and sight; hidden in forest (later) | Ysolde (Druid): grows forest, entangles | **MVP, detailed** |
+| [Goblins](#4-goblins) | Many, cheap, melee swarm | Mountains | Bloodthirst (heal on attack); mountain movement | Mother Gristle (Bone Shaman): summons Grunts | **MVP, detailed** |
 | [Humans](#51-humans) | Well-rounded, disciplined, light magic | Plains, roads | Reshape land (Workers); healing | Cleric: heal / light | Stub |
 | [Dwarves](#52-dwarves) | Defensive, siege | Mountains, hills | Fortify over time; tunnels | Runesmith: create/remove mountains, tunnels | Stub |
 | [Undead](#53-undead) | Attrition, won't stay dead | Swamp | Units return after N turns; raises fallen units as Undead hybrids | Necromancer: raise fallen units | Stub |
@@ -34,7 +34,8 @@ Terms the unit tables use. These go in GameDesign §4 once they're settled.
 ### 2.1 Unit Tags
 
 - **Cost:** draft points-buy value, and the Command it costs to deploy the unit from reserve (GameDesign §4.4). Goblins are priced at roughly half of an elf per unit.
-- **Unique:** at most one per army.
+- **Unique:** at most one per army. Every Unique unit is a named character (§2.5).
+- **Leader:** a class (§2.4). At most one Leader-class unit per army, counting the starting army and the reserve (§2.5).
 - **Summoned:** created by an ability during the match. Summoned units can't act on the turn they appear and are worth no points. Reserves that arrive outside their deploy zone also can't act that turn, but they keep their Cost value (GameDesign §4.4).
 
 ### 2.2 Status Effects
@@ -77,12 +78,13 @@ Players draft from **every race's units** (GameDesign §4.4). Race is a tag on e
 
 | Class | Meaning | MVP units |
 |---|---|---|
-| Mage | Casters and terrain shapers; the race's signature unit | Druid, Shaman |
+| Leader | Commanders whose auras shape the whole army; at most one per army (§2.5) | Grukk (War Lord) |
+| Mage | Casters and terrain shapers; the race's signature unit | Ysolde (Druid), Mother Gristle (Bone Shaman) |
 | Ranged | Fights mainly from range | Archer, Ranger |
 | Beast/Mounted | Animals and riders | Wolf Rider |
 | Defender | Frontline anchors (Braced, Retaliate) | Tank |
 
-Classes start as tags that abilities and auras can target (e.g. "Mages within 3", "can't target Beasts"). Whether classes get synergies of their own is open (§7).
+Classes start as tags that abilities and auras can target (e.g. "Mages within 3", "can't target Beasts"). Whether classes get synergies of their own is open (§7). The Leader class was decided on 2026-10-10 and isn't in the engine yet (ALE-93).
 
 **Race unity** is rewarded **on the board**, not with draft thresholds:
 
@@ -103,7 +105,7 @@ Classes start as tags that abilities and auras can target (e.g. "Mages within 3"
 | Pinning Shot, Entangle, Throw Net, Hamstring | Enemies of any race | No |
 | Overgrowth | Terrain | No |
 
-**Mages.** There's no cap on Mage-class units beyond each mage being Unique. An army may field a Druid and a Shaman (and later a Runesmith). Watch tournaments for terraforming armies that shut down every other plan.
+**Mages.** There's no cap on Mage-class units beyond each mage being Unique. An army may field Ysolde and Mother Gristle (and later a Runesmith). Leaders are capped at one per army (§2.5); Mages aren't. Watch tournaments for terraforming armies that shut down every other plan.
 
 **Hybrids (multi-race units)** come from the **Undead template**, not from the draft:
 
@@ -115,6 +117,42 @@ Classes start as tags that abilities and auras can target (e.g. "Mages within 3"
 **Information.** After both drafts lock in, each player sees the other's races and unit count per race (GameDesign §4.4).
 
 **Balance target** (Simulation §7): mono-race and mixed armies are both viable. Two-race armies should be the most common winning shape, mono-race close behind, and "each race's best units" the weakest. Tournaments should report win rate by army shape (mono, two-race, three or more) as well as per unit.
+
+### 2.5 Named Characters
+
+> Decided 2026-10-10 (ALE-89). Not in the engine yet: name fields are ALE-90, the renames ALE-92, showing names ALE-91, and the Leader limit ALE-93.
+
+**The rule.** Every Unique unit is a **named character**: a proper name, an optional epithet, and a role. Its classes (Leader, Mage, …) stay tags as in §2.4. Common units (Grunt, Archer, …) stay generic and have no name.
+
+| Field | Example | Notes |
+|---|---|---|
+| Name | Grukk | The short name. Required for every Unique; no two units share one. |
+| Epithet | Skullsplitter | Optional. Full name = name + epithet ("Grukk Skullsplitter", "Ysolde of the Deepwood"). |
+| Role | War Lord | What the character is, in the world. Shown on the tag line, not in the name. |
+
+A name belongs to the unit definition in the rules data. It isn't rolled per match.
+
+**Naming conventions.**
+
+- **Elves:** flowing, old-sounding names (Ysolde, Caelith, Lirael). Epithets come from wood, seasons, or lineage ("of the Deepwood", "Silverbough", "the Last Bladedancer"). They sound dignified.
+- **Goblins:** short, harsh names with nicknames earned through violence or cunning, often self-given (Grukk Skullsplitter, Snikkit the Sly, Mother Gristle). They sound crude and a bit funny.
+
+**Where each name appears.**
+
+| Place | Shows | Example |
+|---|---|---|
+| Unit info panel title, draft rows | Full name | Grukk Skullsplitter |
+| Info panel tag line | Role among the tags | `P2 · enemy · Goblins · Leader · War Lord · unique` |
+| Event log, tooltips, sim CLI unit rows | Short name with the seat prefix | P2 Grukk |
+| Draft errors | Short name | "Grukk is unique: one per army." |
+
+Generic units keep the name derived from their type id ("P2 Wolf Rider").
+
+**Type ids stay stable.** Renaming a unit changes its display fields, not its id: the existing uniques keep `Druid`, `WarLord`, and `Shaman`. Match records replay command logs by type id, and the sim variants (`Fantactics.Sim/Variants/`), bot profiles, and CLI commands all name units by id. New characters use their short name as their id (`Caelith`, `Snikkit`, …). The CLI keeps accepting ids in commands and adds the name to unit rows.
+
+**Mirror drafts.** Unique is per army, so both seats may draft the same character. The seat prefix tells them apart ("P1 Grukk" and "P2 Grukk").
+
+**One Leader per army.** An army may have at most one Leader-class unit, counting the starting army and the reserve. The draft enforces it the same way it enforces Unique (`too-many-leaders`). Each Leader carries an army-shaping aura, and different auras stack (War Cry, a movement aura, a reserve aura). With several Goblin Leaders planned (§4.3), uncapped Leaders would make "draft every Leader" the default. Mages stay uncapped beyond each being Unique (§2.4).
 
 ## 3. Elves
 
@@ -141,7 +179,7 @@ Elves also get the general ranged rules from GameDesign §4.3: half Attack at po
 | Ranger | Movement control | 6 | 7 | 3 | 1 | 5 | 1–3 | 6 | 5 | Pinning Shot |
 | Herbalist | Support, healer | 4 | 6 | 1 | 0 | 4 | 1–2 | 4 | 4 | Mend |
 | Scout | Recon, blocker | 2 | 3 | 1 | 0 | 5 | 1 | 7 | 7 | Forest Stride, Slippery |
-| Druid | Mage | 6 | 6 | 2 | 0 | 4 | 1–2 | 4 | 4 | Unique; Overgrowth, Entangle |
+| Ysolde of the Deepwood (`Druid`) | Mage (Druid) | 6 | 6 | 2 | 0 | 4 | 1–2 | 4 | 4 | Unique; Overgrowth, Entangle |
 
 **Archer.** The backbone. Longest range, but it can't attack adjacent units at all (min range 2). It lost Braced on 2026-09-27 (GameDesign §4.1): a held Archer line that always shot first made attacking pointless. Archers now rely on range, forest cover, and screens.
 
@@ -159,16 +197,19 @@ Elves also get the general ranged rules from GameDesign §4.3: half Attack at po
 - **Slippery:** when the Scout would clash, it always retreats: it stays on the tile it came from instead of fighting. The enemy takes the contested tile without a fight. (Automatic, so resolution never pauses for a decision.)
 - Vision matters once fog of war arrives. In the MVP, the Scout's job is blocking paths, spending enemy attacks, and baiting clashes.
 
-**Druid** (mage). Reshapes the map in the elves' favor.
+**Ysolde of the Deepwood** (Druid; Mage). Reshapes the map in the elves' favor.
 
 - **Overgrowth** (ability, Cooldown 3, range 1–3): turn a Plains, Road, or Hills tile into Forest. This works on an occupied tile, including one an enemy stands on.
-- **Entangle** (ability, Cooldown 4): Root every enemy unit standing in Forest within 2 tiles of the Druid for 1 turn.
+- **Entangle** (ability, Cooldown 4): Root every enemy unit standing in Forest within 2 tiles of Ysolde for 1 turn.
 - Combo: Overgrowth under a goblin one turn, then Entangle it (and anyone else in the woods) the next.
 
-### 3.3 Later Candidates
+### 3.3 Planned Characters
 
-- **Bladedancer:** the one elf melee unit, fast and fragile. Answers "are elves ranged only?" with "almost".
-- **Treant** (summoned by the Druid): a slow wall that blocks a lane.
+Not statted yet; first-pass kits are in the linked issues. In priority order:
+
+- **Caelith Silverbough, Marshal of the Wood** (Leader; ALE-94): an aura for other Elves in Forest within 2 (first pass: +1 Attack). It's the Elves' first same-race aura (§7 Q10). No initiative aura: that's how Archers lost Braced (GameDesign §4.1).
+- **Lirael, the Last Bladedancer** (no class; ALE-97): the one elf blade, fast and fragile, hit-and-run. She answers "are elves ranged only?" with "almost", and being Unique keeps elves from becoming a melee race. Needs a post-attack move step designed first.
+- **Old Thornfather** (Mage; ALE-98): summons a **Treant** (Summoned, not draftable): a slow, tough, Braced wall that blocks a lane, at most one alive. A living-wall alternative to Ysolde's terraforming.
 
 ## 4. Goblins
 
@@ -195,10 +236,10 @@ Mountains give +2 Defense and block line of sight (GameDesign §4.3, §5). Gobli
 | Bruiser | Heavy hitter | 4 | 7 | 5 | 0 | 4 | 1 | 3 | 3 | Crush (no Bloodthirst) |
 | Tank | Frontline | 4 | 8 | 2 | 2 | 3 | 1 | 2 | 3 | Bloodthirst 3, Retaliate, Braced |
 | Mauler | Movement control | 4 | 6 | 3 | 1 | 4 | 1 | 4 | 3 | Bloodthirst 1, Hamstring, Throw Net |
-| War Lord | Leader | 6 | 8 | 4 | 1 | 4 | 1 | 4 | 4 | Unique; Bloodthirst 1, War Cry |
-| Shaman | Mage | 5 | 5 | 2 | 0 | 4 | 1–2 | 3 | 4 | Unique; Call the Horde |
+| Grukk Skullsplitter (`WarLord`) | Leader (War Lord) | 6 | 8 | 4 | 1 | 4 | 1 | 4 | 4 | Unique; Bloodthirst 1, War Cry |
+| Mother Gristle (`Shaman`) | Mage (Bone Shaman) | 5 | 5 | 2 | 0 | 4 | 1–2 | 3 | 4 | Unique; Call the Horde |
 
-**Grunt.** The basic goblin, and the unit the Shaman summons. Alone it barely scratches an Archer in forest (3 − 2 = 1 damage); with two allies adjacent to the target it hits for 3.
+**Grunt.** The basic goblin, and the unit Mother Gristle summons. Alone it barely scratches an Archer in forest (3 − 2 = 1 damage); with two allies adjacent to the target it hits for 3.
 
 **Rusher.** Very high movement and initiative. It's the unit that reaches the elf backline and the one best at forcing clashes.
 
@@ -221,17 +262,21 @@ Mountains give +2 Defense and block line of sight (GameDesign §4.3, §5). Gobli
 - **Hamstring:** its attacks (not clash strikes) also apply **Slowed** for 1 turn.
 - **Throw Net** (ability, Cooldown 3, range 2–3): deals no damage and **Roots** the target for 1 turn. Needs line of sight.
 
-**War Lord.** Makes the swarm sturdier.
+**Grukk Skullsplitter** (War Lord; Leader). Makes the swarm sturdier.
 
 - **War Cry** (Aura, range 2): other goblins get +1 Bloodthirst. A Grunt heals 2 per hit; a Tank heals 4. A Bruiser gets Bloodthirst 1.
 
-**Shaman** (mage). Refills the horde.
+**Mother Gristle** (Bone Shaman; Mage). Refills the horde.
 
-- **Call the Horde** (ability, Cooldown 3): summon two Grunts on empty tiles adjacent to the Shaman. At most 4 summoned Grunts can be alive at once. If only one tile is free, only one Grunt appears.
+- **Call the Horde** (ability, Cooldown 3): summon two Grunts on empty tiles adjacent to Mother Gristle. At most 4 summoned Grunts can be alive at once. If only one tile is free, only one Grunt appears.
 
-### 4.3 Later Candidates
+### 4.3 Planned Characters
 
-- **Sapper:** sets traps (GameDesign §7), or blows up after a countdown (possibly shared with the Demon Explosive Servant).
+Not statted yet; first-pass kits are in the linked issues. In priority order:
+
+- **Snikkit the Sly, Boss of the Back Tunnels** (Leader; ALE-95): a reserve-and-ambush leader built on Out of the Caves. Goblin reserves may arrive next to him (no enemy within 1), and they can't act that turn (§2.1), so the ambush has a one-turn tell.
+- **Rask Fang-Queen** (Leader, Mounted; ALE-96): a wolf-riding leader for fast-cavalry armies. Her aura (Pack Howl) gives other Mounted goblins and Rushers within 2 +1 Movement, checked at the start of the movement phase.
+- **Nix Boomwhistle** (Sapper, no class; ALE-99): traps and a countdown bomb, possibly shared with the Demon Explosive Servant (§5.5). Blocked on the trap rules (GameDesign §7).
 
 ## 5. Other Races (Stubs)
 
@@ -303,9 +348,9 @@ Quick math with the damage formula, `damage = max(1, Attack + Support − (Defen
 
 **Example drafts (40 points, 30 on the field at the start, GameDesign §4.4):**
 
-- Elves, starting army: Druid, 2 Archers, Ranger, Herbalist, 2 Scouts (6 + 10 + 6 + 4 + 4 = 30): 7 units. Reserve: Ranger, Herbalist (6 + 4 = 10).
-- Goblins, starting army: Shaman, War Lord, Tank, Mauler, Rusher, 4 Grunts (5 + 6 + 4 + 4 + 3 + 8 = 30): 9 units, plus up to 4 summoned. Reserve: Bruiser, Rusher, Grunt (4 + 3 + 2 = 9) or 5 Grunts (10). With Out of the Caves, the Bruiser + Rusher + Grunt reserve costs 7 Command to deploy; Grunts get no discount.
-- Mixed (open draft, §2.4), starting army: 3 Archers, Tank, 2 Grunts, Herbalist, Scout (15 + 4 + 4 + 4 + 2 = 29): 8 units. Reserve: Wolf Rider, Archer (4 + 5 = 9). Goblins screen the Archers, but the Herbalist can't Mend them and there's no War Cry to boost two Grunts. The Wolf Rider deploys at 3 Command.
+- Elves, starting army: Ysolde, 2 Archers, Ranger, Herbalist, 2 Scouts (6 + 10 + 6 + 4 + 4 = 30): 7 units. Reserve: Ranger, Herbalist (6 + 4 = 10).
+- Goblins, starting army: Mother Gristle, Grukk, Tank, Mauler, Rusher, 4 Grunts (5 + 6 + 4 + 4 + 3 + 8 = 30): 9 units, plus up to 4 summoned. Reserve: Bruiser, Rusher, Grunt (4 + 3 + 2 = 9) or 5 Grunts (10). With Out of the Caves, the Bruiser + Rusher + Grunt reserve costs 7 Command to deploy; Grunts get no discount.
+- Mixed (open draft, §2.4), starting army: 3 Archers, Tank, 2 Grunts, Herbalist, Scout (15 + 4 + 4 + 4 + 2 = 29): 8 units. Reserve: Wolf Rider, Archer (4 + 5 = 9). Goblins screen the Archers, but the Herbalist can't Mend them and there's no Grukk to War Cry two Grunts. The Wolf Rider deploys at 3 Command.
 
 ## 7. Open Questions
 
@@ -313,12 +358,13 @@ Quick math with the damage formula, `damage = max(1, Attack + Support − (Defen
 2. ~~**Bloodthirst in clashes.**~~ Decided 2026-09-27: clashes are pure fighting, so Bloodthirst doesn't heal in them (GameDesign §4.3).
 3. **Horde Support.** Should goblins get a higher Support cap (+3) as a race trait, or is Support + Bloodthirst enough?
 4. **Pinning Shot vs Throw Net.** Both sides have a Root on a cooldown. Is that too symmetrical? An alternative is to make Throw Net an area Slow instead.
-5. **Summon limits.** Is the 4-Grunt cap and Cooldown 3 enough to stop the Shaman from turning into an endless stall?
-6. **Druid Overgrowth under enemies.** Should turning an enemy's tile into forest be allowed, given the Entangle combo and the +1 Defense it gives *them*?
-7. ~~**Leaders.**~~ Deathmatch has no leader unit (GameDesign §4.5). Revisit only if a later mode needs one.
+5. **Summon limits.** Is the 4-Grunt cap and Cooldown 3 enough to stop Mother Gristle from turning into an endless stall?
+6. **Ysolde's Overgrowth under enemies.** Should turning an enemy's tile into forest be allowed, given the Entangle combo and the +1 Defense it gives *them*?
+7. ~~**Leaders.**~~ Deathmatch has no leader unit whose death ends the match (GameDesign §4.5). Revisit only if a later mode needs one. This is separate from the Leader *class* (§2.4, §2.5): aura commanders, capped at one per army, that die like any other unit.
 8. **Mauler name:** Mauler, Hobbler, Netter, or Snarer?
 9. ~~**Out of the Caves discount.**~~ Decided 2026-09-27: it applies only to units of Cost 3 or more, so Grunts no longer flood in at 1 Command each.
-10. **Open draft: race auras.** Elves have no same-race aura yet, only Mend. What rewards a mono-Elf or Elf-heavy army on the board? Goblins already have War Cry.
+10. **Open draft: race auras.** Elves have no same-race aura yet, only Mend. What rewards a mono-Elf or Elf-heavy army on the board? Goblins already have War Cry. Caelith's forest aura is the planned answer (§3.3, ALE-94).
 11. **Open draft: classes.** Are classes only tags for targeting and draft reveal, or do some get their own synergies? Which Elf/Goblin units beyond those in §2.4 get classes (Herbalist, Scout, Mauler)?
 12. **Open draft: budget.** Does the 40 / 30 draft budget still fit when armies can mix cheap Goblins with elite Elves?
 13. **Open draft: raised hybrids.** See §5.3: Undead traits, raising enemies, and whether raised units return.
+14. **Named characters.** The names in §2.5 are first drafts. Should later races' uniques (the Dwarf King, the Necromancer) also be named characters? Should a common unit ever get a name (a veteran or a promoted unit)?
