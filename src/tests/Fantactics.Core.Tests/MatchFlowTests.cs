@@ -52,6 +52,38 @@ public class MatchFlowTests
     }
 
     [Fact]
+    public void TheWarLordIsTheOnlyLeader()
+    {
+        Assert.Equal(["WarLord"], RulesConfig.Default.Units
+            .Where(pair => pair.Value.HasClass(ClassIds.Leader))
+            .Select(pair => pair.Key));
+    }
+
+    [Theory]
+    [InlineData(new[] { "WarLord", "Shaman" }, new string[0])]
+    [InlineData(new[] { "WarLord" }, new[] { "Shaman" })]
+    public void ASecondLeaderIsRejected(string[] starting, string[] reserve)
+    {
+        RulesConfig rules = RulesConfig.Default;
+        UnitDefinition shaman = rules.Units["Shaman"];
+        rules = rules with
+        {
+            Units = rules.Units.SetItem("Shaman", shaman with { Classes = [ClassIds.Leader] }),
+        };
+        GameState state = GameEngine.NewMatch(rules, MapLibrary.Load("riverford"), seed: 42);
+
+        Rejects(state, Seat.P1, new SubmitDraft([.. starting], [.. reserve]), "too-many-leaders");
+    }
+
+    [Fact]
+    public void OneLeaderAndTwoMagesAreAccepted()
+    {
+        ApplyResult result = GameEngine.Apply(NewMatch(), Seat.P1, new SubmitDraft(["WarLord", "Shaman", "Druid"], []));
+
+        Assert.IsType<Accepted>(result);
+    }
+
+    [Fact]
     public void PlacementOutsideTheDeployZoneIsRejected()
     {
         GameState state = Drafted();

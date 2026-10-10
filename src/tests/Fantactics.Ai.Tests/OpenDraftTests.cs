@@ -47,6 +47,28 @@ public class OpenDraftTests
         Assert.All(guess, type => Assert.Equal("Goblins", RulesConfig.Default.Units[type].Race));
     }
 
+    [Theory]
+    [InlineData("captain")]
+    [InlineData("trickster")]
+    [InlineData(BotLibrary.RandomBot)]
+    public void BotsDraftAtMostOneLeader(string bot)
+    {
+        // Every Goblin is a Leader here, so a bot that ignored the limit would draft several.
+        RulesConfig rules = RulesConfig.Default with
+        {
+            Units = RulesConfig.Default.Units.SetItems(RulesConfig.Default.Units
+                .Where(pair => pair.Value.Race == "Goblins")
+                .Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { Classes = [ClassIds.Leader] }))),
+        };
+        for (int seed = 1; seed <= 20; seed++)
+        {
+            GameState state = TestMatches.Open((ulong)seed).CreateInitialState(rules);
+            ICommand draft = BotFactory.Create(bot, rules, seed).DecideFor(state, Seat.P1);
+
+            Assert.IsType<Accepted>(GameEngine.Apply(state, Seat.P1, draft));
+        }
+    }
+
     private static SubmitDraft Draft(double raceFocus)
     {
         BotProfile captain = BotLibrary.Profile("captain");

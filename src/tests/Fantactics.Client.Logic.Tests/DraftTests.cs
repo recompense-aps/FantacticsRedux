@@ -85,6 +85,28 @@ public class DraftTests
         Assert.Equal(["The starting army needs at least one unit."], builder.Problems);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ASecondLeaderIsBlockedUntilTheFirstIsRemoved(bool reserve)
+    {
+        UnitDefinition shaman = _rules.Units["Shaman"];
+        RulesConfig rules = _rules with
+        {
+            Units = _rules.Units.SetItem("Shaman", shaman with { Classes = [ClassIds.Leader] }),
+        };
+        DraftOptions options = LegalActions.ForView(States.Setup(1).CreateInitialState(rules), Seat.P1)?.Draft
+            ?? throw new InvalidOperationException();
+        DraftBuilder builder = new(options);
+
+        Assert.Null(builder.Add("WarLord", reserve: false));
+        Assert.Equal("Shaman is a Leader, and WarLord already leads this army: one Leader per army.",
+            builder.Add("Shaman", reserve));
+        Assert.Null(builder.Add("Druid", reserve));
+        Assert.True(builder.Remove("WarLord", reserve: false));
+        Assert.Null(builder.Add("Shaman", reserve));
+    }
+
     [Fact]
     public void ABotsDraftAndPlacementLoadIntoTheBuildersUnchanged()
     {
