@@ -35,4 +35,7 @@ public sealed record UnitDefinition(
 {
     /// <summary>Whether the unit's basic attack reaches beyond adjacent tiles.</summary>
     public bool IsRanged => MaxRange > 1;
+
+    /// <summary>Whether the type carries the class <paramref name="classId"/> (see <see cref="ClassIds"/>).</summary>
+    public bool HasClass(string classId) => Classes?.Contains(classId) == true;
 }
