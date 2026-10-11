@@ -3,6 +3,7 @@ using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Geometry;
 using Fantactics.Core.Players;
+using Fantactics.Core.Rules;
 
 namespace Fantactics.Ai;
 
@@ -35,12 +36,16 @@ public sealed class RandomAgent(int seed) : IPlayerAgent
         List<string> starting = [];
         List<string> reserve = [];
         HashSet<string> uniquesTaken = [];
+        bool leaderTaken = false;
         int startingCost = 0;
         int totalCost = 0;
         for (int attempt = 0; attempt < DraftAttempts; attempt++)
         {
             DraftUnitOption pick = options.Units[_random.Next(options.Units.Length)];
-            if ((pick.Unique && uniquesTaken.Contains(pick.Type)) || totalCost + pick.Cost > options.Budget)
+            bool leader = pick.Classes.Contains(ClassIds.Leader);
+            if ((pick.Unique && uniquesTaken.Contains(pick.Type))
+                || (leader && leaderTaken)
+                || totalCost + pick.Cost > options.Budget)
             {
                 continue;
             }
@@ -49,6 +54,7 @@ public sealed class RandomAgent(int seed) : IPlayerAgent
             (toStarting ? starting : reserve).Add(pick.Type);
             startingCost += toStarting ? pick.Cost : 0;
             totalCost += pick.Cost;
+            leaderTaken |= leader;
             if (pick.Unique)
             {
                 uniquesTaken.Add(pick.Type);

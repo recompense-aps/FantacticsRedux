@@ -1,11 +1,12 @@
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
+using Fantactics.Core.Rules;
 
 namespace Fantactics.Client.Logic.Input;
 
 /// <summary>
 /// Builds a draft from a seat's <see cref="DraftOptions"/> (GameDesign §4.4): units go into the starting army or the
-/// reserve, within the budget, the starting cap, and one of each unique unit. Every change is checked the way the
+/// reserve, within the budget, the starting cap, one of each unique unit, and one Leader. Every change is checked the way the
 /// engine checks the finished draft, so <see cref="Build"/> is legal whenever <see cref="Problems"/> is empty.
 /// </summary>
 public sealed class DraftBuilder
@@ -59,6 +60,11 @@ public sealed class DraftBuilder
         if (unit.Unique && Count(type) > 0)
         {
             return $"{type} is unique: one per army.";
+        }
+
+        if (IsLeader(unit) && _starting.Concat(_reserve).FirstOrDefault(t => IsLeader(_byType[t])) is string leader)
+        {
+            return $"{type} is a Leader, and {leader} already leads this army: one Leader per army.";
         }
 
         if (unit.Cost > Remaining)
@@ -144,6 +150,8 @@ public sealed class DraftBuilder
 
     /// <summary>The draft as a command.</summary>
     public SubmitDraft Build() => new([.. _starting], [.. _reserve]);
+
+    private static bool IsLeader(DraftUnitOption unit) => unit.Classes.Contains(ClassIds.Leader);
 
     private int CostOf(string type) => _byType[type].Cost;
 }

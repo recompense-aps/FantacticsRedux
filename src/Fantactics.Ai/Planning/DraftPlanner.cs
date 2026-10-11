@@ -36,10 +36,13 @@ public static class DraftPlanner
         Dictionary<string, int> races = [];
         int spent = 0;
         int startingCost = 0;
+        bool hasLeader = false;
         while (true)
         {
             List<DraftUnitOption> affordable = options.Units
-                .Where(unit => spent + unit.Cost <= options.Budget && !(unit.Unique && copies.ContainsKey(unit.Type)))
+                .Where(unit => spent + unit.Cost <= options.Budget
+                    && !(unit.Unique && copies.ContainsKey(unit.Type))
+                    && !(hasLeader && unit.Classes.Contains(ClassIds.Leader)))
                 .OrderBy(unit => unit.Type, StringComparer.Ordinal)
                 .ToList();
             if (affordable.Count == 0)
@@ -62,6 +65,7 @@ public static class DraftPlanner
             spent += pick.Cost;
             copies[pick.Type] = copies.GetValueOrDefault(pick.Type) + 1;
             races[pick.Race] = races.GetValueOrDefault(pick.Race) + 1;
+            hasLeader |= pick.Classes.Contains(ClassIds.Leader);
         }
 
         return new SubmitDraft([.. starting], [.. reserve]);

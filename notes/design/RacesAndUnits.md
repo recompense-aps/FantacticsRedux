@@ -84,7 +84,7 @@ Players draft from **every race's units** (GameDesign §4.4). Race is a tag on e
 | Beast/Mounted | Animals and riders | Wolf Rider |
 | Defender | Frontline anchors (Braced, Retaliate) | Tank |
 
-Classes start as tags that abilities and auras can target (e.g. "Mages within 3", "can't target Beasts"). Whether classes get synergies of their own is open (§7). The Leader class was decided on 2026-10-10 and isn't in the engine yet (ALE-93).
+Classes start as tags that abilities and auras can target (e.g. "Mages within 3", "can't target Beasts"). Whether classes get synergies of their own is open (§7). The Leader class was added on 2026-10-10 (rules 0.8.0, ALE-93); `WarLord` carries it.
 
 **Race unity** is rewarded **on the board**, not with draft thresholds:
 
@@ -120,7 +120,7 @@ Classes start as tags that abilities and auras can target (e.g. "Mages within 3"
 
 ### 2.5 Named Characters
 
-> Decided 2026-10-10 (ALE-89). Not in the engine yet: name fields are ALE-90, the renames ALE-92, showing names ALE-91, and the Leader limit ALE-93.
+> Decided 2026-10-10 (ALE-89). The Leader limit is implemented (rules 0.8.0, ALE-93). Not in the engine yet: name fields (ALE-90), the renames (ALE-92), and showing names (ALE-91).
 
 **The rule.** Every Unique unit is a **named character**: a proper name, an optional epithet, and a role. Its classes (Leader, Mage, …) stay tags as in §2.4. Common units (Grunt, Archer, …) stay generic and have no name.
 

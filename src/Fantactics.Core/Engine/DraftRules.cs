@@ -52,6 +52,15 @@ internal static class DraftRules
             duplicateUnique is null,
             "duplicate-unique",
             $"'{duplicateUnique}' is unique: at most one per army.");
+
+        List<string> leaders = all
+            .Where(type => state.Rules.Units[type].HasClass(ClassIds.Leader))
+            .ToList();
+        RuleViolationException.ThrowUnless(
+            leaders.Count <= 1,
+            "too-many-leaders",
+            $"{string.Join(", ", leaders.Distinct().Select(type => $"'{type}'"))} are Leaders: "
+                + "at most one Leader per army.");
     }
 
     /// <summary>Creates every drafted unit once every draft is in, then moves on to placement.</summary>

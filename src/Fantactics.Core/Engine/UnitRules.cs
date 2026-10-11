@@ -26,7 +26,7 @@ public static class UnitRules
 
     /// <summary>Whether <paramref name="unit"/>'s type carries the class <paramref name="classId"/>.</summary>
     public static bool HasClass(GameState state, Unit unit, string classId) =>
-        state.DefinitionOf(unit).Classes?.Contains(classId) == true;
+        state.DefinitionOf(unit).HasClass(classId);
 
     /// <summary>Movement points this turn after Slowed (−2, minimum 1) and Rooted (0).</summary>
     public static int MovementPoints(GameState state, Unit unit)

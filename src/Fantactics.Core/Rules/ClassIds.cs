@@ -3,6 +3,9 @@ namespace Fantactics.Core.Rules;
 /// <summary>Class tags a unit type can carry alongside its race (RacesAndUnits §2.4).</summary>
 public static class ClassIds
 {
+    /// <summary>Commanders whose auras shape the army; at most one per army (RacesAndUnits §2.5).</summary>
+    public const string Leader = "Leader";
+
     /// <summary>Casters and terrain shapers; a race's signature units.</summary>
     public const string Mage = "Mage";
 
