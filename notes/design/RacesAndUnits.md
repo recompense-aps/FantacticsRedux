@@ -120,7 +120,7 @@ Classes start as tags that abilities and auras can target (e.g. "Mages within 3"
 
 ### 2.5 Named Characters
 
-> Decided 2026-10-10 (ALE-89). The Leader limit is implemented (rules 0.8.0, ALE-93). Not in the engine yet: name fields (ALE-90), the renames (ALE-92), and showing names (ALE-91).
+> Decided 2026-10-10 (ALE-89). In the engine: the Leader limit (rules 0.8.0, ALE-93) and the name fields with their load checks (rules 0.9.0, ALE-90). Not yet: showing names (ALE-91) and the renamed ability and log text (ALE-92).
 
 **The rule.** Every Unique unit is a **named character**: a proper name, an optional epithet, and a role. Its classes (Leader, Mage, …) stay tags as in §2.4. Common units (Grunt, Archer, …) stay generic and have no name.
 
@@ -130,7 +130,7 @@ Classes start as tags that abilities and auras can target (e.g. "Mages within 3"
 | Epithet | Skullsplitter | Optional. Full name = name + epithet ("Grukk Skullsplitter", "Ysolde of the Deepwood"). |
 | Role | War Lord | What the character is, in the world. Shown on the tag line, not in the name. |
 
-A name belongs to the unit definition in the rules data. It isn't rolled per match.
+A name belongs to the unit definition in the rules data (`name`, `epithet`, and `role` in `mvp-rules.json`). It isn't rolled per match. Rules fail to load if a Unique unit has no name, if an epithet or role has no name, or if two units share a name.
 
 **Naming conventions.**
 

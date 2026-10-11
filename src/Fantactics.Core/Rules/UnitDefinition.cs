@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 
 namespace Fantactics.Core.Rules;
 
@@ -17,6 +18,12 @@ namespace Fantactics.Core.Rules;
 /// <param name="Traits">Trait identifiers (see <see cref="TraitIds"/>) and their values.</param>
 /// <param name="Abilities">Ability identifiers (see <see cref="AbilityIds"/>).</param>
 /// <param name="Classes">Class tags (see <see cref="ClassIds"/>), or <c>null</c> for none (RacesAndUnits §2.4).</param>
+/// <param name="Name">
+/// A named character's short name, e.g. <c>Grukk</c>; required for <see cref="Unique"/> units, <c>null</c> for generic
+/// units, which are named after their type id (RacesAndUnits §2.5).
+/// </param>
+/// <param name="Epithet">What follows the name in the full name, e.g. <c>Skullsplitter</c>, or <c>null</c>.</param>
+/// <param name="Role">What the character is, e.g. <c>War Lord</c>, or <c>null</c>.</param>
 public sealed record UnitDefinition(
     string Race,
     int Cost,
@@ -31,10 +38,20 @@ public sealed record UnitDefinition(
     bool Unique,
     ImmutableSortedDictionary<string, int> Traits,
     ImmutableArray<string> Abilities,
-    ImmutableSortedSet<string>? Classes = null)
+    ImmutableSortedSet<string>? Classes = null,
+    string? Name = null,
+    string? Epithet = null,
+    string? Role = null)
 {
     /// <summary>Whether the unit's basic attack reaches beyond adjacent tiles.</summary>
     public bool IsRanged => MaxRange > 1;
+
+    /// <summary>
+    /// The name with its epithet, e.g. <c>Grukk Skullsplitter</c> or <c>Mother Gristle</c>; <c>null</c> for generic
+    /// units.
+    /// </summary>
+    [JsonIgnore]
+    public string? FullName => Name is null ? null : Epithet is null ? Name : $"{Name} {Epithet}";
 
     /// <summary>Whether the type carries the class <paramref name="classId"/> (see <see cref="ClassIds"/>).</summary>
     public bool HasClass(string classId) => Classes?.Contains(classId) == true;

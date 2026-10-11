@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Fantactics.Core.Rules;
 
 namespace Fantactics.Sim.Tests;
 
@@ -161,6 +162,17 @@ public sealed class CliTests : IDisposable
         Assert.Equal(ExitCodes.Ok, Run(out JsonElement summary, "run", "--games", "1", "--rules", variant, "--format", "json"));
 
         Assert.NotEqual(baseline.GetProperty("rules").GetString(), summary.GetProperty("rules").GetString());
+    }
+
+    [Fact]
+    public void EveryVariantPassesTheRulesChecks()
+    {
+        string[] variants = Directory.GetFiles(Path.Combine(SourceRoot(), "Fantactics.Sim", "Variants"), "*.json");
+
+        Assert.NotEmpty(variants);
+        Assert.All(variants, path => Assert.All(
+            RulesConfig.FromJson(File.ReadAllText(path)).Units.Values.Where(unit => unit.Unique),
+            unit => Assert.NotNull(unit.Name)));
     }
 
     [Fact]

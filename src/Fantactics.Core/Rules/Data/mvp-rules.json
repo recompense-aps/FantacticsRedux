@@ -51,7 +51,8 @@
     "Druid": {
       "race": "Elves", "cost": 6, "hp": 6, "attack": 2, "defense": 0, "movement": 4,
       "minRange": 1, "maxRange": 2, "initiative": 4, "vision": 4, "unique": true,
-      "traits": {}, "abilities": ["Overgrowth", "Entangle"], "classes": ["Mage"]
+      "traits": {}, "abilities": ["Overgrowth", "Entangle"], "classes": ["Mage"],
+      "name": "Ysolde", "epithet": "of the Deepwood", "role": "Druid"
     },
     "Grunt": {
       "race": "Goblins", "cost": 2, "hp": 5, "attack": 3, "defense": 0, "movement": 4,
@@ -86,12 +87,14 @@
     "WarLord": {
       "race": "Goblins", "cost": 6, "hp": 8, "attack": 4, "defense": 1, "movement": 4,
       "minRange": 1, "maxRange": 1, "initiative": 4, "vision": 4, "unique": true,
-      "traits": { "Bloodthirst": 1, "WarCry": 2 }, "abilities": [], "classes": ["Leader"]
+      "traits": { "Bloodthirst": 1, "WarCry": 2 }, "abilities": [], "classes": ["Leader"],
+      "name": "Grukk", "epithet": "Skullsplitter", "role": "War Lord"
     },
     "Shaman": {
       "race": "Goblins", "cost": 5, "hp": 5, "attack": 2, "defense": 0, "movement": 4,
       "minRange": 1, "maxRange": 2, "initiative": 3, "vision": 4, "unique": true,
-      "traits": {}, "abilities": ["CallTheHorde"], "classes": ["Mage"]
+      "traits": {}, "abilities": ["CallTheHorde"], "classes": ["Mage"],
+      "name": "Mother Gristle", "role": "Bone Shaman"
     }
   },
   "abilities": {
