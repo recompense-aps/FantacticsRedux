@@ -72,11 +72,17 @@ public sealed record RulesConfig(
     [JsonIgnore]
     public string Hash => Convert.ToHexString(SHA256.HashData(CoreJson.SerializeToUtf8Bytes(this))).ToLowerInvariant();
 
-    /// <summary>Parses a rules config from JSON.</summary>
-    /// <exception cref="JsonException">The JSON is malformed or incomplete.</exception>
-    public static RulesConfig FromJson(string json) =>
-        JsonSerializer.Deserialize<RulesConfig>(json, CoreJson.Options)
+    /// <summary>Parses a rules config from JSON and checks its unit names.</summary>
+    /// <exception cref="JsonException">
+    /// The JSON is malformed or incomplete, or a unit's names break the rules in RacesAndUnits §2.5.
+    /// </exception>
+    public static RulesConfig FromJson(string json)
+    {
+        RulesConfig rules = JsonSerializer.Deserialize<RulesConfig>(json, CoreJson.Options)
             ?? throw new JsonException("Rules config is empty.");
+        rules.ValidateNames();
+        return rules;
+    }
 
     /// <summary>Returns a unit type's traits merged with its race's traits.</summary>
     public ImmutableSortedDictionary<string, int> TraitsOf(string unitType)
@@ -99,6 +105,38 @@ public sealed record RulesConfig(
             .GroupBy(trait => trait.Key)
             .ToImmutableSortedDictionary(group => group.Key, group => group.Max(trait => trait.Value));
         return raceTraits.SetItems(unit.Traits);
+    }
+
+    /// <summary>
+    /// Every unique unit has a name, an epithet or role comes with a name, and no two units share a name
+    /// (RacesAndUnits §2.5).
+    /// </summary>
+    /// <exception cref="JsonException">A unit breaks one of these.</exception>
+    private void ValidateNames()
+    {
+        foreach ((string type, UnitDefinition unit) in Units)
+        {
+            bool named = !string.IsNullOrWhiteSpace(unit.Name);
+            if (unit.Unique && !named)
+            {
+                throw new JsonException($"Unit '{type}' is unique, so it needs a name (RacesAndUnits §2.5).");
+            }
+
+            if (!named && (unit.Epithet is not null || unit.Role is not null))
+            {
+                throw new JsonException($"Unit '{type}' has an epithet or role but no name.");
+            }
+        }
+
+        IGrouping<string, string>? shared = Units
+            .Where(pair => pair.Value.Name is not null)
+            .GroupBy(pair => pair.Value.Name?.Trim() ?? "", pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (shared is not null)
+        {
+            throw new JsonException(
+                $"Units {string.Join(" and ", shared.Select(type => $"'{type}'"))} share the name '{shared.Key}'.");
+        }
     }
 
     private static RulesConfig LoadDefault()
