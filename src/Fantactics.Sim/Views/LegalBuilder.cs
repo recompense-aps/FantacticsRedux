@@ -41,6 +41,7 @@ public static class LegalBuilder
                 Deploys: [.. moves.Deploys.Select(d => new DeployRow(
                     handles.Of(d.UnitId),
                     d.Type,
+                    state.Rules.Units[d.Type].Name,
                     d.Cost,
                     string.Join(" ", d.Tiles.Select(EventFormatter.Tile))))],
                 Command: moves.Command,
@@ -56,7 +57,7 @@ public static class LegalBuilder
                 "Placement",
                 null,
                 "act --orders \"A@0,5 B@1,6\": place every listed unit on its own tile",
-                ToPlace: [.. placement.UnitIds.Select(id => $"{handles.Of(id)} {state.Units[id].Type}")],
+                ToPlace: [.. placement.UnitIds.Select(id => PlaceEntry(state, handles.Of(id), state.Units[id].Type))],
                 PlaceTiles: ZoneDescription(placement.Tiles)),
             _ => null,
         };
@@ -91,6 +92,9 @@ public static class LegalBuilder
                 destination.Tile.Y,
                 destination.Cost)));
 
+    private static string PlaceEntry(GameState state, string handle, string type) =>
+        state.Rules.Units[type].Name is string name ? $"{handle} {type} ({name})" : $"{handle} {type}";
+
     private static DraftRow DraftRow(RulesConfig rules, DraftUnitOption option)
     {
         UnitDefinition definition = rules.Units[option.Type];
@@ -99,6 +103,8 @@ public static class LegalBuilder
             .Concat(definition.Abilities);
         return new DraftRow(
             option.Type,
+            option.FullName,
+            option.Role,
             option.Race,
             option.Cost,
             definition.Hp,

@@ -125,7 +125,12 @@ public partial class DraftPanel : PanelContainer
     {
         string features = UnitText.Features(stats);
         HBoxContainer row = new();
-        row.AddChild(new Label { Text = unit.Type, CustomMinimumSize = new Vector2(96, 0) });
+        row.AddChild(new Label
+        {
+            Text = UnitText.FullName(unit),
+            CustomMinimumSize = new Vector2(128, 0),
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
         row.AddChild(new Label { Text = $"{unit.Cost} pts", CustomMinimumSize = new Vector2(52, 0) });
         Label details = new()
         {
@@ -166,7 +171,7 @@ public partial class DraftPanel : PanelContainer
             HBoxContainer row = new();
             row.AddChild(new Label
             {
-                Text = $"{group.Key} ×{group.Count()} ({cost * group.Count()})",
+                Text = $"{UnitText.FullName(rules, group.Key)} ×{group.Count()} ({cost * group.Count()})",
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
             });
             string? overCap = reserve && draft.StartingCost + cost > draft.Options.StartingCap

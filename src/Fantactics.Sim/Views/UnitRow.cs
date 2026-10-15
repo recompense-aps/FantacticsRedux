@@ -7,6 +7,7 @@ namespace Fantactics.Sim.Views;
 /// <c>P3 ally</c>.
 /// </param>
 /// <param name="Type">Unit type.</param>
+/// <param name="Name">A named character's short name, e.g. <c>Grukk</c>; <c>null</c> for a generic unit.</param>
 /// <param name="X">Column.</param>
 /// <param name="Y">Row.</param>
 /// <param name="Tile">Terrain under the unit.</param>
@@ -22,6 +23,7 @@ public sealed record UnitRow(
     string Id,
     string Side,
     string Type,
+    string? Name,
     int X,
     int Y,
     string Tile,

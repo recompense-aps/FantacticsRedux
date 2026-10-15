@@ -46,6 +46,7 @@ public static class ViewBuilder
             .Select(unit => new ReserveRow(
                 Handle(unit.Id),
                 unit.Type,
+                state.DefinitionOf(unit).Name,
                 unit.Location == UnitLocation.Reserve ? "reserve" : "unplaced",
                 state.DefinitionOf(unit).Cost,
                 UnitRules.DeployCost(state, unit)))
@@ -130,6 +131,7 @@ public static class ViewBuilder
             handle(unit.Id),
             SideOf(view, unit.Owner),
             unit.Type,
+            definition.Name,
             unit.Position.X,
             unit.Position.Y,
             state.Map[unit.Position].ToString(),

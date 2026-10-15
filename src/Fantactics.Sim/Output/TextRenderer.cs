@@ -65,19 +65,22 @@ public static class TextRenderer
 
         text.AppendLine();
         text.Append(Table(
-            ["ID", "Side", "Type", "Pos", "Tile", "HP", "Atk", "Def", "Mov", "Rng", "Init", "Status"],
+            ["ID", "Side", "Type", "Name", "Pos", "Tile", "HP", "Atk", "Def", "Mov", "Rng", "Init", "Status"],
             view.Units.Select(u => new[]
             {
-                u.Id, u.Side, u.Type, $"{u.X},{u.Y}", u.Tile, $"{u.Hp}/{u.MaxHp}", $"{u.Atk}", $"{u.Def}", $"{u.Mov}",
-                u.Rng, $"{u.Init}", u.Status,
+                u.Id, u.Side, u.Type, u.Name ?? "", $"{u.X},{u.Y}", u.Tile, $"{u.Hp}/{u.MaxHp}", $"{u.Atk}",
+                $"{u.Def}", $"{u.Mov}", u.Rng, $"{u.Init}", u.Status,
             })));
 
         if (!view.Reserve.IsEmpty)
         {
             text.AppendLine();
             text.Append(Table(
-                ["ID", "Type", "Where", "Cost", "Deploy"],
-                view.Reserve.Select(r => new[] { r.Id, r.Type, r.Where, $"{r.Cost}", $"{r.DeployCost}" })));
+                ["ID", "Type", "Name", "Where", "Cost", "Deploy"],
+                view.Reserve.Select(r => new[]
+                {
+                    r.Id, r.Type, r.Name ?? "", r.Where, $"{r.Cost}", $"{r.DeployCost}",
+                })));
         }
 
         if (view.Order is string order)
@@ -119,19 +122,22 @@ public static class TextRenderer
         if (legal.Deploys is { IsEmpty: false } deploys)
         {
             text.Append(Table(
-                ["Reserve", "Type", "Cost", "Tiles"],
-                deploys.Select(d => new[] { d.Unit, d.Type, $"{d.Cost}", d.Tiles })));
+                ["Reserve", "Type", "Name", "Cost", "Tiles"],
+                deploys.Select(d => new[] { d.Unit, d.Type, d.Name ?? "", $"{d.Cost}", d.Tiles })));
         }
 
         if (legal.Draftable is { } draftable)
         {
             text.AppendLine($"Budget {legal.Budget}, starting cap {legal.StartingCap}.");
             text.Append(Table(
-                ["Type", "Race", "Cost", "HP", "Atk", "Def", "Mov", "Rng", "Init", "Unique", "Classes", "Traits"],
+                [
+                    "Type", "Name", "Race", "Cost", "HP", "Atk", "Def", "Mov", "Rng", "Init", "Unique", "Classes",
+                    "Traits",
+                ],
                 draftable.Select(d => new[]
                 {
-                    d.Type, d.Race, $"{d.Cost}", $"{d.Hp}", $"{d.Atk}", $"{d.Def}", $"{d.Mov}", d.Rng, $"{d.Init}",
-                    d.Unique ? "yes" : "", d.Classes, d.Traits,
+                    d.Type, DraftName(d), d.Race, $"{d.Cost}", $"{d.Hp}", $"{d.Atk}", $"{d.Def}", $"{d.Mov}", d.Rng,
+                    $"{d.Init}", d.Unique ? "yes" : "", d.Classes, d.Traits,
                 })));
         }
 
@@ -256,6 +262,13 @@ public static class TextRenderer
 
         return text.ToString();
     }
+
+    private static string DraftName(DraftRow row) => row switch
+    {
+        { Name: string name, Role: string role } => $"{name} ({role})",
+        { Name: string name } => name,
+        _ => "",
+    };
 
     private static string Table(string[] headers, IEnumerable<string[]> rows)
     {

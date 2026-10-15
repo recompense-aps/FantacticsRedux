@@ -3,7 +3,8 @@ namespace Fantactics.Sim.Views;
 /// <summary>One of the viewer's units off the map.</summary>
 /// <param name="Id">Handle.</param>
 /// <param name="Type">Unit type.</param>
+/// <param name="Name">A named character's short name, e.g. <c>Grukk</c>; <c>null</c> for a generic unit.</param>
 /// <param name="Where">reserve or unplaced.</param>
 /// <param name="Cost">Draft cost.</param>
 /// <param name="DeployCost">Command needed to deploy it.</param>
-public sealed record ReserveRow(string Id, string Type, string Where, int Cost, int DeployCost);
+public sealed record ReserveRow(string Id, string Type, string? Name, string Where, int Cost, int DeployCost);

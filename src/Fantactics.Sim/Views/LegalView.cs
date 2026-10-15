@@ -14,7 +14,9 @@ namespace Fantactics.Sim.Views;
 /// <param name="Draftable">Unit types and costs, for Draft.</param>
 /// <param name="Budget">Draft budget, for Draft.</param>
 /// <param name="StartingCap">Starting army cap, for Draft.</param>
-/// <param name="ToPlace">Units to place, for Placement.</param>
+/// <param name="ToPlace">
+/// Units to place, for Placement: the handle and type, then a named character's name, e.g. <c>A WarLord (Grukk)</c>.
+/// </param>
 /// <param name="PlaceTiles">Where they may go, for Placement.</param>
 public sealed record LegalView(
     string Kind,
