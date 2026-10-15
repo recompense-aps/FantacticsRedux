@@ -85,6 +85,34 @@ public class DraftTests
         Assert.Equal(["The starting army needs at least one unit."], builder.Problems);
     }
 
+    [Fact]
+    public void DraftMessagesNameTheCharacterOrTheUnitType()
+    {
+        DraftOptions options = LegalActions.ForView(States.Setup(1).CreateInitialState(_rules), Seat.P1)?.Draft
+            ?? throw new InvalidOperationException();
+        DraftBuilder builder = new(options with { Budget = 8 });
+
+        Assert.Null(builder.Add("WarLord", reserve: false));
+        Assert.Equal("Grukk is unique: one per army.", builder.Add("WarLord", reserve: true));
+        Assert.Equal("Wolf Rider costs 4; 2 points left.", builder.Add("WolfRider", reserve: false));
+    }
+
+    [Fact]
+    public void DraftOptionsCarryCharacterNamesAndRoles()
+    {
+        DraftOptions options = LegalActions.ForView(States.Setup(1).CreateInitialState(_rules), Seat.P1)?.Draft
+            ?? throw new InvalidOperationException();
+        DraftUnitOption warLord = options.Units.Single(unit => unit.Type == "WarLord");
+        DraftUnitOption wolfRider = options.Units.Single(unit => unit.Type == "WolfRider");
+
+        Assert.Equal(("Grukk", "Grukk Skullsplitter", "War Lord"), (warLord.Name, warLord.FullName, warLord.Role));
+        Assert.Equal("Grukk Skullsplitter", UnitText.FullName(warLord));
+        Assert.Equal("Goblins · Leader · War Lord · unique", UnitText.Tags(warLord));
+        Assert.Equal((null, null, null), (wolfRider.Name, wolfRider.FullName, wolfRider.Role));
+        Assert.Equal("Wolf Rider", UnitText.FullName(wolfRider));
+        Assert.Equal("Wolf Rider", UnitText.Name(wolfRider));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -100,7 +128,7 @@ public class DraftTests
         DraftBuilder builder = new(options);
 
         Assert.Null(builder.Add("WarLord", reserve: false));
-        Assert.Equal("Shaman is a Leader, and WarLord already leads this army: one Leader per army.",
+        Assert.Equal("Mother Gristle is a Leader, and Grukk already leads this army: one Leader per army.",
             builder.Add("Shaman", reserve));
         Assert.Null(builder.Add("Druid", reserve));
         Assert.True(builder.Remove("WarLord", reserve: false));

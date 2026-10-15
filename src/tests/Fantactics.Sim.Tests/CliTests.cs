@@ -176,6 +176,35 @@ public sealed class CliTests : IDisposable
     }
 
     [Fact]
+    public void UnitRowsNameCharactersAndCommandsStillTakeTypeIds()
+    {
+        Run(out _, "new", "--out", MatchPath, "--seed", "3");
+
+        Assert.Equal(ExitCodes.Ok, Run(out JsonElement draft, "legal", MatchPath, "--as", "P1", "--format", "json"));
+        JsonElement[] draftable = [.. draft.GetProperty("draftable").EnumerateArray()];
+        JsonElement warLord = draftable.Single(row => row.GetProperty("type").GetString() == "WarLord");
+        Assert.Equal("Grukk Skullsplitter", warLord.GetProperty("name").GetString());
+        Assert.Equal("War Lord", warLord.GetProperty("role").GetString());
+        Assert.False(draftable.Single(row => row.GetProperty("type").GetString() == "Grunt").TryGetProperty("name", out _));
+        TestConsole console = new();
+        Assert.Equal(ExitCodes.Ok, CliHost.Run(["legal", MatchPath, "--as", "P1"], console));
+        Assert.Contains("Grukk Skullsplitter (War Lord)", console.Output);
+
+        Assert.Equal(ExitCodes.Ok, Run(out _, "act", MatchPath, "--as", "P1", "--draft", "WarLord Grunt | Shaman"));
+        Assert.Equal(ExitCodes.Ok, Run(out JsonElement placement, "legal", MatchPath, "--as", "P1", "--format", "json"));
+        Assert.Contains("A WarLord (Grukk)", placement.GetProperty("toPlace").EnumerateArray().Select(e => e.GetString()));
+        Assert.Equal(ExitCodes.Ok, Run(out _, "act", MatchPath, "--as", "P1", "--orders", Placements(placement)));
+
+        Assert.Equal(ExitCodes.Ok, Run(out JsonElement view, "view", MatchPath, "--as", "P1", "--format", "json"));
+        JsonElement[] units = [.. view.GetProperty("units").EnumerateArray()];
+        Assert.Equal("Grukk", units.Single(u => u.GetProperty("type").GetString() == "WarLord").GetProperty("name").GetString());
+        Assert.False(units.First(u => u.GetProperty("type").GetString() == "Grunt").TryGetProperty("name", out _));
+        Assert.Equal(
+            "Mother Gristle",
+            view.GetProperty("reserve").EnumerateArray().Single().GetProperty("name").GetString());
+    }
+
+    [Fact]
     public void ToonOutputIsProduced()
     {
         Run(out _, "new", "--out", MatchPath);
