@@ -53,7 +53,10 @@ public sealed record LegalActions(
                 pair.Value.Cost,
                 pair.Value.Unique,
                 pair.Value.Race,
-                pair.Value.Classes ?? []))
+                pair.Value.Classes ?? [],
+                pair.Value.Name,
+                pair.Value.FullName,
+                pair.Value.Role))
             .ToImmutableArray();
         return new DraftOptions(units, player.BudgetUnder(state.Rules), player.StartingCapUnder(state.Rules));
     }

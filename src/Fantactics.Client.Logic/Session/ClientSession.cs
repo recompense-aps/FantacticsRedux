@@ -51,7 +51,7 @@ public sealed class ClientSession
         _botFactory = botFactory;
         _draftAs = draftAs;
         _connections = match.State.Seats.ToDictionary(seat => seat, match.Connect);
-        _logs = _connections.ToDictionary(pair => pair.Key, pair => new EventLog(pair.Value.Current.View));
+        _logs = _connections.ToDictionary(pair => pair.Key, pair => new EventLog(pair.Value.Current.View, rules));
         Seat[] humans = [.. _connections.Keys.Where(IsHuman)];
         _shown = (int)(shown
             ?? humans.FirstOrDefault(seat => _connections[seat].Current.Legal is not null, humans.DefaultIfEmpty(Seat.P1).First()));

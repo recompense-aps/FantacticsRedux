@@ -1,3 +1,4 @@
+using Fantactics.Client.Logic.Board;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Rules;
@@ -57,23 +58,25 @@ public sealed class DraftBuilder
             return $"{type} isn't in this draft.";
         }
 
+        string name = UnitText.Name(unit);
         if (unit.Unique && Count(type) > 0)
         {
-            return $"{type} is unique: one per army.";
+            return $"{name} is unique: one per army.";
         }
 
         if (IsLeader(unit) && _starting.Concat(_reserve).FirstOrDefault(t => IsLeader(_byType[t])) is string leader)
         {
-            return $"{type} is a Leader, and {leader} already leads this army: one Leader per army.";
+            return $"{name} is a Leader, and {UnitText.Name(_byType[leader])} already leads this army: "
+                + "one Leader per army.";
         }
 
         if (unit.Cost > Remaining)
         {
-            return $"{type} costs {unit.Cost}; {Remaining} points left.";
+            return $"{name} costs {unit.Cost}; {Remaining} points left.";
         }
 
         return !reserve && StartingCost + unit.Cost > Options.StartingCap
-            ? $"{type} would put the starting army over its cap of {Options.StartingCap}."
+            ? $"{name} would put the starting army over its cap of {Options.StartingCap}."
             : null;
     }
 
