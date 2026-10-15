@@ -198,7 +198,7 @@ public partial class InputDriver : Node
         string decision = InputPlan.DecisionName(update);
         _answeredName = $"{update.View.Seat} {decision}";
         _answeredCounts[decision] = _answeredCounts.GetValueOrDefault(decision) + 1;
-        foreach (InputStep step in InputPlan.For(update, choice))
+        foreach (InputStep step in InputPlan.For(update, choice, _session.Rules))
         {
             _steps.Enqueue(step);
         }

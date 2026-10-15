@@ -23,7 +23,7 @@ public class InputTests
         {
             PlayerView view = PlayerView.Project(state, seat);
             MoveOptions options = LegalActions.ForView(state, seat)?.Moves ?? throw new InvalidOperationException();
-            MoveOrderBuilder builder = new(view, options);
+            MoveOrderBuilder builder = new(view, options, RulesConfig.Default);
             int[] selectable = [.. options.Units.Select(u => u.UnitId), .. options.Deploys.Select(d => d.UnitId)];
             for (int click = 0; click < 12 && selectable.Length > 0; click++)
             {
@@ -78,7 +78,7 @@ public class InputTests
         (GameState state, Seat seat) = States.Along(5).First(s => s.State.Phase == Phase.Movement);
         PlayerView view = PlayerView.Project(state, seat);
         MoveOptions options = LegalActions.ForView(state, seat)?.Moves ?? throw new InvalidOperationException();
-        MoveOrderBuilder builder = new(view, options);
+        MoveOrderBuilder builder = new(view, options, RulesConfig.Default);
         UnitMoveOptions unit = options.Units.First(u => u.Destinations.Length > 0);
         builder.Select(unit.UnitId);
         Point hover = unit.Destinations[^1].Tile;

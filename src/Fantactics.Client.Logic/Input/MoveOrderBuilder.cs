@@ -1,7 +1,9 @@
 using System.Collections.Immutable;
+using Fantactics.Client.Logic.Board;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Geometry;
+using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
 namespace Fantactics.Client.Logic.Input;
@@ -16,16 +18,19 @@ public sealed class MoveOrderBuilder
 {
     private readonly PlayerView _view;
     private readonly MoveOptions _options;
+    private readonly RulesConfig _rules;
     private readonly Dictionary<int, ReachableTile> _moves = [];
     private readonly Dictionary<int, Point> _deploys = [];
 
     /// <summary>Starts with every unit holding and nothing deployed.</summary>
     /// <param name="view">The seat's view.</param>
     /// <param name="options">The seat's move options.</param>
-    public MoveOrderBuilder(PlayerView view, MoveOptions options)
+    /// <param name="rules">Rules, for named characters' names.</param>
+    public MoveOrderBuilder(PlayerView view, MoveOptions options, RulesConfig rules)
     {
         _view = view;
         _options = options;
+        _rules = rules;
     }
 
     /// <summary>The selected unit (on the field or in reserve), if any.</summary>
@@ -152,7 +157,8 @@ public sealed class MoveOrderBuilder
             _ when _deploys.Any(d => d.Key != id && d.Value == tile) => $"Another unit already arrives on {tile}.",
             _ when !_deploys.ContainsKey(id) && _deploys.Count >= _options.MaxArrivals =>
                 $"At most {_options.MaxArrivals} units can arrive per turn.",
-            _ when costIfChosen < 0 => $"Deploying {option.Type} costs {option.Cost} Command; you have {CommandLeft}.",
+            _ when costIfChosen < 0 =>
+                $"Deploying {UnitText.Name(_rules, option.Type)} costs {option.Cost} Command; you have {CommandLeft}.",
             _ => null,
         };
         if (problem is null)

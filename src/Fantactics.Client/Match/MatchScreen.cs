@@ -135,7 +135,7 @@ public partial class MatchScreen : Node
 
     /// <summary>The line the prompt shows: the last input problem, or what the shown seat is asked to do.</summary>
     public string PromptLine => _input?.Message
-        ?? (_current is SeatUpdate update ? HudText.Prompt(update, LabelOf) : "");
+        ?? (_current is SeatUpdate update ? HudText.Prompt(update, _session.Rules, LabelOf) : "");
 
     /// <summary>The hotseat curtain's ready button text while the curtain is up; otherwise <c>null</c>.</summary>
     public string? CurtainButton => _curtain.IsUp ? _curtain.ReadyText : null;
@@ -237,7 +237,7 @@ public partial class MatchScreen : Node
             _llmSeconds = seconds;
             _hud.ShowStatus(
                 HudText.Status(update.View, _session.Rules),
-                $"{HudText.Prompt(update, LabelOf)} The LLM is thinking… {seconds}s");
+                $"{HudText.Prompt(update, _session.Rules, LabelOf)} The LLM is thinking… {seconds}s");
         }
     }
 
@@ -432,14 +432,14 @@ public partial class MatchScreen : Node
         _hud.ShowLog(_session.LogFor(update));
         _llmSince = update.Legal is null && update.View.Outcome is null && WaitingOnLlm(update) ? DateTime.UtcNow : null;
         _llmSeconds = -1;
-        _input = new DecisionInput(update);
+        _input = new DecisionInput(update, _session.Rules);
         Redraw();
         RefreshDebug();
 
         if (update.View.Outcome is not null && _pending.Count == 0 && !_finished)
         {
             _finished = true;
-            string result = HudText.Prompt(update, LabelOf);
+            string result = HudText.Prompt(update, _session.Rules, LabelOf);
             _menu.Open(result, over: true);
             EmitSignal(SignalName.MatchFinished, result);
         }
@@ -471,7 +471,7 @@ public partial class MatchScreen : Node
                 input.Placement,
                 _threats);
         _board.Render(model);
-        _hud.ShowStatus(HudText.Status(update.View, _session.Rules), input.Message ?? HudText.Prompt(update, LabelOf));
+        _hud.ShowStatus(HudText.Status(update.View, _session.Rules), input.Message ?? HudText.Prompt(update, _session.Rules, LabelOf));
         _hud.ShowPlayers(update.View.Phase == Phase.Draft ? [] : HudText.Players(update.View));
         _hud.ShowHint(model.Hint);
         _hud.ShowUnitInfo(input.Draft is null ? model.Info : null);
@@ -533,7 +533,7 @@ public partial class MatchScreen : Node
         }
 
         bool over = _current?.View.Outcome is not null;
-        _menu.Open(over && _current is SeatUpdate update ? HudText.Prompt(update, LabelOf) : "Paused", over);
+        _menu.Open(over && _current is SeatUpdate update ? HudText.Prompt(update, _session.Rules, LabelOf) : "Paused", over);
     }
 
     private void Quicksave()

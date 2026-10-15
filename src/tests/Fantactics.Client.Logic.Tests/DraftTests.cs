@@ -153,7 +153,7 @@ public class DraftTests
         PlayerView view = PlayerView.Project(host.State, Seat.P1);
         LegalActions legal = LegalActions.ForView(host.State, Seat.P1) ?? throw new InvalidOperationException();
         var placement = (PlaceStartingArmy)States.CreateBot("captain", 3).Decide(view, legal.Decision, legal);
-        PlacementBuilder placer = new(view, legal.Placement ?? throw new InvalidOperationException());
+        PlacementBuilder placer = new(view, legal.Placement ?? throw new InvalidOperationException(), _rules);
         placer.Load(placement);
 
         Assert.Empty(placer.Problems);
@@ -170,7 +170,7 @@ public class DraftTests
         GameState state = PlacementState(seed);
         PlayerView view = PlayerView.Project(state, Seat.P2);
         PlacementOptions options = LegalActions.ForView(state, Seat.P2)?.Placement ?? throw new InvalidOperationException();
-        PlacementBuilder builder = new(view, options);
+        PlacementBuilder builder = new(view, options, _rules);
 
         for (int click = 0; click < 60; click++)
         {
@@ -206,7 +206,7 @@ public class DraftTests
         GameState state = PlacementState(9);
         PlayerView view = PlayerView.Project(state, Seat.P1);
         PlacementOptions options = LegalActions.ForView(state, Seat.P1)?.Placement ?? throw new InvalidOperationException();
-        PlacementBuilder builder = new(view, options);
+        PlacementBuilder builder = new(view, options, _rules);
         (int first, int second) = (options.UnitIds[0], options.UnitIds[1]);
         (Point a, Point b) = (options.Tiles[0], options.Tiles[1]);
 

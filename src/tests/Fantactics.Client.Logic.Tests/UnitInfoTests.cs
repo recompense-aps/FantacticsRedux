@@ -98,7 +98,7 @@ public class UnitInfoTests
         SeatUpdate update = Movement().First(u =>
             u.Legal?.Moves is { } moves
             && moves.Units.Count(m => m.Destinations.Length > 0) >= 2);
-        MoveOrderBuilder builder = new(update.View, update.Legal!.Moves!);
+        MoveOrderBuilder builder = new(update.View, update.Legal!.Moves!, _rules);
         ImmutableArray<UnitMoveOptions> movers = [.. update.Legal.Moves!.Units.Where(m => m.Destinations.Length > 0)];
         Unit other = update.View.Units.First(u => u.Id == movers[1].UnitId);
         Point empty = update.View.Map.AllPoints().First(tile => update.View.Units.All(u => !u.IsOnField || u.Position != tile));

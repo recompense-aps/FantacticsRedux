@@ -4,6 +4,7 @@ using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Geometry;
 using Fantactics.Core.Hosting;
+using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
 namespace Fantactics.Client.Logic.Tests;
@@ -16,7 +17,7 @@ public class DecisionInputTests
     {
         foreach ((GameState state, Seat seat) in States.Along(6).Take(60))
         {
-            DecisionInput input = new(UpdateFor(state, seat));
+            DecisionInput input = new(UpdateFor(state, seat), RulesConfig.Default);
 
             object?[] builders = [input.Draft, input.Placement, input.Moves, input.Actions];
             Assert.Single(builders, b => b is not null);
@@ -36,7 +37,7 @@ public class DecisionInputTests
     public void NoDecisionMeansNoInput()
     {
         (GameState state, Seat seat) = States.Along(6).First();
-        DecisionInput input = new(new SeatUpdate(PlayerView.Project(state, seat), [], null));
+        DecisionInput input = new(new SeatUpdate(PlayerView.Project(state, seat), [], null), RulesConfig.Default);
 
         Assert.Null(input.Submit());
         Assert.Null(input.Click(new Point(0, 0), false));
@@ -54,7 +55,7 @@ public class DecisionInputTests
     {
         (GameState state, Seat seat) = States.Along(7).First(s => s.State.Phase == phase);
         SeatUpdate update = UpdateFor(state, seat);
-        DecisionInput input = new(update);
+        DecisionInput input = new(update, RulesConfig.Default);
         Assert.Null(input.Submit());
 
         LegalActions legal = update.Legal ?? throw new InvalidOperationException();
@@ -69,7 +70,7 @@ public class DecisionInputTests
     {
         (GameState state, Seat seat) = States.Along(8).First(s => s.State.Phase == Phase.Placement);
         SeatUpdate update = UpdateFor(state, seat);
-        DecisionInput input = new(update);
+        DecisionInput input = new(update, RulesConfig.Default);
         LegalActions legal = update.Legal ?? throw new InvalidOperationException();
         input.Suggest(States.CreateBot("captain", 1).Decide(update.View, legal.Decision, legal));
         PlacementBuilder placement = input.Placement ?? throw new InvalidOperationException();
@@ -99,7 +100,7 @@ public class DecisionInputTests
                 .Where(u => u.Destinations.Length > 0)
                 .Select(u => (s.State, s.Seat, u)))
             .First();
-        DecisionInput input = new(UpdateFor(state, seat));
+        DecisionInput input = new(UpdateFor(state, seat), RulesConfig.Default);
         MoveOrderBuilder moves = input.Moves ?? throw new InvalidOperationException();
         Point from = PlayerView.Project(state, seat).Units.First(u => u.Id == unit.UnitId).Position;
         Point to = unit.Destinations[^1].Tile;
@@ -133,7 +134,7 @@ public class DecisionInputTests
         {
             SeatUpdate update = UpdateFor(state, seat);
             LegalActions legal = update.Legal ?? throw new InvalidOperationException();
-            DecisionInput input = new(update);
+            DecisionInput input = new(update, RulesConfig.Default);
             ActionPicker picker = input.Actions ?? throw new InvalidOperationException();
 
             Assert.Equal(picker.Abilities.Length, input.ActionButtons.Count(b => int.TryParse(b.Action, out _)));
@@ -160,7 +161,7 @@ public class DecisionInputTests
     public void ARejectedSubmitShowsWhy()
     {
         (GameState state, Seat seat) = States.Along(6).First();
-        DecisionInput input = new(UpdateFor(state, seat));
+        DecisionInput input = new(UpdateFor(state, seat), RulesConfig.Default);
 
         input.Reject(new RuleViolation("test", "Not allowed."));
 

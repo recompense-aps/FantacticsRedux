@@ -1,8 +1,10 @@
 using System.Globalization;
+using Fantactics.Client.Logic.Board;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Geometry;
 using Fantactics.Core.Hosting;
+using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
 namespace Fantactics.Client.Logic.Input;
@@ -17,19 +19,26 @@ public sealed class DecisionInput
     /// <summary>Action key for the "Auto-place" button, which the screen fills through <see cref="Suggest"/>.</summary>
     public const string SuggestAction = "suggest";
 
+    /// <summary>A reserve unit's roster button: its short name and Command cost, e.g. <c>Grukk (4)</c>.</summary>
+    public static string DeployLabel(RulesConfig rules, DeployOption option) =>
+        $"{UnitText.Name(rules, option.Type)} ({option.Cost})";
+
     private readonly PlayerView _view;
+    private readonly RulesConfig _rules;
 
     /// <summary>Sets up the builder <paramref name="update"/>'s legal actions call for, if any.</summary>
     /// <param name="update">The shown seat's update.</param>
-    public DecisionInput(SeatUpdate update)
+    /// <param name="rules">Rules, for unit names.</param>
+    public DecisionInput(SeatUpdate update, RulesConfig rules)
     {
         _view = update.View;
+        _rules = rules;
         Draft = update.Legal is { Decision: DraftArmyDecision, Draft: DraftOptions draft } ? new DraftBuilder(draft) : null;
         Placement = update.Legal is { Decision: PlaceStartingArmyDecision, Placement: PlacementOptions placement }
-            ? new PlacementBuilder(update.View, placement)
+            ? new PlacementBuilder(update.View, placement, rules)
             : null;
         Moves = update.Legal is { Decision: SubmitMoveOrdersDecision, Moves: MoveOptions moves }
-            ? new MoveOrderBuilder(update.View, moves)
+            ? new MoveOrderBuilder(update.View, moves, rules)
             : null;
         Actions = update.Legal is { Decision: ChooseUnitActionDecision decision } legal
             ? new ActionPicker(update.View, decision.UnitId, legal.Actions)
@@ -90,12 +99,13 @@ public sealed class DecisionInput
             {
                 return [.. placement.Options.UnitIds.Select(id => (
                     id,
-                    placement.Placed.ContainsKey(id) ? $"{placement.TypeOf(id)} ✓" : placement.TypeOf(id),
+                    placement.Placed.ContainsKey(id) ? $"{placement.NameOf(id)} ✓" : placement.NameOf(id),
                     id == placement.Selected))];
             }
 
             return Moves is MoveOrderBuilder moves
-                ? [.. moves.DeployOptions.Select(d => (d.UnitId, $"{d.Type} ({d.Cost})", moves.Deploys.ContainsKey(d.UnitId)))]
+                ? [.. moves.DeployOptions
+                    .Select(d => (d.UnitId, DeployLabel(_rules, d), moves.Deploys.ContainsKey(d.UnitId)))]
                 : [];
         }
     }
@@ -280,7 +290,7 @@ public sealed class DecisionInput
         }
         else if (moves.Selected is null && mine is not null && !moves.Select(mine.Id))
         {
-            Message = $"{mine.Type} can't move this turn.";
+            Message = $"{UnitText.Name(_rules, mine.Type)} can't move this turn.";
         }
     }
 }

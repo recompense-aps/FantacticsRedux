@@ -1,7 +1,10 @@
+using Fantactics.Client.Logic.Board;
+using Fantactics.Client.Logic.Input;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Geometry;
 using Fantactics.Core.Hosting;
+using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
 namespace Fantactics.Client.Logic.Drive;
@@ -53,14 +56,14 @@ public static class InputPlan
     /// placement places it by hand, then swaps to Auto-place.
     /// </param>
     /// <exception cref="ArgumentException">The choice doesn't answer the update's decision.</exception>
-    public static IReadOnlyList<InputStep> For(SeatUpdate update, ICommand choice) =>
+    public static IReadOnlyList<InputStep> For(SeatUpdate update, ICommand choice, RulesConfig rules) =>
         (update.Legal, choice) switch
         {
             ({ Decision: DraftArmyDecision }, _) => DraftSteps(),
             ({ Decision: PlaceStartingArmyDecision }, PlaceStartingArmy placement) =>
-                PlacementSteps(update.View, placement),
+                PlacementSteps(update.View, placement, rules),
             ({ Decision: SubmitMoveOrdersDecision, Moves: MoveOptions options }, SubmitMoveOrders orders) =>
-                OrderSteps(update.View, options, orders),
+                OrderSteps(update.View, options, orders, rules),
             ({ Decision: ChooseUnitActionDecision } legal, IUnitActionCommand action) =>
                 ActionSteps(update.View, legal, action),
             _ => throw new ArgumentException(
@@ -81,12 +84,15 @@ public static class InputPlan
     /// Places every unit by roster button and tile click, takes the first back off with a right click, then lets
     /// Auto-place fill the board and submits with the key.
     /// </summary>
-    private static IReadOnlyList<InputStep> PlacementSteps(PlayerView view, PlaceStartingArmy placement)
+    private static IReadOnlyList<InputStep> PlacementSteps(
+        PlayerView view,
+        PlaceStartingArmy placement,
+        RulesConfig rules)
     {
         List<InputStep> steps = [InputStep.Shot("placement")];
         foreach (UnitPlacement place in placement.Placements)
         {
-            steps.Add(InputStep.Button(TypeOf(view, place.UnitId)));
+            steps.Add(InputStep.Button(UnitText.Name(rules, TypeOf(view, place.UnitId))));
             steps.Add(InputStep.Click(place.Tile));
         }
 
@@ -105,7 +111,11 @@ public static class InputPlan
     /// Picks the first moving unit and drops it with Esc, then gives every order by clicking the unit and its
     /// destination (deploys: roster button, then arrival tile), and submits with the button.
     /// </summary>
-    private static IReadOnlyList<InputStep> OrderSteps(PlayerView view, MoveOptions options, SubmitMoveOrders orders)
+    private static IReadOnlyList<InputStep> OrderSteps(
+        PlayerView view,
+        MoveOptions options,
+        SubmitMoveOrders orders,
+        RulesConfig rules)
     {
         MoveOrder[] moves = [.. orders.Moves.Where(move => move.Path.Length > 0 && From(view, move) != move.Path[^1])];
         List<InputStep> steps = [InputStep.Shot("orders")];
@@ -125,7 +135,7 @@ public static class InputPlan
         {
             DeployOption option = options.Deploys.FirstOrDefault(d => d.UnitId == deploy.UnitId)
                 ?? throw new ArgumentException($"Unit {deploy.UnitId} can't deploy.", nameof(orders));
-            steps.Add(InputStep.Button($"{option.Type} ({option.Cost})"));
+            steps.Add(InputStep.Button(DecisionInput.DeployLabel(rules, option)));
             steps.Add(InputStep.Click(deploy.Tile));
         }
 
