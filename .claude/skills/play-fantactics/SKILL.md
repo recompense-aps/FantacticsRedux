@@ -28,7 +28,9 @@ SIM="dotnet src/Fantactics.Sim/bin/Debug/net8.0/fantactics-sim.dll"
 ```
 
 Create a match if you weren't given one (defaults: P1 llm, P2 bot:random, map riverford). Both seats draft from
-every race's units; the draft table shows each unit's race and classes. Uniques are one per army, and an army may
+every race's units; the draft table shows each unit's race and classes. Uniques are named characters: the draft table
+gives the full name and role (`WarLord` is `Grukk Skullsplitter (War Lord)`), and unit, reserve, and deploy rows give
+the short name (`Grukk`). Always draft, place, and deploy by type id (`WarLord`), never by name. Uniques are one per army, and an army may
 have at most one Leader-class unit (`too-many-leaders`). Race auras and abilities (War Cry, Mend) only reach units of
 the same race. Limit a seat with `--p1-races Elves` (comma-separated). After both drafts, your view shows how many
 units of each race each opponent drafted.

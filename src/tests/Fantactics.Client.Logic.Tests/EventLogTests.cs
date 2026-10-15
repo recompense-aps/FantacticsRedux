@@ -24,7 +24,7 @@ public class EventLogTests
     {
         GameEvent sample = (GameEvent)RuntimeHelpers.GetUninitializedObject(type);
 
-        Exception? problem = Record.Exception(() => EventText.Describe(sample, new UnitNames()));
+        Exception? problem = Record.Exception(() => EventText.Describe(sample, new UnitNames(RulesConfig.Default)));
 
         Assert.IsNotType<NotSupportedException>(problem);
     }
@@ -41,6 +41,16 @@ public class EventLogTests
     }
 
     [Fact]
+    public void NamedCharactersGoByTheirShortNameAndGenericUnitsByTheirType()
+    {
+        UnitNames names = Names();
+
+        Assert.Equal("P2 Grukk", names[3]);
+        Assert.Equal("P2 Wolf Rider", names[2]);
+        Assert.Equal("P2 Grukk hits P1 Archer for 4, 3 HP left", Text(new UnitAttacked(3, 1, AttackKind.Basic, 4, 3), names));
+    }
+
+    [Fact]
     public void ArrivalsAreNamedFromTheEventAndDeadUnitsKeepTheirNames()
     {
         UnitNames names = Names();
@@ -54,7 +64,10 @@ public class EventLogTests
             turn: 4).Select(line => line.Text)];
 
         Assert.Equal(
-            ["P2 Shaman deploys at (8,1) for 3 Command, can't act this turn", "P2 Shaman is destroyed by P1 Archer"],
+            [
+                "P2 Mother Gristle deploys at (8,1) for 3 Command, can't act this turn",
+                "P2 Mother Gristle is destroyed by P1 Archer",
+            ],
             lines);
     }
 
@@ -96,8 +109,8 @@ public class EventLogTests
     public void AnUpdateIsLoggedOnceAndReadOnlyUpToTheUpdateOnScreen()
     {
         MatchHost host = new(RulesConfig.Default, States.Setup(11));
-        EventLog twice = new(host.Snapshot(Seat.P1).View);
-        EventLog once = new(host.Snapshot(Seat.P1).View);
+        EventLog twice = new(host.Snapshot(Seat.P1).View, host.State.Rules);
+        EventLog once = new(host.Snapshot(Seat.P1).View, host.State.Rules);
         List<SeatUpdate> updates = [];
         host.Updated += (seat, update) =>
         {
@@ -125,7 +138,7 @@ public class EventLogTests
     public void AWholeBotMatchReadsWithEveryUnitNamed()
     {
         MatchHost host = new(RulesConfig.Default, States.Setup(12));
-        Dictionary<Seat, EventLog> logs = host.State.Seats.ToDictionary(seat => seat, seat => new EventLog(host.Snapshot(seat).View));
+        Dictionary<Seat, EventLog> logs = host.State.Seats.ToDictionary(seat => seat, seat => new EventLog(host.Snapshot(seat).View, host.State.Rules));
         Dictionary<Seat, SeatUpdate> last = [];
         host.Updated += (seat, update) =>
         {
@@ -170,9 +183,10 @@ public class EventLogTests
 
     private static UnitNames Names()
     {
-        UnitNames names = new();
+        UnitNames names = new(RulesConfig.Default);
         names.Learn(1, Seat.P1, "Archer");
         names.Learn(2, Seat.P2, "WolfRider");
+        names.Learn(3, Seat.P2, "WarLord");
         return names;
     }
 

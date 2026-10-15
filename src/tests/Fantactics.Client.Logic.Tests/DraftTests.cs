@@ -85,6 +85,34 @@ public class DraftTests
         Assert.Equal(["The starting army needs at least one unit."], builder.Problems);
     }
 
+    [Fact]
+    public void DraftMessagesNameTheCharacterOrTheUnitType()
+    {
+        DraftOptions options = LegalActions.ForView(States.Setup(1).CreateInitialState(_rules), Seat.P1)?.Draft
+            ?? throw new InvalidOperationException();
+        DraftBuilder builder = new(options with { Budget = 8 });
+
+        Assert.Null(builder.Add("WarLord", reserve: false));
+        Assert.Equal("Grukk is unique: one per army.", builder.Add("WarLord", reserve: true));
+        Assert.Equal("Wolf Rider costs 4; 2 points left.", builder.Add("WolfRider", reserve: false));
+    }
+
+    [Fact]
+    public void DraftOptionsCarryCharacterNamesAndRoles()
+    {
+        DraftOptions options = LegalActions.ForView(States.Setup(1).CreateInitialState(_rules), Seat.P1)?.Draft
+            ?? throw new InvalidOperationException();
+        DraftUnitOption warLord = options.Units.Single(unit => unit.Type == "WarLord");
+        DraftUnitOption wolfRider = options.Units.Single(unit => unit.Type == "WolfRider");
+
+        Assert.Equal(("Grukk", "Grukk Skullsplitter", "War Lord"), (warLord.Name, warLord.FullName, warLord.Role));
+        Assert.Equal("Grukk Skullsplitter", UnitText.FullName(warLord));
+        Assert.Equal("Goblins · Leader · War Lord · unique", UnitText.Tags(warLord));
+        Assert.Equal((null, null, null), (wolfRider.Name, wolfRider.FullName, wolfRider.Role));
+        Assert.Equal("Wolf Rider", UnitText.FullName(wolfRider));
+        Assert.Equal("Wolf Rider", UnitText.Name(wolfRider));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -100,7 +128,7 @@ public class DraftTests
         DraftBuilder builder = new(options);
 
         Assert.Null(builder.Add("WarLord", reserve: false));
-        Assert.Equal("Shaman is a Leader, and WarLord already leads this army: one Leader per army.",
+        Assert.Equal("Mother Gristle is a Leader, and Grukk already leads this army: one Leader per army.",
             builder.Add("Shaman", reserve));
         Assert.Null(builder.Add("Druid", reserve));
         Assert.True(builder.Remove("WarLord", reserve: false));
@@ -125,7 +153,7 @@ public class DraftTests
         PlayerView view = PlayerView.Project(host.State, Seat.P1);
         LegalActions legal = LegalActions.ForView(host.State, Seat.P1) ?? throw new InvalidOperationException();
         var placement = (PlaceStartingArmy)States.CreateBot("captain", 3).Decide(view, legal.Decision, legal);
-        PlacementBuilder placer = new(view, legal.Placement ?? throw new InvalidOperationException());
+        PlacementBuilder placer = new(view, legal.Placement ?? throw new InvalidOperationException(), _rules);
         placer.Load(placement);
 
         Assert.Empty(placer.Problems);
@@ -142,7 +170,7 @@ public class DraftTests
         GameState state = PlacementState(seed);
         PlayerView view = PlayerView.Project(state, Seat.P2);
         PlacementOptions options = LegalActions.ForView(state, Seat.P2)?.Placement ?? throw new InvalidOperationException();
-        PlacementBuilder builder = new(view, options);
+        PlacementBuilder builder = new(view, options, _rules);
 
         for (int click = 0; click < 60; click++)
         {
@@ -178,7 +206,7 @@ public class DraftTests
         GameState state = PlacementState(9);
         PlayerView view = PlayerView.Project(state, Seat.P1);
         PlacementOptions options = LegalActions.ForView(state, Seat.P1)?.Placement ?? throw new InvalidOperationException();
-        PlacementBuilder builder = new(view, options);
+        PlacementBuilder builder = new(view, options, _rules);
         (int first, int second) = (options.UnitIds[0], options.UnitIds[1]);
         (Point a, Point b) = (options.Tiles[0], options.Tiles[1]);
 

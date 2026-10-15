@@ -120,7 +120,7 @@ Classes start as tags that abilities and auras can target (e.g. "Mages within 3"
 
 ### 2.5 Named Characters
 
-> Decided 2026-10-10 (ALE-89). In the engine: the Leader limit (rules 0.8.0, ALE-93) and the name fields with their load checks (rules 0.9.0, ALE-90). Not yet: showing names (ALE-91) and the renamed ability and log text (ALE-92).
+> Decided 2026-10-10 (ALE-89). In the engine: the Leader limit (rules 0.8.0, ALE-93) and the name fields with their load checks (rules 0.9.0, ALE-90), and names shown in the client and the sim CLI as the table below says (ALE-91; prompts, roster buttons, and messages use the short name too). Not yet: the renamed ability and log text (ALE-92).
 
 **The rule.** Every Unique unit is a **named character**: a proper name, an optional epithet, and a role. Its classes (Leader, Mage, …) stay tags as in §2.4. Common units (Grunt, Archer, …) stay generic and have no name.
 

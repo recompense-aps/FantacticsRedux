@@ -10,9 +10,35 @@ public static partial class UnitText
     /// <summary>Words a title keeps lowercase after its first word.</summary>
     private static readonly HashSet<string> _minorWords = ["A", "An", "And", "Of", "The", "To", "In", "On"];
 
-    /// <summary>Race, classes, and uniqueness, e.g. <c>Elves · Ranged · unique</c>.</summary>
-    public static string Tags(DraftUnitOption unit) =>
-        string.Join(" · ", [unit.Race, .. unit.Classes, .. unit.Unique ? ["unique"] : Array.Empty<string>()]);
+    /// <summary>
+    /// Race, classes, role, and uniqueness, e.g. <c>Elves · Ranged</c> or <c>Goblins · Leader · War Lord · unique</c>.
+    /// </summary>
+    public static string Tags(DraftUnitOption unit) => string.Join(" · ", [
+        unit.Race,
+        .. unit.Classes,
+        .. unit.Role is string role ? [role] : Array.Empty<string>(),
+        .. unit.Unique ? ["unique"] : Array.Empty<string>(),
+    ]);
+
+    /// <summary>
+    /// A unit type's short name (RacesAndUnits §2.5): a named character's name, e.g. <c>Grukk</c>, or the type in
+    /// words, e.g. <c>Wolf Rider</c>.
+    /// </summary>
+    public static string Name(RulesConfig rules, string type) =>
+        rules.Units.TryGetValue(type, out UnitDefinition? unit) && unit.Name is string name ? name : Words(type);
+
+    /// <summary>
+    /// A unit type's full name: a named character's name and epithet, e.g. <c>Grukk Skullsplitter</c>, or the type
+    /// in words.
+    /// </summary>
+    public static string FullName(RulesConfig rules, string type) =>
+        rules.Units.TryGetValue(type, out UnitDefinition? unit) && unit.FullName is string name ? name : Words(type);
+
+    /// <summary>A draft option's short name (see <see cref="Name(RulesConfig, string)"/>).</summary>
+    public static string Name(DraftUnitOption unit) => unit.Name ?? Words(unit.Type);
+
+    /// <summary>A draft option's full name (see <see cref="FullName(RulesConfig, string)"/>).</summary>
+    public static string FullName(DraftUnitOption unit) => unit.FullName ?? Words(unit.Type);
 
     /// <summary>Combat stats, e.g. <c>HP 7 · ATK 4 · DEF 1 · MOV 4 · RNG 2–3 · INI 5</c>.</summary>
     public static string Stats(UnitDefinition unit) => $"HP {unit.Hp} · {CombatStats(unit)}";

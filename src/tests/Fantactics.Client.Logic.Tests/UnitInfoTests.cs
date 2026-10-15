@@ -33,10 +33,25 @@ public class UnitInfoTests
 
         UnitInfo info = UnitInfo.Of(update.View, _rules, enemy);
 
-        Assert.Equal(UnitText.Words(enemy.Type), info.Name);
+        Assert.Equal(UnitText.FullName(_rules, enemy.Type), info.Name);
         Assert.StartsWith($"{enemy.Owner} · enemy · {type.Race}", info.Tags);
         Assert.Equal((enemy.Hp, type.Hp), (info.Hp, info.MaxHp));
         Assert.Equal(UnitText.CombatStats(type), info.Stats);
+    }
+
+    [Fact]
+    public void ANamedCharacterShowsItsFullNameAndItsRoleAmongTheTags()
+    {
+        Unit warLord = Unit.Create(1, Seat.P2, "WarLord", UnitLocation.Field, new Point(0, 0), 8);
+        Unit wolfRider = Unit.Create(2, Seat.P2, "WolfRider", UnitLocation.Field, new Point(1, 0), 7);
+
+        UnitInfo named = UnitInfo.Of(warLord, _rules, 1, TurnState.Empty, "enemy");
+        UnitInfo generic = UnitInfo.Of(wolfRider, _rules, 1, TurnState.Empty, "enemy");
+
+        Assert.Equal("Grukk Skullsplitter", named.Name);
+        Assert.Equal("P2 · enemy · Goblins · Leader · War Lord · unique", named.Tags);
+        Assert.Equal("Wolf Rider", generic.Name);
+        Assert.Equal("P2 · enemy · Goblins · Mounted", generic.Tags);
     }
 
     [Fact]
@@ -83,7 +98,7 @@ public class UnitInfoTests
         SeatUpdate update = Movement().First(u =>
             u.Legal?.Moves is { } moves
             && moves.Units.Count(m => m.Destinations.Length > 0) >= 2);
-        MoveOrderBuilder builder = new(update.View, update.Legal!.Moves!);
+        MoveOrderBuilder builder = new(update.View, update.Legal!.Moves!, _rules);
         ImmutableArray<UnitMoveOptions> movers = [.. update.Legal.Moves!.Units.Where(m => m.Destinations.Length > 0)];
         Unit other = update.View.Units.First(u => u.Id == movers[1].UnitId);
         Point empty = update.View.Map.AllPoints().First(tile => update.View.Units.All(u => !u.IsOnField || u.Position != tile));

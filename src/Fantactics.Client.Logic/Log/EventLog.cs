@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Hosting;
+using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
 namespace Fantactics.Client.Logic.Log;
@@ -17,15 +18,18 @@ public sealed class EventLog
 
     private readonly object _lock = new();
     private readonly List<LogLine> _lines = [];
-    private readonly UnitNames _names = new();
+    private readonly UnitNames _names;
     private readonly ConditionalWeakTable<SeatUpdate, StrongBox<int>> _ends = [];
     private int _dropped;
     private Phase _phase;
     private int _turn;
 
     /// <summary>Starts a log from the seat's view before any updates (a new match, or one loaded mid-way).</summary>
-    public EventLog(PlayerView view)
+    /// <param name="view">The seat's view.</param>
+    /// <param name="rules">Rules, for named characters' names.</param>
+    public EventLog(PlayerView view, RulesConfig rules)
     {
+        _names = new UnitNames(rules);
         _names.Learn(view);
         _phase = view.Phase;
         _turn = view.Turn;

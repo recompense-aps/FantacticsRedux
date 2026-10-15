@@ -9,8 +9,11 @@ namespace Fantactics.Client.Logic.Board;
 /// <summary>What the unit info panel shows for one unit.</summary>
 /// <param name="UnitId">The unit, in the viewing seat's ids.</param>
 /// <param name="Owner">Its owner.</param>
-/// <param name="Name">Its type in words, e.g. <c>Wolf Rider</c>.</param>
-/// <param name="Tags">Owner, relation to the viewer, races, classes, and uniqueness, e.g. <c>P2 · enemy · Elves · Ranged</c>.</param>
+/// <param name="Name">Its full name, e.g. <c>Grukk Skullsplitter</c> or <c>Wolf Rider</c>.</param>
+/// <param name="Tags">
+/// Owner, relation to the viewer, races, classes, role, and uniqueness, e.g. <c>P2 · enemy · Elves · Ranged</c> or
+/// <c>P2 · enemy · Goblins · Leader · War Lord · unique</c>.
+/// </param>
 /// <param name="Hp">Current HP.</param>
 /// <param name="MaxHp">Full HP.</param>
 /// <param name="Stats">Stats besides HP (see <see cref="UnitText.CombatStats"/>).</param>
@@ -54,6 +57,7 @@ public sealed record UnitInfo(
             relation,
             .. extraRaces.Prepend(type.Race).Distinct(),
             .. type.Classes ?? [],
+            .. type.Role is string role ? [role] : Array.Empty<string>(),
             .. type.Unique ? ["unique"] : Array.Empty<string>(),
         ]);
 
@@ -82,7 +86,7 @@ public sealed record UnitInfo(
         return new UnitInfo(
             unit.Id,
             unit.Owner,
-            UnitText.Words(unit.Type),
+            UnitText.FullName(rules, unit.Type),
             tags,
             unit.Hp,
             type.Hp,

@@ -1,7 +1,9 @@
 using System.Collections.Immutable;
+using Fantactics.Client.Logic.Board;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Geometry;
+using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
 namespace Fantactics.Client.Logic.Input;
@@ -15,18 +17,21 @@ public sealed class PlacementBuilder
 {
     private readonly ImmutableHashSet<Point> _tiles;
     private readonly Dictionary<int, Point> _placed = [];
-    private readonly Dictionary<int, string> _types;
+    private readonly Dictionary<int, string> _names;
 
     /// <summary>Starts with nothing placed and the first unit picked.</summary>
     /// <param name="view">The seat's view (for unit types).</param>
     /// <param name="options">The units to place and the legal tiles.</param>
-    public PlacementBuilder(PlayerView view, PlacementOptions options)
+    /// <param name="rules">Rules, for named characters' names.</param>
+    public PlacementBuilder(PlayerView view, PlacementOptions options, RulesConfig rules)
     {
         Options = options;
         _tiles = [.. options.Tiles];
-        _types = options.UnitIds.ToDictionary(
+        _names = options.UnitIds.ToDictionary(
             id => id,
-            id => view.Units.FirstOrDefault(unit => unit.Id == id)?.Type ?? $"Unit {id}");
+            id => view.Units.FirstOrDefault(unit => unit.Id == id) is Unit unit
+                ? UnitText.Name(rules, unit.Type)
+                : $"Unit {id}");
         Selected = Unplaced.Cast<int?>().FirstOrDefault();
     }
 
@@ -50,8 +55,8 @@ public sealed class PlacementBuilder
         ? [left == 1 ? "1 unit still to place." : $"{left} units still to place."]
         : [];
 
-    /// <summary>A unit's type.</summary>
-    public string TypeOf(int unitId) => _types.GetValueOrDefault(unitId, $"Unit {unitId}");
+    /// <summary>A unit's short name, e.g. <c>Grukk</c> or <c>Wolf Rider</c>.</summary>
+    public string NameOf(int unitId) => _names.GetValueOrDefault(unitId, $"Unit {unitId}");
 
     /// <summary>The unit placed on <paramref name="tile"/>, if any.</summary>
     public int? UnitAt(Point tile) => _placed
@@ -63,7 +68,7 @@ public sealed class PlacementBuilder
     /// <returns>Whether it's one of the units to place.</returns>
     public bool Select(int unitId)
     {
-        if (!_types.ContainsKey(unitId))
+        if (!_names.ContainsKey(unitId))
         {
             return false;
         }
@@ -118,7 +123,7 @@ public sealed class PlacementBuilder
     {
         _placed.Clear();
         foreach (UnitPlacement p in placement.Placements
-            .Where(p => _types.ContainsKey(p.UnitId) && _tiles.Contains(p.Tile)))
+            .Where(p => _names.ContainsKey(p.UnitId) && _tiles.Contains(p.Tile)))
         {
             if (UnitAt(p.Tile) is null)
             {

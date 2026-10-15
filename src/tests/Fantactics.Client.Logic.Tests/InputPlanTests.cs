@@ -6,6 +6,7 @@ using Fantactics.Core;
 using Fantactics.Core.Commands;
 using Fantactics.Core.Engine;
 using Fantactics.Core.Hosting;
+using Fantactics.Core.Rules;
 using Fantactics.Core.State;
 
 namespace Fantactics.Client.Logic.Tests;
@@ -28,7 +29,7 @@ public class InputPlanTests
             LegalActions legal = update.Legal ?? throw new InvalidOperationException();
             ICommand choice = States.CreateBot("captain", (int)seed).Decide(update.View, legal.Decision, legal);
 
-            ICommand command = Play(update, InputPlan.For(update, choice))
+            ICommand command = Play(update, InputPlan.For(update, choice, RulesConfig.Default))
                 ?? throw new InvalidOperationException($"The {InputPlan.DecisionName(update)} plan submitted nothing.");
 
             Assert.IsType<Accepted>(GameEngine.Apply(state, seat, ViewIds.For(state, seat).ToEngine(command)));
@@ -46,9 +47,9 @@ public class InputPlanTests
         LegalActions legal = update.Legal ?? throw new InvalidOperationException();
         int unit = ((ChooseUnitActionDecision)legal.Decision).UnitId;
 
-        Assert.Contains(InputStep.Press("wait_action"), InputPlan.For(update, new Wait(unit)));
-        Assert.Contains(InputStep.Press("delay_action"), InputPlan.For(update, new Delay(unit)));
-        Assert.Throws<ArgumentException>(() => InputPlan.For(update, SubmitMoveOrders.HoldAll));
+        Assert.Contains(InputStep.Press("wait_action"), InputPlan.For(update, new Wait(unit), RulesConfig.Default));
+        Assert.Contains(InputStep.Press("delay_action"), InputPlan.For(update, new Delay(unit), RulesConfig.Default));
+        Assert.Throws<ArgumentException>(() => InputPlan.For(update, SubmitMoveOrders.HoldAll, RulesConfig.Default));
     }
 
     [Fact]
@@ -76,7 +77,7 @@ public class InputPlanTests
     /// <summary>Plays the steps the way the match screen routes them; returns the first command submitted.</summary>
     private static ICommand? Play(SeatUpdate update, IReadOnlyList<InputStep> steps)
     {
-        DecisionInput input = new(update);
+        DecisionInput input = new(update, RulesConfig.Default);
         LegalActions legal = update.Legal ?? throw new InvalidOperationException();
         foreach (InputStep step in steps)
         {

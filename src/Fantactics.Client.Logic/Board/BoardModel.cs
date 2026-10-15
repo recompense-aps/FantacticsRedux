@@ -207,7 +207,7 @@ public sealed record BoardModel(
 
         string terrain = view.Map[tile].ToString();
         return view.Units.FirstOrDefault(u => u.IsOnField && u.Position == tile) is Unit unit
-            ? $"{unit.Type} ({unit.Owner}) {unit.Hp}/{rules.Units[unit.Type].Hp} HP on {terrain}"
+            ? $"{unit.Owner} {UnitText.Name(rules, unit.Type)} {unit.Hp}/{rules.Units[unit.Type].Hp} HP on {terrain}"
                 + (unit.Statuses.IsEmpty ? "" : $", {string.Join(", ", unit.Statuses.Keys)}")
             : terrain;
     }

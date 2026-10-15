@@ -55,8 +55,9 @@ public static class HudText
 
     /// <summary>What the seat should do now, or who it's waiting for.</summary>
     /// <param name="update">The seat's latest update.</param>
+    /// <param name="rules">Rules, for unit names.</param>
     /// <param name="labelOf">Who plays a seat, for "waiting for" lines (e.g. <c>bot:captain</c>).</param>
-    public static string Prompt(SeatUpdate update, Func<Seat, string> labelOf)
+    public static string Prompt(SeatUpdate update, RulesConfig rules, Func<Seat, string> labelOf)
     {
         PlayerView view = update.View;
         if (view.Outcome is MatchOutcome outcome)
@@ -73,7 +74,8 @@ public static class HudText
                 "Move orders: click a unit, then a tile. Right-click clears. Enter submits."
                 + ReservesReady(update.Legal.Moves),
             ChooseUnitActionDecision decision =>
-                $"{TypeOf(view, decision.UnitId)} acts: click a red target, 1–9 for abilities, W to wait, D to delay.",
+                $"{NameOf(view, rules, decision.UnitId)} acts: click a red target, 1–9 for abilities, W to wait, "
+                + "D to delay.",
             _ => "Waiting for " + string.Join(" and ", view.PendingDecisions
                 .Select(d => d.Seat)
                 .Distinct()
@@ -106,6 +108,8 @@ public static class HudText
     private static string Races(ImmutableSortedDictionary<string, int> drafted) =>
         string.Join(", ", drafted.Select(pair => $"{pair.Key} {pair.Value}"));
 
-    private static string TypeOf(PlayerView view, int unitId) =>
-        view.Units.FirstOrDefault(u => u.Id == unitId)?.Type ?? $"Unit {unitId}";
+    private static string NameOf(PlayerView view, RulesConfig rules, int unitId) =>
+        view.Units.FirstOrDefault(u => u.Id == unitId) is Unit unit
+            ? UnitText.Name(rules, unit.Type)
+            : $"Unit {unitId}";
 }

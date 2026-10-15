@@ -16,7 +16,7 @@ public class DeployPromptTests
     public void ArrivalTilesCoverEveryReadyReserveUntilChosen()
     {
         (SeatUpdate update, MoveOptions options) = FirstWithDeploys();
-        MoveOrderBuilder builder = new(update.View, options);
+        MoveOrderBuilder builder = new(update.View, options, RulesConfig.Default);
 
         Assert.Equal(options.Deploys.Select(d => d.UnitId), builder.ReadyToDeploy.Select(d => d.UnitId));
         Assert.Equal(
@@ -36,7 +36,7 @@ public class DeployPromptTests
     public void NothingIsReadyOnceArrivalsRunOut()
     {
         (SeatUpdate update, MoveOptions options) = FirstWithDeploys();
-        MoveOrderBuilder builder = new(update.View, options with { MaxArrivals = 1 });
+        MoveOrderBuilder builder = new(update.View, options with { MaxArrivals = 1 }, RulesConfig.Default);
 
         DeployOption first = options.Deploys[0];
         builder.Select(first.UnitId);
@@ -50,7 +50,7 @@ public class DeployPromptTests
     public void TheBoardMarksArrivalTilesOnlyWithNothingSelected()
     {
         (SeatUpdate update, MoveOptions options) = FirstWithDeploys();
-        MoveOrderBuilder builder = new(update.View, options);
+        MoveOrderBuilder builder = new(update.View, options, RulesConfig.Default);
         Point arrival = builder.ArrivalTiles.First();
 
         BoardModel idle = BoardModel.Build(update.View, RulesConfig.Default, builder, null, arrival);
@@ -67,16 +67,38 @@ public class DeployPromptTests
     public void ThePromptAndRosterTitleMentionReservesOnlyWhenOneCanDeploy()
     {
         (SeatUpdate ready, MoveOptions options) = FirstWithDeploys();
-        DecisionInput input = new(ready);
-        Assert.Contains("Reserves ready", HudText.Prompt(ready, _ => ""));
+        DecisionInput input = new(ready, RulesConfig.Default);
+        Assert.Contains("Reserves ready", HudText.Prompt(ready, RulesConfig.Default, _ => ""));
         Assert.Equal($"Deploy (Command {options.Command}):", input.RosterTitle);
 
         SeatUpdate none = Movement().First(u => u.Legal?.Moves is { Deploys.IsEmpty: true });
-        Assert.DoesNotContain("Reserves", HudText.Prompt(none, _ => ""));
-        Assert.Equal("", new DecisionInput(none).RosterTitle);
+        Assert.DoesNotContain("Reserves", HudText.Prompt(none, RulesConfig.Default, _ => ""));
+        Assert.Equal("", new DecisionInput(none, RulesConfig.Default).RosterTitle);
 
         (GameState state, Seat seat) = States.Along(6).First(s => s.State.Phase == Phase.Placement);
-        Assert.Equal("Place:", new DecisionInput(Update(state, seat)).RosterTitle);
+        Assert.Equal("Place:", new DecisionInput(Update(state, seat), RulesConfig.Default).RosterTitle);
+    }
+
+    [Fact]
+    public void PromptsAndButtonsNameCharactersByTheirShortName()
+    {
+        Assert.Equal("Grukk (4)", DecisionInput.DeployLabel(RulesConfig.Default, new DeployOption(1, "WarLord", 4, [])));
+        Assert.Equal("Wolf Rider (3)", DecisionInput.DeployLabel(RulesConfig.Default, new DeployOption(2, "WolfRider", 3, [])));
+
+        SeatUpdate acting = new ulong[] { 1, 2, 3 }
+            .SelectMany(States.Along)
+            .Select(s => Update(s.State, s.Seat))
+            .First(u => u.Legal?.Decision is ChooseUnitActionDecision);
+        int unitId = ((ChooseUnitActionDecision)acting.Legal!.Decision).UnitId;
+        SeatUpdate asWarLord = acting with
+        {
+            View = acting.View with
+            {
+                Units = [.. acting.View.Units.Select(u => u.Id == unitId ? u with { Type = "WarLord" } : u)],
+            },
+        };
+
+        Assert.StartsWith("Grukk acts:", HudText.Prompt(asWarLord, RulesConfig.Default, _ => ""));
     }
 
     private static (SeatUpdate Update, MoveOptions Options) FirstWithDeploys()
